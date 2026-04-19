@@ -282,7 +282,11 @@ select:focus {
 .detail-panel {
   min-height: 0;
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto auto 1fr;
+}
+
+.grid-search {
+  margin-bottom: 8px;
 }
 
 #groupsBody tr {

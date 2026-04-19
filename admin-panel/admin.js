@@ -4,6 +4,8 @@ const state = {
   licenses: [],
   validations: [],
   selectedGroupId: null,
+  groupSearch: '',
+  unitSearch: '',
   token: localStorage.getItem('sistemaAdminToken') || ''
 };
 
@@ -54,6 +56,16 @@ async function request(path, options = {}) {
 
 function formData(form) {
   return Object.fromEntries(new FormData(form).entries());
+}
+
+function includesText(item, fields, searchText) {
+  const needle = String(searchText || '').trim().toLowerCase();
+
+  if (!needle) {
+    return true;
+  }
+
+  return fields.some(field => String(item[field] || '').toLowerCase().includes(needle));
 }
 
 function renderSelects() {
@@ -162,6 +174,9 @@ function licenseForUnit(unitId) {
 
 function renderGroupsMaster() {
   const body = $('#groupsBody');
+  const visibleGroups = state.groups.filter(group =>
+    includesText(group, ['codigo', 'nombre'], state.groupSearch)
+  );
 
   if (!state.groups.length) {
     body.innerHTML = '<tr><td colspan="4">Sin grupos cargados.</td></tr>';
@@ -169,11 +184,18 @@ function renderGroupsMaster() {
     return;
   }
 
-  if (!state.selectedGroupId || !state.groups.some(group => String(group.id) === String(state.selectedGroupId))) {
-    state.selectedGroupId = state.groups[0].id;
+  if (!visibleGroups.length) {
+    state.selectedGroupId = null;
+    body.innerHTML = '<tr><td colspan="4">Sin grupos para esa busqueda.</td></tr>';
+    $('#groupUnitsBody').innerHTML = '<tr><td colspan="6">Sin grupo seleccionado.</td></tr>';
+    return;
   }
 
-  body.innerHTML = state.groups.map(group => {
+  if (!state.selectedGroupId || !visibleGroups.some(group => String(group.id) === String(state.selectedGroupId))) {
+    state.selectedGroupId = visibleGroups[0].id;
+  }
+
+  body.innerHTML = visibleGroups.map(group => {
     const units = unitsForGroup(group.id);
     const selected = String(group.id) === String(state.selectedGroupId) ? ' class="selected-row"' : '';
     const statusClass = group.is_active ? 'status-active' : 'status-blocked';
@@ -202,15 +224,23 @@ function renderGroupDetail() {
   }
 
   const units = unitsForGroup(group.id);
+  const visibleUnits = units.filter(unit =>
+    includesText(unit, ['codigo', 'nombre', 'tipo'], state.unitSearch)
+  );
   $('#selectedGroupTitle').textContent = `${group.codigo} - ${group.nombre}`;
-  $('#selectedGroupSubtitle').textContent = `${units.length} sucursal(es) o tecnico(s) dentro del grupo.`;
+  $('#selectedGroupSubtitle').textContent = `${visibleUnits.length} de ${units.length} sucursal(es) o tecnico(s).`;
 
   if (!units.length) {
     body.innerHTML = '<tr><td colspan="6">Este grupo todavia no tiene sucursales ni tecnicos.</td></tr>';
     return;
   }
 
-  body.innerHTML = units.map(unit => {
+  if (!visibleUnits.length) {
+    body.innerHTML = '<tr><td colspan="6">Sin sucursales o tecnicos para esa busqueda.</td></tr>';
+    return;
+  }
+
+  body.innerHTML = visibleUnits.map(unit => {
     const license = licenseForUnit(unit.id);
     const status = license
       ? statusInfo(license)
@@ -416,6 +446,16 @@ function wireEvents() {
 
     state.selectedGroupId = row.dataset.groupId;
     renderGroupsView();
+  });
+
+  $('#groupSearch').addEventListener('input', event => {
+    state.groupSearch = event.target.value;
+    renderGroupsView();
+  });
+
+  $('#unitSearch').addEventListener('input', event => {
+    state.unitSearch = event.target.value;
+    renderGroupDetail();
   });
 }
 
