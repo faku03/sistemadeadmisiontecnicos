@@ -6,48 +6,50 @@
   <link rel="stylesheet" href="../styles.css">
 </head>
 <body>
+  <main class="app-shell abm-shell">
+    <section class="abm-layout">
+      <header class="abm-header">
+        <h2>Sucursales</h2>
+        <input id="buscar" class="form-control" placeholder="Buscar sucursal...">
+        <label>
+          <input type="checkbox" id="verEliminados">
+          Mostrar eliminadas
+        </label>
+      </header>
 
-<h2>Sucursales</h2>
+      <div class="table-wrap">
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th>Codigo</th>
+              <th>Nombre</th>
+              <th>Local</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tabla"></tbody>
+        </table>
+      </div>
 
-<input id="buscar" placeholder="Buscar sucursal..." />
+      <form class="abm-form" onsubmit="return false;">
+        <h3 id="tituloForm">Nueva Sucursal</h3>
+        <input id="codigo" class="form-control" placeholder="Codigo">
+        <input id="nombre" class="form-control" placeholder="Nombre">
+        <input id="direccion" class="form-control" placeholder="Direccion">
+        <input id="telefono" class="form-control" placeholder="Telefono">
+        <label class="full-row">
+          <input type="checkbox" id="sucursalLocal">
+          Sucursal local
+        </label>
+        <div class="form-actions">
+          <button id="guardar" class="btn btn-primary">Guardar</button>
+          <button id="cancelar" class="btn btn-secondary" style="display:none;">Cancelar</button>
+        </div>
+      </form>
+    </section>
+  </main>
 
-<label>
-  <input type="checkbox" id="verEliminados">
-  Mostrar eliminadas
-</label>
-
-<table width="100%" border="1" cellspacing="0" cellpadding="5">
-  <thead>
-    <tr>
-      <th>Código</th>
-      <th>Nombre</th>
-      <th>Local</th>
-      <th>Estado</th>
-      <th>Acciones</th>
-    </tr>
-  </thead>
-  <tbody id="tabla"></tbody>
-</table>
-
-<hr>
-
-<h3 id="tituloForm">Nueva Sucursal</h3>
-
-<input id="codigo" placeholder="Código">
-<input id="nombre" placeholder="Nombre">
-<input id="direccion" placeholder="Dirección">
-<input id="telefono" placeholder="Teléfono">
-
-<label>
-  <input type="checkbox" id="sucursalLocal">
-  Sucursal local
-</label>
-
-<br><br>
-
-<button id="guardar">Guardar</button>
-<button id="cancelar" style="display:none;">Cancelar</button>
-
-<script src="sucursales.js"></script>
+  <script src="sucursales.js"></script>
 </body>
 </html>

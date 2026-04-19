@@ -6,54 +6,52 @@
   <link rel="stylesheet" href="../styles.css">
 </head>
 <body>
+  <main class="app-shell abm-shell">
+    <section class="abm-layout">
+      <header class="abm-header">
+        <h2>Modelos</h2>
+        <div class="toolbar full-row">
+          <input id="buscar" class="form-control" placeholder="Buscar por tipo, marca o modelo">
+          <button id="btnBuscar" class="btn">Buscar</button>
+          <label>
+            <input type="checkbox" id="verEliminados">
+            Mostrar eliminados
+          </label>
+        </div>
+      </header>
 
-<h2>Modelos</h2>
+      <div class="table-wrap">
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th>Tipo de equipo</th>
+              <th>Marca</th>
+              <th>Modelo</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tabla"></tbody>
+        </table>
+      </div>
 
-<!-- BUSCADOR -->
-<div style="margin-bottom:10px">
-  <input id="buscar" placeholder="Buscar por tipo, marca o modelo">
-  <button id="btnBuscar">Buscar</button>
+      <form class="abm-form" onsubmit="return false;">
+        <h3 id="tituloForm">Nuevo Modelo</h3>
+        <select id="tipoEquipo" class="form-control">
+          <option value="">Tipo de equipo</option>
+        </select>
+        <select id="marca" class="form-control">
+          <option value="">Marca</option>
+        </select>
+        <input id="nombre" class="form-control full-row" placeholder="Modelo">
+        <div class="form-actions">
+          <button id="guardar" class="btn btn-primary">Guardar</button>
+          <button id="cancelar" class="btn btn-secondary" style="display:none">Cancelar</button>
+        </div>
+      </form>
+    </section>
+  </main>
 
-  <label style="margin-left:10px">
-    <input type="checkbox" id="verEliminados">
-    Mostrar eliminados
-  </label>
-</div>
-
-<!-- GRILLA -->
-<table width="100%" border="1" cellspacing="0" cellpadding="5">
-  <thead>
-    <tr>
-      <th>Tipo de equipo</th>
-      <th>Marca</th>
-      <th>Modelo</th>
-      <th>Estado</th>
-      <th>Acciones</th>
-    </tr>
-  </thead>
-  <tbody id="tabla"></tbody>
-</table>
-
-<hr>
-
-<!-- FORM -->
-<h3 id="tituloForm">Nuevo Modelo</h3>
-
-<select id="tipoEquipo">
-  <option value="">Tipo de equipo</option>
-</select>
-
-<select id="marca">
-  <option value="">Marca</option>
-</select>
-
-<input id="nombre" placeholder="Modelo">
-
-<br><br>
-
-<button id="guardar">Guardar</button>
-<button id="cancelar" style="display:none">Cancelar</button>
-
-<script src="modelos.js"></script>
+  <script src="modelos.js"></script>
 </body>
 </html>

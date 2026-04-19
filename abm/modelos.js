@@ -71,7 +71,7 @@ async function cargar() {
             d.is_deleted
               ? `<button onclick="reactivar(${d.id})">Reactivar</button>`
               : `
-                <button onclick="editar(${d.id}, ${d.tipo_id}, ${d.marca_id}, '${d.modelo}')">Editar</button>
+                <button onclick="editar(${d.id}, ${d.tipo_equipo_id}, ${d.marca_id}, '${d.modelo}')">Editar</button>
                 <button onclick="eliminar(${d.id})">Eliminar</button>
               `
           }

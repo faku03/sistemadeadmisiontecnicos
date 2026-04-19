@@ -6,39 +6,43 @@
   <link rel="stylesheet" href="../styles.css">
 </head>
 <body>
+  <main class="app-shell abm-shell">
+    <section class="abm-layout">
+      <header class="abm-header">
+        <h2>Tipos de Equipo</h2>
+        <input id="buscar" class="form-control" placeholder="Buscar...">
+        <label>
+          <input type="checkbox" id="verEliminados">
+          Mostrar eliminados
+        </label>
+      </header>
 
-<h2>Tipos de Equipo</h2>
+      <div class="table-wrap">
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th>Codigo</th>
+              <th>Descripcion</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tabla"></tbody>
+        </table>
+      </div>
 
-<input id="buscar" placeholder="Buscar..." />
-<label>
-  <input type="checkbox" id="verEliminados">
-  Mostrar eliminados
-</label>
+      <form class="abm-form" onsubmit="return false;">
+        <h3 id="tituloForm">Nuevo Tipo</h3>
+        <input id="codigo" class="form-control" placeholder="Codigo">
+        <input id="descripcion" class="form-control" placeholder="Descripcion">
+        <div class="form-actions">
+          <button id="guardar" class="btn btn-primary">Guardar</button>
+          <button id="cancelar" class="btn btn-secondary" style="display:none;">Cancelar</button>
+        </div>
+      </form>
+    </section>
+  </main>
 
-<table width="100%" border="1" cellspacing="0" cellpadding="5">
-  <thead>
-    <tr>
-      <th>Código</th>
-      <th>Descripción</th>
-      <th>Estado</th>
-      <th>Acciones</th>
-    </tr>
-  </thead>
-  <tbody id="tabla"></tbody>
-</table>
-
-<hr>
-
-<h3 id="tituloForm">Nuevo Tipo</h3>
-
-<input id="codigo" placeholder="Código">
-<input id="descripcion" placeholder="Descripción">
-
-<br><br>
-
-<button id="guardar">Guardar</button>
-<button id="cancelar" style="display:none;">Cancelar</button>
-
-<script src="tipos_equipo.js"></script>
+  <script src="tipos_equipo.js"></script>
 </body>
 </html>
