@@ -32,6 +32,144 @@ class ApiClient {
     return this.request(`/tickets${qs}`);
   }
 
+  buscarClientePorDni(dni) {
+    return this.request(`/clientes/buscar?dni=${encodeURIComponent(dni)}`);
+  }
+
+  crearCliente(data) {
+    return this.request('/clientes', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  }
+
+  listarTiposEquipo(includeDeleted = false) {
+    return this.request(`/tipos-equipo?includeDeleted=${includeDeleted ? 'true' : 'false'}`);
+  }
+
+  crearTipoEquipo(data) {
+    return this.request('/tipos-equipo', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  }
+
+  actualizarTipoEquipo(id, data) {
+    return this.request(`/tipos-equipo/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  }
+
+  eliminarTipoEquipo(id) {
+    return this.request(`/tipos-equipo/${id}`, {
+      method: 'DELETE'
+    });
+  }
+
+  reactivarTipoEquipo(id) {
+    return this.request(`/tipos-equipo/${id}/reactivar`, {
+      method: 'POST'
+    });
+  }
+
+  listarMarcas(includeDeleted = false) {
+    return this.request(`/marcas?includeDeleted=${includeDeleted ? 'true' : 'false'}`);
+  }
+
+  crearMarca(data) {
+    return this.request('/marcas', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  }
+
+  actualizarMarca(id, data) {
+    return this.request(`/marcas/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  }
+
+  eliminarMarca(id) {
+    return this.request(`/marcas/${id}`, {
+      method: 'DELETE'
+    });
+  }
+
+  reactivarMarca(id) {
+    return this.request(`/marcas/${id}/reactivar`, {
+      method: 'POST'
+    });
+  }
+
+  listarModelos({ marcaId, includeDeleted = false } = {}) {
+    const params = new URLSearchParams();
+    params.set('includeDeleted', includeDeleted ? 'true' : 'false');
+
+    if (marcaId) {
+      params.set('marca_id', marcaId);
+    }
+
+    return this.request(`/modelos?${params.toString()}`);
+  }
+
+  crearModelo(data) {
+    return this.request('/modelos', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  }
+
+  actualizarModelo(id, data) {
+    return this.request(`/modelos/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  }
+
+  eliminarModelo(id) {
+    return this.request(`/modelos/${id}`, {
+      method: 'DELETE'
+    });
+  }
+
+  reactivarModelo(id) {
+    return this.request(`/modelos/${id}/reactivar`, {
+      method: 'POST'
+    });
+  }
+
+  listarSucursales(includeDeleted = false) {
+    return this.request(`/sucursales?includeDeleted=${includeDeleted ? 'true' : 'false'}`);
+  }
+
+  crearSucursal(data) {
+    return this.request('/sucursales', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  }
+
+  actualizarSucursal(id, data) {
+    return this.request(`/sucursales/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  }
+
+  eliminarSucursal(id) {
+    return this.request(`/sucursales/${id}`, {
+      method: 'DELETE'
+    });
+  }
+
+  reactivarSucursal(id) {
+    return this.request(`/sucursales/${id}/reactivar`, {
+      method: 'POST'
+    });
+  }
+
   crearTicket(data) {
     return this.request('/tickets', {
       method: 'POST',

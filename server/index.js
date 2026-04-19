@@ -380,6 +380,254 @@ async function cobrarCaja(uuid) {
   return result.rows[0];
 }
 
+function incluyeEliminados(url) {
+  return ['1', 'true', 'si', 'sí'].includes(
+    String(url.searchParams.get('includeDeleted') || '').toLowerCase()
+  );
+}
+
+async function buscarClientePorDni(dni) {
+  const result = await query(`SELECT * FROM clientes WHERE dni = $1`, [dni]);
+  return result.rows[0] || null;
+}
+
+async function crearCliente(data) {
+  const result = await query(
+    `
+    INSERT INTO clientes (dni, nombre, apellido, celular, email)
+    VALUES ($1, $2, $3, $4, $5)
+    RETURNING *
+    `,
+    [data.dni, data.nombre, data.apellido, data.celular || '', data.email || '']
+  );
+
+  return result.rows[0];
+}
+
+async function listarTiposEquipo(includeDeleted) {
+  const result = await query(`
+    SELECT *
+    FROM tipos_equipo
+    ${includeDeleted ? '' : 'WHERE is_deleted = FALSE'}
+    ORDER BY descripcion
+  `);
+  return result.rows;
+}
+
+async function crearTipoEquipo(data) {
+  const result = await query(
+    `
+    INSERT INTO tipos_equipo (codigo, descripcion)
+    VALUES ($1, $2)
+    RETURNING *
+    `,
+    [data.codigo, data.descripcion]
+  );
+  return result.rows[0];
+}
+
+async function actualizarTipoEquipo(id, data) {
+  const result = await query(
+    `
+    UPDATE tipos_equipo
+    SET codigo = $1,
+        descripcion = $2,
+        updated_at = NOW()
+    WHERE id = $3
+    RETURNING *
+    `,
+    [data.codigo, data.descripcion, id]
+  );
+  return result.rows[0];
+}
+
+async function listarMarcas(includeDeleted) {
+  const result = await query(`
+    SELECT *
+    FROM marcas
+    ${includeDeleted ? '' : 'WHERE is_deleted = FALSE'}
+    ORDER BY nombre
+  `);
+  return result.rows;
+}
+
+async function crearMarca(data) {
+  const result = await query(
+    `INSERT INTO marcas (nombre) VALUES ($1) RETURNING *`,
+    [data.nombre]
+  );
+  return result.rows[0];
+}
+
+async function actualizarMarca(id, data) {
+  const result = await query(
+    `
+    UPDATE marcas
+    SET nombre = $1,
+        updated_at = NOW()
+    WHERE id = $2
+    RETURNING *
+    `,
+    [data.nombre, id]
+  );
+  return result.rows[0];
+}
+
+async function listarModelos(url) {
+  const includeDeleted = incluyeEliminados(url);
+  const marcaId = url.searchParams.get('marca_id');
+  const params = [];
+  const condiciones = [];
+
+  if (!includeDeleted) {
+    condiciones.push('mo.is_deleted = FALSE');
+  }
+
+  if (marcaId) {
+    params.push(marcaId);
+    condiciones.push(`mo.marca_id = $${params.length}`);
+  }
+
+  const where = condiciones.length ? `WHERE ${condiciones.join(' AND ')}` : '';
+  const result = await query(
+    `
+    SELECT
+      mo.id,
+      mo.tipo_equipo_id,
+      mo.marca_id,
+      ma.nombre AS marca,
+      mo.nombre AS modelo,
+      mo.is_deleted,
+      te.descripcion AS tipo
+    FROM modelos mo
+    JOIN tipos_equipo te ON te.id = mo.tipo_equipo_id
+    JOIN marcas ma ON ma.id = mo.marca_id
+    ${where}
+    ORDER BY te.descripcion, ma.nombre, mo.nombre
+    `,
+    params
+  );
+
+  return result.rows;
+}
+
+async function crearModelo(data) {
+  const result = await query(
+    `
+    INSERT INTO modelos (marca_id, nombre, tipo_equipo_id)
+    VALUES ($1, $2, $3)
+    RETURNING *
+    `,
+    [data.marca_id, data.nombre, data.tipo_equipo_id]
+  );
+  return result.rows[0];
+}
+
+async function actualizarModelo(id, data) {
+  const result = await query(
+    `
+    UPDATE modelos
+    SET tipo_equipo_id = $1,
+        marca_id = $2,
+        nombre = $3,
+        updated_at = NOW()
+    WHERE id = $4
+    RETURNING *
+    `,
+    [data.tipo_equipo_id, data.marca_id, data.nombre, id]
+  );
+  return result.rows[0];
+}
+
+async function listarSucursales(includeDeleted) {
+  const result = await query(`
+    SELECT *
+    FROM sucursales
+    ${includeDeleted ? '' : 'WHERE is_deleted = FALSE'}
+    ORDER BY nombre
+  `);
+  return result.rows;
+}
+
+async function crearSucursal(data) {
+  return withTransaction(async client => {
+    if (data.sucursal_local) {
+      await client.query(`UPDATE sucursales SET sucursal_local = FALSE`);
+    }
+
+    const result = await client.query(
+      `
+      INSERT INTO sucursales (codigo, nombre, direccion, telefono, sucursal_local)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING *
+      `,
+      [data.codigo, data.nombre, data.direccion || '', data.telefono || '', Boolean(data.sucursal_local)]
+    );
+
+    return result.rows[0];
+  });
+}
+
+async function actualizarSucursal(id, data) {
+  return withTransaction(async client => {
+    if (data.sucursal_local) {
+      await client.query(`UPDATE sucursales SET sucursal_local = FALSE`);
+    }
+
+    const result = await client.query(
+      `
+      UPDATE sucursales
+      SET codigo = $1,
+          nombre = $2,
+          direccion = $3,
+          telefono = $4,
+          sucursal_local = $5,
+          updated_at = NOW()
+      WHERE id = $6
+      RETURNING *
+      `,
+      [
+        data.codigo,
+        data.nombre,
+        data.direccion || '',
+        data.telefono || '',
+        Boolean(data.sucursal_local),
+        id
+      ]
+    );
+
+    return result.rows[0];
+  });
+}
+
+async function softDelete(tabla, id) {
+  const result = await query(
+    `
+    UPDATE ${tabla}
+    SET is_deleted = TRUE,
+        deleted_at = NOW()
+    WHERE id = $1
+    RETURNING *
+    `,
+    [id]
+  );
+  return result.rows[0];
+}
+
+async function reactivar(tabla, id) {
+  const result = await query(
+    `
+    UPDATE ${tabla}
+    SET is_deleted = FALSE,
+        restored_at = NOW()
+    WHERE id = $1
+    RETURNING *
+    `,
+    [id]
+  );
+  return result.rows[0];
+}
+
 async function handle(req, res) {
   const url = parseUrl(req);
   const path = url.pathname;
@@ -400,8 +648,120 @@ async function handle(req, res) {
     }
 
     if (method === 'GET' && path === '/sucursales') {
-      const result = await query(`SELECT * FROM sucursales WHERE is_deleted = FALSE ORDER BY nombre`);
-      sendJson(res, 200, result.rows);
+      sendJson(res, 200, await listarSucursales(incluyeEliminados(url)));
+      return;
+    }
+
+    if (method === 'POST' && path === '/sucursales') {
+      sendJson(res, 201, await crearSucursal(await readJson(req)));
+      return;
+    }
+
+    const sucursalMatch = path.match(/^\/sucursales\/(\d+)(?:\/([^/]+))?$/);
+
+    if (sucursalMatch && method === 'PUT' && !sucursalMatch[2]) {
+      sendJson(res, 200, await actualizarSucursal(sucursalMatch[1], await readJson(req)));
+      return;
+    }
+
+    if (sucursalMatch && method === 'DELETE' && !sucursalMatch[2]) {
+      sendJson(res, 200, await softDelete('sucursales', sucursalMatch[1]));
+      return;
+    }
+
+    if (sucursalMatch && method === 'POST' && sucursalMatch[2] === 'reactivar') {
+      sendJson(res, 200, await reactivar('sucursales', sucursalMatch[1]));
+      return;
+    }
+
+    if (method === 'GET' && path === '/clientes/buscar') {
+      sendJson(res, 200, await buscarClientePorDni(url.searchParams.get('dni')));
+      return;
+    }
+
+    if (method === 'POST' && path === '/clientes') {
+      sendJson(res, 201, await crearCliente(await readJson(req)));
+      return;
+    }
+
+    if (method === 'GET' && path === '/tipos-equipo') {
+      sendJson(res, 200, await listarTiposEquipo(incluyeEliminados(url)));
+      return;
+    }
+
+    if (method === 'POST' && path === '/tipos-equipo') {
+      sendJson(res, 201, await crearTipoEquipo(await readJson(req)));
+      return;
+    }
+
+    const tipoMatch = path.match(/^\/tipos-equipo\/(\d+)(?:\/([^/]+))?$/);
+
+    if (tipoMatch && method === 'PUT' && !tipoMatch[2]) {
+      sendJson(res, 200, await actualizarTipoEquipo(tipoMatch[1], await readJson(req)));
+      return;
+    }
+
+    if (tipoMatch && method === 'DELETE' && !tipoMatch[2]) {
+      sendJson(res, 200, await softDelete('tipos_equipo', tipoMatch[1]));
+      return;
+    }
+
+    if (tipoMatch && method === 'POST' && tipoMatch[2] === 'reactivar') {
+      sendJson(res, 200, await reactivar('tipos_equipo', tipoMatch[1]));
+      return;
+    }
+
+    if (method === 'GET' && path === '/marcas') {
+      sendJson(res, 200, await listarMarcas(incluyeEliminados(url)));
+      return;
+    }
+
+    if (method === 'POST' && path === '/marcas') {
+      sendJson(res, 201, await crearMarca(await readJson(req)));
+      return;
+    }
+
+    const marcaMatch = path.match(/^\/marcas\/(\d+)(?:\/([^/]+))?$/);
+
+    if (marcaMatch && method === 'PUT' && !marcaMatch[2]) {
+      sendJson(res, 200, await actualizarMarca(marcaMatch[1], await readJson(req)));
+      return;
+    }
+
+    if (marcaMatch && method === 'DELETE' && !marcaMatch[2]) {
+      sendJson(res, 200, await softDelete('marcas', marcaMatch[1]));
+      return;
+    }
+
+    if (marcaMatch && method === 'POST' && marcaMatch[2] === 'reactivar') {
+      sendJson(res, 200, await reactivar('marcas', marcaMatch[1]));
+      return;
+    }
+
+    if (method === 'GET' && path === '/modelos') {
+      sendJson(res, 200, await listarModelos(url));
+      return;
+    }
+
+    if (method === 'POST' && path === '/modelos') {
+      sendJson(res, 201, await crearModelo(await readJson(req)));
+      return;
+    }
+
+    const modeloMatch = path.match(/^\/modelos\/(\d+)(?:\/([^/]+))?$/);
+
+    if (modeloMatch && method === 'PUT' && !modeloMatch[2]) {
+      sendJson(res, 200, await actualizarModelo(modeloMatch[1], await readJson(req)));
+      return;
+    }
+
+    if (modeloMatch && method === 'DELETE' && !modeloMatch[2]) {
+      sendJson(res, 200, await softDelete('modelos', modeloMatch[1]));
+      return;
+    }
+
+    if (modeloMatch && method === 'POST' && modeloMatch[2] === 'reactivar') {
+      sendJson(res, 200, await reactivar('modelos', modeloMatch[1]));
       return;
     }
 
