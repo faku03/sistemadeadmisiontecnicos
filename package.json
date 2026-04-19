@@ -11,6 +11,7 @@
     "server:migrate": "node server/migrate.js",
     "smoke:db": "electron scripts/smoke-db.js",
     "smoke:circuit": "electron scripts/smoke-circuit.js",
+    "smoke:api-postgres": "node scripts/smoke-api-postgres.js",
     "build": "electron-builder",
     "build:caja": "electron-builder --config electron-builder.caja.json",
     "postinstall": "electron-builder install-app-deps"
