@@ -7,8 +7,10 @@ const pdfPresupuesto = require('./pdf/presupuesto');
 
 function createWindow() {
   const win = new BrowserWindow({
-    width: 1100,
-    height: 700,
+    width: 1120,
+    height: 720,
+    center: true,
+    autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,

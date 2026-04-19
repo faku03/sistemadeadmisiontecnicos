@@ -214,11 +214,14 @@ button:active,
 
 .app {
   display: grid;
-  grid-template-columns: 320px minmax(0, 1fr);
   gap: 14px;
   height: calc(100vh - 54px);
   min-height: 0;
   padding: 14px;
+}
+
+.app-main {
+  grid-template-rows: auto auto minmax(0, 1fr);
 }
 
 .panel {
@@ -236,6 +239,49 @@ button:active,
 
 .tickets {
   overflow: hidden;
+}
+
+.form-panel {
+  gap: 10px;
+}
+
+.form-grid {
+  display: grid;
+  gap: 10px;
+  align-items: start;
+}
+
+.cliente-grid {
+  grid-template-columns: minmax(110px, .8fr) repeat(4, minmax(135px, 1fr));
+}
+
+.equipo-grid {
+  grid-template-columns: repeat(3, minmax(140px, 1fr)) minmax(220px, 1.4fr) auto;
+  align-items: end;
+}
+
+.equipo-grid textarea {
+  align-self: end;
+  min-height: calc(var(--input-height) * 2 + 10px);
+  height: calc(var(--input-height) * 2 + 10px);
+  margin-top: calc((var(--input-height) * -1) - 10px);
+}
+
+.equipo-grid #btnGuardar {
+  min-width: 140px;
+  height: var(--input-height);
+  align-self: start;
+}
+
+.tickets-header {
+  display: grid;
+  grid-template-columns: auto minmax(360px, 1fr);
+  align-items: center;
+  gap: 14px;
+}
+
+.tickets-header h2 {
+  margin-bottom: 0;
 }
 
 .filtros-tickets,
@@ -427,11 +473,26 @@ td button {
   grid-column: 1 / -1;
 }
 
-@media (max-width: 900px) {
-  .app {
-    grid-template-columns: 1fr;
+@media (max-width: 1050px) {
+  .cliente-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  .equipo-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .equipo-grid textarea,
+  .equipo-grid #btnGuardar {
+    height: var(--input-height);
+  }
+
+  .tickets-header {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
   .abm-form,
   .abm-header,
   .filtros-tickets,
