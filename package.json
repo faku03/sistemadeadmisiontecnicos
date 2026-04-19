@@ -7,6 +7,8 @@
   "scripts": {
     "start": "electron .",
     "start:caja": "electron main-caja.js",
+    "server:start": "node server/index.js",
+    "server:migrate": "node server/migrate.js",
     "smoke:db": "electron scripts/smoke-db.js",
     "build": "electron-builder",
     "build:caja": "electron-builder --config electron-builder.caja.json",
@@ -15,6 +17,7 @@
   "dependencies": {
     "better-sqlite3": "^12.6.2",
     "pdfkit": "^0.17.2",
+    "pg": "^8.20.0",
     "uuid": "^13.0.0"
   },
   "devDependencies": {
@@ -31,10 +34,9 @@
       "**/*"
     ],
     "win": {
-  "target": "nsis",
-  "artifactName": "${productName}-Setup-${version}.${ext}"
-}
-,
+      "target": "nsis",
+      "artifactName": "${productName}-Setup-${version}.${ext}"
+    },
     "nsis": {
       "oneClick": false,
       "perMachine": false,
