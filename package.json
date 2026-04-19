@@ -6,8 +6,10 @@
   "author": "TuNombre",
   "scripts": {
     "start": "electron .",
+    "start:caja": "electron main-caja.js",
     "smoke:db": "electron scripts/smoke-db.js",
     "build": "electron-builder",
+    "build:caja": "electron-builder --config electron-builder.caja.json",
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
@@ -30,8 +32,7 @@
     ],
     "win": {
   "target": "nsis",
-  "artifactName": "${productName}-Setup-${version}.${ext}",
-  "sign": false
+  "artifactName": "${productName}-Setup-${version}.${ext}"
 }
 ,
     "nsis": {

@@ -1,0 +1,22 @@
+{
+  "appId": "com.sistemadecaja.app",
+  "productName": "SistemaDeCaja",
+  "directories": {
+    "output": "dist-caja"
+  },
+  "files": [
+    "**/*"
+  ],
+  "extraMetadata": {
+    "main": "main-caja.js"
+  },
+  "win": {
+    "target": "nsis",
+    "artifactName": "${productName}-Setup-${version}.${ext}"
+  },
+  "nsis": {
+    "oneClick": false,
+    "perMachine": false,
+    "allowToChangeInstallationDirectory": true
+  }
+}

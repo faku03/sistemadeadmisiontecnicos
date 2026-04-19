@@ -418,6 +418,69 @@ td button {
   background: #f5f8fb;
 }
 
+.muted {
+  margin: 4px 0 0;
+  color: var(--color-text-muted);
+}
+
+.db-path {
+  display: block;
+  max-width: 760px;
+  margin-top: 3px;
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.caja-app {
+  grid-template-columns: minmax(0, 1fr) 360px;
+  grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.caja-summary {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) repeat(3, minmax(150px, 220px));
+  align-items: center;
+}
+
+.summary-card {
+  min-height: 76px;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface-soft);
+  display: grid;
+  gap: 5px;
+}
+
+.summary-card span {
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+.summary-card strong {
+  color: var(--color-title);
+  font-size: 22px;
+}
+
+.summary-card.primary {
+  border-color: #b8cdf8;
+  background: #eef5ff;
+}
+
+.caja-actions {
+  grid-column: 2;
+  grid-row: 2 / 4;
+  align-self: stretch;
+}
+
+.caja-table-panel {
+  overflow: hidden;
+}
+
 .abm-shell {
   height: 100vh;
   min-height: 0;
@@ -489,6 +552,16 @@ td button {
 
   .tickets-header {
     grid-template-columns: 1fr;
+  }
+
+  .caja-app,
+  .caja-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .caja-actions {
+    grid-column: auto;
+    grid-row: auto;
   }
 }
 

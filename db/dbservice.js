@@ -1,8 +1,44 @@
 const Database = require('better-sqlite3');
+const fs = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 
-const db = new Database(path.join(__dirname, 'tickets.db'));
+let appConfig = {};
+
+function leerConfigExterno() {
+  const rutas = [
+    process.env.SISTEMA_TICKETS_CONFIG,
+    path.join(process.cwd(), 'caja.config.json'),
+    process.execPath ? path.join(path.dirname(process.execPath), 'caja.config.json') : null,
+    path.join(__dirname, '..', 'caja.config.json')
+  ].filter(Boolean);
+
+  for (const ruta of rutas) {
+    try {
+      if (fs.existsSync(ruta)) {
+        return JSON.parse(fs.readFileSync(ruta, 'utf8'));
+      }
+    } catch (_) {
+      return {};
+    }
+  }
+
+  return {};
+}
+
+try {
+  appConfig = require('../config/app.config');
+} catch (_) {
+  appConfig = {};
+}
+
+const externalConfig = leerConfigExterno();
+const dbPath = process.env.SISTEMA_TICKETS_DB_PATH ||
+  externalConfig.databasePath ||
+  appConfig.databasePath ||
+  path.join(__dirname, 'tickets.db');
+
+const db = new Database(dbPath);
 
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
@@ -124,6 +160,35 @@ function cerrarMovimientoCajaInterno(uuid) {
     WHERE ticket_uuid = ?
       AND estado = 'PENDIENTE_COBRO'
   `).run(uuid);
+}
+
+function obtenerMovimientoCaja(uuid) {
+  return db.prepare(`
+    SELECT *
+    FROM movimientos_caja
+    WHERE ticket_uuid = ?
+    LIMIT 1
+  `).get(uuid);
+}
+
+function filtrosFecha(campo, desde, hasta) {
+  const condiciones = [];
+  const params = [];
+
+  if (desde) {
+    condiciones.push(`date(${campo}) >= date(?)`);
+    params.push(desde);
+  }
+
+  if (hasta) {
+    condiciones.push(`date(${campo}) <= date(?)`);
+    params.push(hasta);
+  }
+
+  return {
+    where: condiciones.length ? `AND ${condiciones.join(' AND ')}` : '',
+    params
+  };
 }
 
 function columnaExiste(tabla, columna) {
@@ -274,6 +339,17 @@ CREATE TABLE IF NOT EXISTS movimientos_caja (
   FOREIGN KEY (ticket_uuid) REFERENCES tickets(uuid)
 );
 
+CREATE TABLE IF NOT EXISTS devoluciones_caja (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  movimiento_id INTEGER NOT NULL,
+  ticket_uuid TEXT NOT NULL,
+  importe REAL NOT NULL,
+  motivo TEXT,
+  fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (movimiento_id) REFERENCES movimientos_caja(id),
+  FOREIGN KEY (ticket_uuid) REFERENCES tickets(uuid)
+);
+
 
 `);
 
@@ -285,6 +361,11 @@ asegurarColumna('tickets', 'presupuesto_enviado', 'INTEGER DEFAULT 0');
 db.prepare(`
   CREATE UNIQUE INDEX IF NOT EXISTS idx_movimientos_caja_ticket_uuid
   ON movimientos_caja(ticket_uuid)
+`).run();
+
+db.prepare(`
+  CREATE INDEX IF NOT EXISTS idx_devoluciones_caja_fecha
+  ON devoluciones_caja(fecha)
 `).run();
 
 asegurarEstadoTicket('PENDIENTE', 'Pendiente', 1);
@@ -738,6 +819,187 @@ generarMovimientoCaja(uuid) {
 
 cerrarMovimientoCaja(uuid) {
   return cerrarMovimientoCajaInterno(uuid);
+},
+
+listarCajaPendiente() {
+  return db.prepare(`
+    SELECT
+      mc.id AS movimiento_id,
+      mc.ticket_uuid,
+      mc.importe_total,
+      mc.sena,
+      mc.saldo,
+      mc.estado,
+      mc.fecha_creacion,
+      c.nombre,
+      c.apellido,
+      c.celular,
+      te.descripcion AS tipo,
+      ma.nombre AS marca,
+      mo.nombre AS modelo
+    FROM movimientos_caja mc
+    JOIN tickets t ON t.uuid = mc.ticket_uuid
+    JOIN clientes c ON c.id = mc.cliente_id
+    JOIN tipos_equipo te ON te.id = t.tipo_equipo_id
+    JOIN modelos mo ON mo.id = t.modelo_id
+    JOIN marcas ma ON ma.id = mo.marca_id
+    WHERE mc.estado = 'PENDIENTE_COBRO'
+    ORDER BY mc.fecha_creacion DESC
+  `).all();
+},
+
+listarCajaCobrada(limite = 100) {
+  return db.prepare(`
+    SELECT
+      mc.id AS movimiento_id,
+      mc.ticket_uuid,
+      mc.importe_total,
+      mc.sena,
+      mc.saldo,
+      mc.estado,
+      mc.fecha_creacion,
+      mc.fecha_cobro,
+      c.nombre,
+      c.apellido,
+      c.celular,
+      te.descripcion AS tipo,
+      ma.nombre AS marca,
+      mo.nombre AS modelo,
+      COALESCE(SUM(dc.importe), 0) AS devoluciones
+    FROM movimientos_caja mc
+    JOIN tickets t ON t.uuid = mc.ticket_uuid
+    JOIN clientes c ON c.id = mc.cliente_id
+    JOIN tipos_equipo te ON te.id = t.tipo_equipo_id
+    JOIN modelos mo ON mo.id = t.modelo_id
+    JOIN marcas ma ON ma.id = mo.marca_id
+    LEFT JOIN devoluciones_caja dc ON dc.movimiento_id = mc.id
+    WHERE mc.estado = 'COBRADO'
+    GROUP BY mc.id
+    ORDER BY mc.fecha_cobro DESC
+    LIMIT ?
+  `).all(Number(limite) || 100);
+},
+
+cobrarCaja(uuid) {
+  const trx = db.transaction(() => {
+    const result = cerrarMovimientoCajaInterno(uuid);
+
+    if (result.changes === 0) {
+      throw new Error('No hay un movimiento pendiente para cobrar');
+    }
+
+    return obtenerMovimientoCaja(uuid);
+  });
+
+  return trx();
+},
+
+registrarDevolucionCaja(data) {
+  const importe = normalizarImporte(data.importe, 'Importe de devolucion');
+
+  if (importe <= 0) {
+    throw new Error('La devolucion debe ser mayor a cero');
+  }
+
+  const movimiento = obtenerMovimientoCaja(data.ticket_uuid);
+
+  if (!movimiento) {
+    throw new Error('Movimiento de caja no encontrado');
+  }
+
+  if (movimiento.estado !== 'COBRADO') {
+    throw new Error('Solo se puede devolver un movimiento cobrado');
+  }
+
+  const devoluciones = db.prepare(`
+    SELECT COALESCE(SUM(importe), 0) AS total
+    FROM devoluciones_caja
+    WHERE movimiento_id = ?
+  `).get(movimiento.id).total;
+
+  if ((devoluciones + importe) > movimiento.saldo) {
+    throw new Error('La devolucion supera el saldo cobrado');
+  }
+
+  return db.prepare(`
+    INSERT INTO devoluciones_caja (
+      movimiento_id,
+      ticket_uuid,
+      importe,
+      motivo
+    )
+    VALUES (?, ?, ?, ?)
+  `).run(
+    movimiento.id,
+    data.ticket_uuid,
+    importe,
+    data.motivo || ''
+  );
+},
+
+obtenerInformeCaja({ desde, hasta } = {}) {
+  const filtroCobros = filtrosFecha('mc.fecha_cobro', desde, hasta);
+  const filtroDevoluciones = filtrosFecha('dc.fecha', desde, hasta);
+
+  const cobros = db.prepare(`
+    SELECT
+      COUNT(*) AS cantidad,
+      COALESCE(SUM(mc.saldo), 0) AS total
+    FROM movimientos_caja mc
+    WHERE mc.estado = 'COBRADO'
+      ${filtroCobros.where}
+  `).get(...filtroCobros.params);
+
+  const devoluciones = db.prepare(`
+    SELECT
+      COUNT(*) AS cantidad,
+      COALESCE(SUM(dc.importe), 0) AS total
+    FROM devoluciones_caja dc
+    WHERE 1 = 1
+      ${filtroDevoluciones.where}
+  `).get(...filtroDevoluciones.params);
+
+  const detalleCobros = db.prepare(`
+    SELECT
+      mc.ticket_uuid,
+      mc.saldo,
+      mc.fecha_cobro,
+      c.nombre,
+      c.apellido
+    FROM movimientos_caja mc
+    JOIN clientes c ON c.id = mc.cliente_id
+    WHERE mc.estado = 'COBRADO'
+      ${filtroCobros.where}
+    ORDER BY mc.fecha_cobro DESC
+  `).all(...filtroCobros.params);
+
+  const detalleDevoluciones = db.prepare(`
+    SELECT
+      dc.ticket_uuid,
+      dc.importe,
+      dc.motivo,
+      dc.fecha,
+      c.nombre,
+      c.apellido
+    FROM devoluciones_caja dc
+    JOIN movimientos_caja mc ON mc.id = dc.movimiento_id
+    JOIN clientes c ON c.id = mc.cliente_id
+    WHERE 1 = 1
+      ${filtroDevoluciones.where}
+    ORDER BY dc.fecha DESC
+  `).all(...filtroDevoluciones.params);
+
+  return {
+    cobros,
+    devoluciones,
+    neto: Number(cobros.total || 0) - Number(devoluciones.total || 0),
+    detalleCobros,
+    detalleDevoluciones
+  };
+},
+
+obtenerRutaDB() {
+  return dbPath;
 }
 
 

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Sistema de Caja</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <strong>SISTEMA DE CAJA</strong>
+      <span class="db-path" id="rutaDB"></span>
+    </div>
+    <button id="btnRefrescar">Actualizar</button>
+  </header>
+
+  <main class="app caja-app">
+    <section class="panel caja-summary">
+      <div>
+        <h2>Caja del dia</h2>
+        <p class="muted">Cobros, devoluciones y neto</p>
+      </div>
+      <div class="summary-card">
+        <span>Cobrado</span>
+        <strong id="totalCobrado">$0.00</strong>
+      </div>
+      <div class="summary-card">
+        <span>Devoluciones</span>
+        <strong id="totalDevuelto">$0.00</strong>
+      </div>
+      <div class="summary-card primary">
+        <span>Neto</span>
+        <strong id="totalNeto">$0.00</strong>
+      </div>
+    </section>
+
+    <section class="panel caja-actions">
+      <h2>Devolucion</h2>
+      <input id="devolucionTicket" placeholder="Ticket UUID">
+      <input id="devolucionImporte" type="number" min="0" step="0.01" placeholder="Importe">
+      <input id="devolucionMotivo" placeholder="Motivo">
+      <button id="btnDevolver">Registrar devolucion</button>
+    </section>
+
+    <section class="panel caja-table-panel">
+      <div class="tickets-header">
+        <h2>Pendientes de cobro</h2>
+        <input id="buscarPendientes" placeholder="Buscar cliente, equipo o ticket">
+      </div>
+      <div class="table-wrap">
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th>Cliente</th>
+              <th>Celular</th>
+              <th>Equipo</th>
+              <th>Ticket</th>
+              <th>Total</th>
+              <th>Sena</th>
+              <th>Saldo</th>
+              <th>Accion</th>
+            </tr>
+          </thead>
+          <tbody id="tablaPendientes"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel caja-table-panel">
+      <div class="tickets-header">
+        <h2>Ultimos cobrados</h2>
+        <div class="filtros-tickets">
+          <input id="informeDesde" type="date">
+          <input id="informeHasta" type="date">
+          <button id="btnInforme">Ver informe</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th>Cliente</th>
+              <th>Equipo</th>
+              <th>Ticket</th>
+              <th>Cobrado</th>
+              <th>Devuelto</th>
+              <th>Fecha</th>
+            </tr>
+          </thead>
+          <tbody id="tablaCobrados"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="renderer-caja.js"></script>
+</body>
+</html>

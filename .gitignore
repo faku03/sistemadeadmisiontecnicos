@@ -1,5 +1,6 @@
 node_modules/
 dist/
+dist-caja/
 
 db/*.db
 db/*.db-shm
@@ -8,6 +9,7 @@ db/*.db-wal
 pdfs/*.pdf
 *.log
 *.zip
+caja.config.json
 
 .env
 .env.*
