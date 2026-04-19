@@ -289,6 +289,9 @@ async function loadAll() {
   state.units = units;
   state.licenses = licenses;
   state.validations = validations;
+  state.selectedGroupId = state.groups.some(group => String(group.id) === String(state.selectedGroupId))
+    ? state.selectedGroupId
+    : state.groups[0]?.id || null;
   render();
   showMessage('Datos actualizados.');
 }
