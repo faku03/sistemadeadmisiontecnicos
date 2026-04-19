@@ -151,6 +151,28 @@ Authorization: Bearer cambiar-este-token
 
 El backend administrativo queda dentro del mismo gateway, separado por rutas `/admin/*` y protegido por `SISTEMA_TICKETS_ADMIN_TOKEN`.
 
+La interfaz web se sirve desde el mismo gateway:
+
+```text
+http://SERVIDOR:3000/admin-panel
+```
+
+En desarrollo local:
+
+```text
+http://localhost:3000/admin-panel
+```
+
+El panel permite:
+
+- Crear grupos.
+- Crear sucursales o tecnicos con codigo estable.
+- Crear licencias.
+- Renovar licencias cambiando solo la fecha de vencimiento.
+- Suspender/reactivar licencias.
+- Liberar una licencia de una PC.
+- Ver las ultimas validaciones.
+
 Grupos:
 
 ```text
@@ -209,6 +231,8 @@ Crear unidad:
 }
 ```
 
+El `codigo` de la unidad es estable. Para una sucursal o tecnico existente no se cambia ese codigo cuando paga una nueva mensualidad.
+
 Crear licencia:
 
 ```json
@@ -227,6 +251,21 @@ Crear licencia:
 ```
 
 La respuesta de creacion devuelve la clave completa una sola vez en `license_key`. En la base queda guardado el hash y una etiqueta enmascarada, no la clave visible completa.
+
+## Renovacion mensual
+
+La renovacion no cambia el codigo de sucursal/tecnico ni la clave instalada en el cliente.
+
+Flujo:
+
+1. El cliente paga.
+2. En el panel se busca la sucursal o tecnico por codigo.
+3. Se actualiza `expires_at` a la nueva fecha de vencimiento.
+4. Tickets/Caja validan online contra el gateway.
+5. El gateway compara la fecha actual del servidor contra `licenses.expires_at`.
+6. Si la fecha del servidor es menor o igual al vencimiento y el estado es `ACTIVE`, la licencia sigue funcionando.
+
+Esto evita depender de la fecha de la PC del cliente.
 
 Liberar una licencia de una PC:
 

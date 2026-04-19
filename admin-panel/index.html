@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Administracion de Licencias</title>
+  <link rel="stylesheet" href="/admin-panel/admin.css">
+</head>
+<body>
+  <main class="admin-shell">
+    <section class="topbar">
+      <div>
+        <p class="eyebrow">Sistema de Tickets</p>
+        <h1>Licencias</h1>
+      </div>
+      <form id="tokenForm" class="token-box">
+        <input id="adminToken" type="password" placeholder="Token administrador">
+        <button type="submit" class="btn btn-primary">Conectar</button>
+      </form>
+    </section>
+
+    <section id="message" class="message hidden"></section>
+
+    <section class="summary-grid">
+      <article class="summary-card">
+        <span>Grupos</span>
+        <strong id="groupsCount">0</strong>
+      </article>
+      <article class="summary-card">
+        <span>Sucursales y tecnicos</span>
+        <strong id="unitsCount">0</strong>
+      </article>
+      <article class="summary-card">
+        <span>Licencias activas</span>
+        <strong id="activeLicensesCount">0</strong>
+      </article>
+      <article class="summary-card">
+        <span>Vencen pronto</span>
+        <strong id="expiringLicensesCount">0</strong>
+      </article>
+    </section>
+
+    <section class="content-grid">
+      <aside class="forms-column">
+        <section class="panel">
+          <h2>Nuevo grupo</h2>
+          <form id="groupForm" class="stack">
+            <input name="codigo" placeholder="Codigo de grupo" required>
+            <input name="nombre" placeholder="Nombre comercial" required>
+            <button class="btn btn-primary" type="submit">Crear grupo</button>
+          </form>
+        </section>
+
+        <section class="panel">
+          <h2>Nueva sucursal o tecnico</h2>
+          <form id="unitForm" class="stack">
+            <select name="group_id" id="unitGroup" required></select>
+            <input name="codigo" placeholder="Codigo estable de sucursal/tecnico" required>
+            <input name="nombre" placeholder="Nombre visible" required>
+            <select name="tipo">
+              <option value="SUCURSAL">Sucursal</option>
+              <option value="TECNICO">Tecnico</option>
+            </select>
+            <button class="btn btn-primary" type="submit">Crear unidad</button>
+          </form>
+        </section>
+
+        <section class="panel">
+          <h2>Nueva licencia</h2>
+          <form id="licenseForm" class="stack">
+            <select name="unit_id" id="licenseUnit" required></select>
+            <select name="plan">
+              <option value="STANDARD">Standard</option>
+              <option value="PRO">Pro</option>
+            </select>
+            <input name="expires_at" type="date" required>
+            <input name="grace_days" type="number" min="0" value="7" placeholder="Dias de gracia">
+            <button class="btn btn-primary" type="submit">Crear licencia</button>
+          </form>
+        </section>
+      </aside>
+
+      <section class="panel main-panel">
+        <div class="panel-header">
+          <div>
+            <h2>Licencias por sucursal o tecnico</h2>
+            <p>El codigo no cambia. Para renovar, actualiza la fecha de vencimiento.</p>
+          </div>
+          <button id="refreshBtn" class="btn btn-secondary" type="button">Actualizar</button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Grupo</th>
+                <th>Codigo</th>
+                <th>Nombre</th>
+                <th>Estado</th>
+                <th>Vence</th>
+                <th>Renovar</th>
+                <th>Equipo</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="licensesBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+
+    <section class="panel audit-panel">
+      <div class="panel-header">
+        <div>
+          <h2>Ultimas validaciones</h2>
+          <p>Control online contra fecha del servidor y vencimiento guardado en PostgreSQL.</p>
+        </div>
+      </div>
+      <div class="audit-list" id="validationsList"></div>
+    </section>
+  </main>
+
+  <script src="/admin-panel/admin.js"></script>
+</body>
+</html>

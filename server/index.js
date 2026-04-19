@@ -1,10 +1,23 @@
 const http = require('http');
+const fs = require('fs');
+const pathModule = require('path');
 const { randomUUID } = require('crypto');
 const config = require('./config');
 const { query, withTransaction } = require('./db');
 const { handleLicenseAdminRoute } = require('./license-admin');
 const { handleLicenseRoute } = require('./licenses');
 const pdfComprobanteX = require('../pdf/comprobante_x');
+
+const adminPanelDir = pathModule.resolve(__dirname, '..', 'admin-panel');
+const contentTypes = {
+  '.html': 'text/html; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.js': 'application/javascript; charset=utf-8',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp'
+};
 
 function sendJson(res, status, data) {
   const body = JSON.stringify(data);
@@ -13,6 +26,37 @@ function sendJson(res, status, data) {
     'Content-Length': Buffer.byteLength(body)
   });
   res.end(body);
+}
+
+function sendFile(res, filePath) {
+  const ext = pathModule.extname(filePath).toLowerCase();
+  const body = fs.readFileSync(filePath);
+
+  res.writeHead(200, {
+    'Content-Type': contentTypes[ext] || 'application/octet-stream',
+    'Content-Length': body.length
+  });
+  res.end(body);
+}
+
+function tryServeAdminPanel(url, res) {
+  if (url.pathname !== '/admin-panel' && !url.pathname.startsWith('/admin-panel/')) {
+    return false;
+  }
+
+  const relativePath = url.pathname === '/admin-panel'
+    ? 'index.html'
+    : decodeURIComponent(url.pathname.replace('/admin-panel/', ''));
+  const normalized = pathModule.normalize(relativePath).replace(/^(\.\.[/\\])+/, '');
+  const filePath = pathModule.resolve(adminPanelDir, normalized);
+
+  if (!filePath.startsWith(adminPanelDir + pathModule.sep) || !fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
+    sendJson(res, 404, { error: 'Archivo no encontrado' });
+    return true;
+  }
+
+  sendFile(res, filePath);
+  return true;
 }
 
 async function readJson(req) {
@@ -890,6 +934,10 @@ async function handle(req, res) {
   try {
     if (method === 'GET' && path === '/health') {
       sendJson(res, 200, { ok: true });
+      return;
+    }
+
+    if (method === 'GET' && tryServeAdminPanel(url, res)) {
       return;
     }
 

@@ -117,6 +117,12 @@ GET    /admin/license-validations
 
 La documentacion especifica de licencias esta en `docs/licensing-server.md`.
 
+La interfaz administrativa se abre desde:
+
+```text
+http://SERVIDOR:3000/admin-panel
+```
+
 ## Derivacion de tickets
 
 Cada ticket tiene:
