@@ -4,6 +4,7 @@ const db = require('./services/data-source');
 const pdfIngreso = require('./pdf/ingreso');
 const pdfEntrega = require('./pdf/entrega');
 const pdfPresupuesto = require('./pdf/presupuesto');
+const license = require('./license/license-service');
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -27,6 +28,14 @@ function createWindow() {
 }
 
 /* ================= CLIENTES ================= */
+ipcMain.handle('licencia:estado', () =>
+  license.validateLicense()
+);
+
+ipcMain.handle('licencia:marcar-aviso', () =>
+  license.markWarningShown()
+);
+
 ipcMain.handle('buscar-cliente-dni', (_, dni) =>
   db.buscarClientePorDni(dni)
 );

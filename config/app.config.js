@@ -4,5 +4,10 @@ module.exports = {
   databasePath: null,
   dataMode: 'local',
   apiUrl: 'http://localhost:3000',
-  apiSucursalId: null
+  apiSucursalId: null,
+  licenseKey: 'DEV-LICENSE',
+  licenseGroupId: 'DEV-GROUP',
+  licenseUnitId: 'DEV-UNIT',
+  licenseUnitType: 'SUCURSAL',
+  licenseGraceDays: 7
 };

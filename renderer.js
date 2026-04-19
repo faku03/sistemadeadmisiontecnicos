@@ -3,6 +3,7 @@ let clienteActual = null;
 let ticketEntregaActual = null;
 
 document.addEventListener('DOMContentLoaded', () => {
+  window.licenseUI?.init();
 
   // ================= ELEMENTOS =================
   const dni = document.getElementById('dni');

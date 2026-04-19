@@ -16,6 +16,7 @@
   --radius: 8px;
   --input-height: 38px;
   --space: 12px;
+  --license-banner-height: 35px;
 }
 
 * {
@@ -182,6 +183,40 @@ button:active,
   box-shadow: 0 4px 18px rgba(18, 58, 92, .08);
 }
 
+.license-banner {
+  width: 100%;
+  min-height: var(--license-banner-height);
+  padding: 8px 18px;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-title);
+  font-weight: 700;
+  text-align: center;
+}
+
+.license-banner.active {
+  background: #edf7ff;
+}
+
+.license-banner.warning {
+  border-bottom-color: #f0c36d;
+  background: #fff7e6;
+  color: #744b00;
+}
+
+.license-banner.blocked {
+  border-bottom-color: #ef9a9a;
+  background: #fff0f0;
+  color: var(--color-danger);
+}
+
+.license-blocked button:disabled,
+.license-blocked input:disabled,
+.license-blocked select:disabled,
+.license-blocked textarea:disabled {
+  cursor: not-allowed;
+  opacity: .68;
+}
+
 .sucursal-actual {
   color: var(--color-title);
   font-weight: 700;
@@ -215,7 +250,7 @@ button:active,
 .app {
   display: grid;
   gap: 14px;
-  height: calc(100vh - 54px);
+  height: calc(100vh - 54px - var(--license-banner-height));
   min-height: 0;
   padding: 14px;
 }

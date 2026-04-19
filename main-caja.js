@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const path = require('path');
 const db = require('./services/data-source');
+const license = require('./license/license-service');
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -21,6 +22,14 @@ function createWindow() {
 
 ipcMain.handle('caja:listar-pendientes', () =>
   db.listarCajaPendiente()
+);
+
+ipcMain.handle('licencia:estado', () =>
+  license.validateLicense()
+);
+
+ipcMain.handle('licencia:marcar-aviso', () =>
+  license.markWarningShown()
 );
 
 ipcMain.handle('caja:listar-cobrados', (_, limite) =>

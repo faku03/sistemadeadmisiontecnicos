@@ -2,6 +2,13 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 /* ================= API PRINCIPAL ================= */
 contextBridge.exposeInMainWorld('api', {
+  // ===== LICENCIA =====
+  obtenerEstadoLicencia: () =>
+    ipcRenderer.invoke('licencia:estado'),
+
+  marcarAvisoLicencia: () =>
+    ipcRenderer.invoke('licencia:marcar-aviso'),
+
   // ===== CLIENTES =====
   buscarClientePorDni: dni =>
     ipcRenderer.invoke('buscar-cliente-dni', dni),

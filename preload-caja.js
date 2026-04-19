@@ -1,6 +1,12 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('apiCaja', {
+  obtenerEstadoLicencia: () =>
+    ipcRenderer.invoke('licencia:estado'),
+
+  marcarAvisoLicencia: () =>
+    ipcRenderer.invoke('licencia:marcar-aviso'),
+
   listarPendientes: () =>
     ipcRenderer.invoke('caja:listar-pendientes'),
 

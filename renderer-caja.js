@@ -4,6 +4,8 @@ const formatoMoneda = new Intl.NumberFormat('es-AR', {
 });
 
 document.addEventListener('DOMContentLoaded', () => {
+  window.licenseUI?.init();
+
   const rutaDB = document.getElementById('rutaDB');
   const btnRefrescar = document.getElementById('btnRefrescar');
   const tablaPendientes = document.getElementById('tablaPendientes');
