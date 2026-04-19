@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Tipos de Equipo</title>
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+
+<h2>Tipos de Equipo</h2>
+
+<input id="buscar" placeholder="Buscar..." />
+<label>
+  <input type="checkbox" id="verEliminados">
+  Mostrar eliminados
+</label>
+
+<table width="100%" border="1" cellspacing="0" cellpadding="5">
+  <thead>
+    <tr>
+      <th>Código</th>
+      <th>Descripción</th>
+      <th>Estado</th>
+      <th>Acciones</th>
+    </tr>
+  </thead>
+  <tbody id="tabla"></tbody>
+</table>
+
+<hr>
+
+<h3 id="tituloForm">Nuevo Tipo</h3>
+
+<input id="codigo" placeholder="Código">
+<input id="descripcion" placeholder="Descripción">
+
+<br><br>
+
+<button id="guardar">Guardar</button>
+<button id="cancelar" style="display:none;">Cancelar</button>
+
+<script src="tipos_equipo.js"></script>
+</body>
+</html>

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Sucursales</title>
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+
+<h2>Sucursales</h2>
+
+<input id="buscar" placeholder="Buscar sucursal..." />
+
+<label>
+  <input type="checkbox" id="verEliminados">
+  Mostrar eliminadas
+</label>
+
+<table width="100%" border="1" cellspacing="0" cellpadding="5">
+  <thead>
+    <tr>
+      <th>Código</th>
+      <th>Nombre</th>
+      <th>Local</th>
+      <th>Estado</th>
+      <th>Acciones</th>
+    </tr>
+  </thead>
+  <tbody id="tabla"></tbody>
+</table>
+
+<hr>
+
+<h3 id="tituloForm">Nueva Sucursal</h3>
+
+<input id="codigo" placeholder="Código">
+<input id="nombre" placeholder="Nombre">
+<input id="direccion" placeholder="Dirección">
+<input id="telefono" placeholder="Teléfono">
+
+<label>
+  <input type="checkbox" id="sucursalLocal">
+  Sucursal local
+</label>
+
+<br><br>
+
+<button id="guardar">Guardar</button>
+<button id="cancelar" style="display:none;">Cancelar</button>
+
+<script src="sucursales.js"></script>
+</body>
+</html>

@@ -1,0 +1,138 @@
+
+.topbar {
+  background: #222;
+  padding: 8px;
+}
+
+.topbar button {
+  background: #444;
+  color: white;
+  border: none;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+* {
+  box-sizing: border-box;
+  font-family: Segoe UI, sans-serif;
+}
+
+body {
+  margin: 0;
+  background: #f3f3f3;
+}
+
+.app {
+  display: grid;
+  grid-template-columns: 350px 1fr;
+  height: 100vh;
+  gap: 10px;
+  padding: 10px;
+}
+
+.panel {
+  background: white;
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0,0,0,.1);
+  display: flex;
+  flex-direction: column;
+}
+
+.panel input,
+.panel select,
+.panel textarea {
+  margin-bottom: 8px;
+  padding: 6px;
+}
+
+textarea {
+  resize: none;
+  height: 80px;
+}
+
+button {
+  padding: 8px;
+  cursor: pointer;
+}
+
+.tickets ul {
+  list-style: none;
+  padding: 0;
+}
+
+.tickets li {
+  background: #eee;
+  margin-bottom: 6px;
+  padding: 8px;
+  border-radius: 5px;
+  display: flex;
+  justify-content: space-between;
+}
+
+/* MODAL */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+/* OCULTO FUERTE (Electron-safe) */
+.hidden {
+  display: none !important;
+}
+
+.fila-tipo {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px;
+  cursor: pointer;
+}
+
+.fila-tipo:hover {
+  background: #eee;
+}
+
+.tipo-borrado {
+  color: #999;
+  text-decoration: line-through;
+  background: #f5f5f5;
+}
+
+.tabla-tickets {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+.tabla-tickets th,
+.tabla-tickets td {
+  padding: 8px;
+  border-bottom: 1px solid #ddd;
+  text-align: left;
+}
+
+.tabla-tickets th {
+  background-color: #f2f2f2;
+  font-weight: bold;
+}
+
+.tabla-tickets tr:hover {
+  background-color: #f9f9f9;
+}
+
+.filtros-tickets {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.filtros-tickets input,
+.filtros-tickets select {
+  padding: 6px;
+  font-size: 14px;
+}

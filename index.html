@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Sistema de Tickets</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <header class="topbar">
+  <div class="sucursal-actual" id="sucursalActual">
+    SUCURSAL: --
+  </div>  
+  <div class="menu">
+    <button id="btnMenuDatos">Cargar Datos ▾</button>
+    <div id="menuDatos" class="menu-dropdown hidden">
+      <button id="menuSucursales">Sucursales</button>
+      <button id="menuTipos">Tipos de Equipo</button>
+      <button id="menuMarcas">Marcas</button>
+      <button id="menuModelos">Modelos</button>
+    </div>
+  </div>
+</header>
+
+<div class="app">
+
+  <!-- PANEL IZQUIERDO -->
+  <section class="panel">
+    <h2>Cliente</h2>
+
+    <input id="dni" placeholder="DNI">
+    <input id="nombre" placeholder="Nombre" disabled>
+    <input id="apellido" placeholder="Apellido" disabled>
+    <input id="celular" placeholder="Celular" disabled>
+    <input id="email" placeholder="Email" disabled>
+
+    <hr>
+
+    <h2>Equipo</h2>
+
+    <select id="tipoEquipo">
+      <option value="">Tipo de equipo</option>
+    </select>
+
+    <select id="marca">
+      <option value="">Marca</option>
+    </select>
+
+    <select id="modelo">
+      <option value="">Modelo</option>
+    </select>
+
+    <textarea id="falla" placeholder="Descripción de la falla"></textarea>
+
+    <button id="btnGuardar">Guardar Ticket</button>
+  </section>
+
+  <!-- PANEL DERECHO -->
+  <section class="panel tickets">
+    <h2>Tickets</h2>
+<div class="filtros-tickets">
+  <input type="text" id="buscadorTickets" placeholder="Buscar por cliente, equipo o código...">
+
+  <select id="filtroEstado">
+    <option value="">Todos los estados</option>
+  </select>
+</div>
+<table class="tabla-tickets">
+  <thead>
+    <tr>
+      <th>Cliente</th>
+      <th>Celular</th>
+      <th>Equipo</th>
+      <th>Estado</th>
+      <th>PDF</th>
+      <th>Presupuesto</th>
+      <th>Entrega</th>
+    </tr>
+  </thead>
+  <tbody id="listaTickets"></tbody>
+</table>
+
+  </section>
+
+</div>
+
+<!-- MODAL ENTREGA -->
+<div id="modalEntrega" class="modal hidden">
+  <div class="modal-content">
+    <h3>Entregar equipo</h3>
+
+    <input id="trabajoEntrega" placeholder="Trabajo realizado">
+    <input id="garantiaEntrega" type="number" placeholder="Días de garantía">
+
+    <div class="modal-actions">
+      <button id="confirmarEntrega">Confirmar</button>
+      <button id="cancelarEntrega">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PRESUPUESTO -->
+<div id="modalPresupuesto" class="modal hidden">
+  <div class="modal-content">
+    <h3>Presupuesto</h3>
+
+    <input id="valorPresupuesto" type="number" placeholder="Valor reparación">
+    <input id="senaPresupuesto" type="number" placeholder="Seña">
+
+    <div class="modal-actions">
+      <button id="btnGuardarPresupuesto">Guardar</button>
+      <button id="btnEnviarPresupuesto">Enviar Presupuesto</button>
+      <button id="btnCancelarPresupuesto">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+
+<script src="renderer.js"></script>
+</body>
+</html>

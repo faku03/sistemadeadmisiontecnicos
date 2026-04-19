@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Marcas</title>
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+
+<h2>Marcas</h2>
+
+<input id="buscar" placeholder="Buscar..." />
+<label>
+  <input type="checkbox" id="verEliminados"> Mostrar eliminados
+</label>
+
+<table width="100%" border="1" cellspacing="0" cellpadding="5">
+  <thead>
+    <tr>
+      <th>Nombre</th>
+      <th>Estado</th>
+      <th>Acciones</th>
+    </tr>
+  </thead>
+  <tbody id="tabla"></tbody>
+</table>
+
+<hr>
+
+<h3 id="tituloForm">Nueva Marca</h3>
+
+<input id="nombre" placeholder="Nombre">
+
+<button id="guardar">Guardar</button>
+<button id="cancelar" style="display:none;">Cancelar</button>
+
+<script src="marcas.js"></script>
+</body>
+</html>

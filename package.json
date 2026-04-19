@@ -1,0 +1,42 @@
+{
+  "name": "sistema-tickets",
+  "version": "1.0.0",
+  "description": "Sistema de gestión de tickets",
+  "main": "main.js",
+  "author": "TuNombre",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.6.2",
+    "pdfkit": "^0.17.2",
+    "uuid": "^13.0.0"
+  },
+  "devDependencies": {
+    "electron": "^40.0.0",
+    "electron-builder": "^26.7.0"
+  },
+  "build": {
+    "appId": "com.sistemadetickets.app",
+    "productName": "SistemaDeTickets",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "**/*"
+    ],
+    "win": {
+  "target": "nsis",
+  "artifactName": "${productName}-Setup-${version}.${ext}",
+  "sign": false
+}
+,
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}
