@@ -2,6 +2,7 @@ const http = require('http');
 const { randomUUID } = require('crypto');
 const config = require('./config');
 const { query, withTransaction } = require('./db');
+const { handleLicenseAdminRoute } = require('./license-admin');
 const { handleLicenseRoute } = require('./licenses');
 const pdfComprobanteX = require('../pdf/comprobante_x');
 
@@ -893,6 +894,10 @@ async function handle(req, res) {
     }
 
     if (await handleLicenseRoute({ method, path, req, res, sendJson, readJson })) {
+      return;
+    }
+
+    if (await handleLicenseAdminRoute({ method, path, url, req, res, sendJson, readJson })) {
       return;
     }
 

@@ -14,6 +14,7 @@
     "smoke:circuit": "electron scripts/smoke-circuit.js",
     "smoke:api-postgres": "node scripts/smoke-api-postgres.js",
     "smoke:license-server": "node scripts/smoke-license-server.js",
+    "smoke:license-admin": "node scripts/smoke-license-admin.js",
     "build": "electron-builder",
     "build:caja": "electron-builder --config electron-builder.caja.json",
     "postinstall": "electron-builder install-app-deps"

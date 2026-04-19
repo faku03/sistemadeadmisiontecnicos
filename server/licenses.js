@@ -276,6 +276,7 @@ module.exports = {
   activateLicense,
   handleLicenseRoute,
   hashLicenseKey,
+  hasAdminAccess,
   maskLicenseKey,
   validateLicense
 };

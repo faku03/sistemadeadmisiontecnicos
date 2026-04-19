@@ -147,6 +147,95 @@ GET  /licenses
 Authorization: Bearer cambiar-este-token
 ```
 
+## Backend administrativo
+
+El backend administrativo queda dentro del mismo gateway, separado por rutas `/admin/*` y protegido por `SISTEMA_TICKETS_ADMIN_TOKEN`.
+
+Grupos:
+
+```text
+GET  /admin/license-groups
+POST /admin/license-groups
+PUT  /admin/license-groups/:id
+POST /admin/license-groups/:id/deactivate
+POST /admin/license-groups/:id/reactivate
+```
+
+Unidades, que pueden ser sucursales o tecnicos:
+
+```text
+GET  /admin/license-units
+POST /admin/license-units
+PUT  /admin/license-units/:id
+POST /admin/license-units/:id/deactivate
+POST /admin/license-units/:id/reactivate
+```
+
+Licencias:
+
+```text
+GET  /admin/licenses
+POST /admin/licenses
+PUT  /admin/licenses/:id
+POST /admin/licenses/:id/suspend
+POST /admin/licenses/:id/activate
+POST /admin/licenses/:id/release-machine
+```
+
+Auditoria:
+
+```text
+GET /admin/license-validations
+GET /admin/license-validations?license_id=1
+```
+
+Crear grupo:
+
+```json
+{
+  "codigo": "GRUPO-001",
+  "nombre": "Service Centro"
+}
+```
+
+Crear unidad:
+
+```json
+{
+  "group_id": 1,
+  "codigo": "SUC-001",
+  "nombre": "Sucursal Centro",
+  "tipo": "SUCURSAL"
+}
+```
+
+Crear licencia:
+
+```json
+{
+  "group_id": 1,
+  "unit_id": 1,
+  "plan": "STANDARD",
+  "valid_days": 30,
+  "grace_days": 7,
+  "features": {
+    "tickets": true,
+    "caja": true,
+    "derivaciones": true
+  }
+}
+```
+
+La respuesta de creacion devuelve la clave completa una sola vez en `license_key`. En la base queda guardado el hash y una etiqueta enmascarada, no la clave visible completa.
+
+Liberar una licencia de una PC:
+
+```text
+POST /admin/licenses/:id/release-machine
+```
+
+Esto borra `machine_id` y permite activar esa licencia en otra maquina.
+
 Activacion:
 
 ```json
@@ -188,6 +277,7 @@ Con PostgreSQL configurado:
 npm.cmd run server:migrate
 npm.cmd run server:seed-licenses
 npm.cmd run smoke:license-server
+npm.cmd run smoke:license-admin
 ```
 
 ## Despliegue final recomendado

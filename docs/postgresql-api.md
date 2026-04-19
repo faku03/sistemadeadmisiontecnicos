@@ -106,6 +106,13 @@ POST   /caja/:uuid/comprobante-x
 POST   /licenses/activate
 POST   /licenses/validate
 GET    /licenses
+GET    /admin/license-groups
+POST   /admin/license-groups
+GET    /admin/license-units
+POST   /admin/license-units
+GET    /admin/licenses
+POST   /admin/licenses
+GET    /admin/license-validations
 ```
 
 La documentacion especifica de licencias esta en `docs/licensing-server.md`.
