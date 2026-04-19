@@ -203,7 +203,11 @@ document.addEventListener('DOMContentLoaded', () => {
           <button class="btn-presupuesto">Presupuesto</button>
         </td>
       <td>
-          ${t.estado_codigo !== 'ENTREGADO' ? '<button class="btn-entregar">Entregar</button>' : ''}
+          ${
+            !['ENTREGADO', 'DEVUELTO_SIN_REPARAR'].includes(t.estado_codigo)
+              ? '<button class="btn-entregar">Entregar</button>'
+              : ''
+          }
         </td>
       `;
 

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const path = require('path');
 const db = require('./db/dbservice');
 
@@ -42,5 +42,24 @@ ipcMain.handle('caja:informe', (_, filtros) =>
 ipcMain.handle('caja:ruta-db', () =>
   db.obtenerRutaDB()
 );
+
+ipcMain.handle('caja:comprobante-x', (_, uuid) =>
+  db.obtenerComprobanteX(uuid)
+);
+
+ipcMain.handle('caja:abrir-pdf', async (_, ruta) => {
+  const error = await shell.openPath(ruta);
+  return !error;
+});
+
+ipcMain.handle('caja:whatsapp', (_, data) => {
+  const telefono = String(data.telefono || '').replace(/\D/g, '');
+  const texto = encodeURIComponent(data.texto || '');
+  const url = telefono
+    ? `https://wa.me/${telefono}?text=${texto}`
+    : `https://wa.me/?text=${texto}`;
+
+  return shell.openExternal(url);
+});
 
 app.whenReady().then(createWindow);

@@ -81,7 +81,40 @@ document.addEventListener('DOMContentLoaded', () => {
         <td>${dinero(item.saldo)}</td>
         <td>${dinero(item.devoluciones)}</td>
         <td>${item.fecha_cobro || ''}</td>
+        <td>
+          <button class="btn-pdf-x">PDF</button>
+          <button class="btn-wa-x">WhatsApp</button>
+        </td>
       `;
+
+      tr.querySelector('.btn-pdf-x').onclick = async () => {
+        try {
+          const comprobante = await window.apiCaja.comprobanteX(item.ticket_uuid);
+          await window.apiCaja.abrirPDF(comprobante.pdf_path);
+        } catch (error) {
+          alert(error.message || 'No se pudo abrir el comprobante');
+        }
+      };
+
+      tr.querySelector('.btn-wa-x').onclick = async () => {
+        try {
+          const comprobante = await window.apiCaja.comprobanteX(item.ticket_uuid);
+          const numero = String(comprobante.numero).padStart(8, '0');
+          const texto =
+            `Hola ${item.nombre}, te enviamos el comprobante X ${numero} ` +
+            `por la reparacion de ${item.tipo} ${item.marca} ${item.modelo}. ` +
+            `Importe cobrado: ${dinero(item.saldo)}. ` +
+            `Documento no valido como factura.`;
+
+          await window.apiCaja.whatsapp({
+            telefono: item.celular,
+            texto
+          });
+        } catch (error) {
+          alert(error.message || 'No se pudo abrir WhatsApp');
+        }
+      };
+
       tablaCobrados.appendChild(tr);
     });
   }

@@ -2,6 +2,7 @@ const Database = require('better-sqlite3');
 const fs = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
+const pdfComprobanteX = require('../pdf/comprobante_x');
 
 let appConfig = {};
 
@@ -37,6 +38,11 @@ const dbPath = process.env.SISTEMA_TICKETS_DB_PATH ||
   externalConfig.databasePath ||
   appConfig.databasePath ||
   path.join(__dirname, 'tickets.db');
+
+const outputPath = process.env.SISTEMA_TICKETS_OUTPUT_PATH ||
+  externalConfig.outputPath ||
+  appConfig.outputPath ||
+  path.join(path.dirname(dbPath), 'pdfs');
 
 const db = new Database(dbPath);
 
@@ -189,6 +195,90 @@ function filtrosFecha(campo, desde, hasta) {
     where: condiciones.length ? `AND ${condiciones.join(' AND ')}` : '',
     params
   };
+}
+
+function obtenerDatosComprobanteX(uuid) {
+  return db.prepare(`
+    SELECT
+      mc.id AS movimiento_id,
+      mc.ticket_uuid,
+      mc.importe_total,
+      mc.sena,
+      mc.saldo,
+      mc.fecha_cobro,
+      c.nombre,
+      c.apellido,
+      c.dni,
+      c.celular,
+      te.descripcion AS tipo,
+      ma.nombre AS marca,
+      mo.nombre AS modelo,
+      t.descripcion_falla,
+      t.trabajo_realizado
+    FROM movimientos_caja mc
+    JOIN tickets t ON t.uuid = mc.ticket_uuid
+    JOIN clientes c ON c.id = mc.cliente_id
+    JOIN tipos_equipo te ON te.id = t.tipo_equipo_id
+    JOIN modelos mo ON mo.id = t.modelo_id
+    JOIN marcas ma ON ma.id = mo.marca_id
+    WHERE mc.ticket_uuid = ?
+    LIMIT 1
+  `).get(uuid);
+}
+
+function obtenerOGenerarComprobanteX(uuid) {
+  const movimiento = obtenerMovimientoCaja(uuid);
+
+  if (!movimiento) {
+    throw new Error('Movimiento de caja no encontrado');
+  }
+
+  if (movimiento.estado !== 'COBRADO') {
+    throw new Error('El movimiento debe estar cobrado para emitir comprobante X');
+  }
+
+  const existente = db.prepare(`
+    SELECT *
+    FROM comprobantes_x
+    WHERE movimiento_id = ?
+    LIMIT 1
+  `).get(movimiento.id);
+
+  if (existente) {
+    return existente;
+  }
+
+  const ultimo = db.prepare(`
+    SELECT COALESCE(MAX(numero), 0) AS numero
+    FROM comprobantes_x
+  `).get();
+
+  const numero = Number(ultimo.numero || 0) + 1;
+  const datos = obtenerDatosComprobanteX(uuid);
+  const pdfPath = pdfComprobanteX({ ...datos, numero }, outputPath);
+
+  db.prepare(`
+    INSERT INTO comprobantes_x (
+      movimiento_id,
+      ticket_uuid,
+      numero,
+      importe,
+      pdf_path
+    )
+    VALUES (?, ?, ?, ?, ?)
+  `).run(
+    movimiento.id,
+    uuid,
+    numero,
+    movimiento.saldo,
+    pdfPath
+  );
+
+  return db.prepare(`
+    SELECT *
+    FROM comprobantes_x
+    WHERE movimiento_id = ?
+  `).get(movimiento.id);
 }
 
 function columnaExiste(tabla, columna) {
@@ -350,6 +440,18 @@ CREATE TABLE IF NOT EXISTS devoluciones_caja (
   FOREIGN KEY (ticket_uuid) REFERENCES tickets(uuid)
 );
 
+CREATE TABLE IF NOT EXISTS comprobantes_x (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  movimiento_id INTEGER NOT NULL UNIQUE,
+  ticket_uuid TEXT NOT NULL,
+  numero INTEGER NOT NULL UNIQUE,
+  importe REAL NOT NULL,
+  pdf_path TEXT,
+  fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (movimiento_id) REFERENCES movimientos_caja(id),
+  FOREIGN KEY (ticket_uuid) REFERENCES tickets(uuid)
+);
+
 
 `);
 
@@ -368,11 +470,17 @@ db.prepare(`
   ON devoluciones_caja(fecha)
 `).run();
 
+db.prepare(`
+  CREATE INDEX IF NOT EXISTS idx_comprobantes_x_fecha
+  ON comprobantes_x(fecha)
+`).run();
+
 asegurarEstadoTicket('PENDIENTE', 'Pendiente', 1);
 asegurarEstadoTicket('PRESUPUESTO_ENVIADO', 'Presupuesto enviado', 2);
 asegurarEstadoTicket('EN_REPARACION', 'En reparacion', 3);
 asegurarEstadoTicket('LISTO', 'Listo para entregar', 4);
 asegurarEstadoTicket('ENTREGADO', 'Entregado', 5);
+asegurarEstadoTicket('DEVUELTO_SIN_REPARAR', 'Devuelto sin reparar', 6);
 
 
 module.exports = {
@@ -504,7 +612,7 @@ module.exports = {
       WHERE uuid = ?
     `).run(trabajo, garantia, estadoEntregado.id, uuid);
 
-    cerrarMovimientoCajaInterno(uuid);
+    generarMovimientoCajaInterno(uuid);
   });
 
   trx();
@@ -776,12 +884,8 @@ actualizarEstadoTicket(uuid, estadoId) {
       throw new Error('Ticket no encontrado');
     }
 
-    if (estado.codigo === 'EN_REPARACION') {
-      generarMovimientoCajaInterno(uuid);
-    }
-
     if (estado.codigo === 'ENTREGADO') {
-      cerrarMovimientoCajaInterno(uuid);
+      generarMovimientoCajaInterno(uuid);
     }
 
     return result;
@@ -866,6 +970,8 @@ listarCajaCobrada(limite = 100) {
       ma.nombre AS marca,
       mo.nombre AS modelo,
       COALESCE(SUM(dc.importe), 0) AS devoluciones
+      , cx.numero AS comprobante_numero
+      , cx.pdf_path AS comprobante_pdf
     FROM movimientos_caja mc
     JOIN tickets t ON t.uuid = mc.ticket_uuid
     JOIN clientes c ON c.id = mc.cliente_id
@@ -873,6 +979,7 @@ listarCajaCobrada(limite = 100) {
     JOIN modelos mo ON mo.id = t.modelo_id
     JOIN marcas ma ON ma.id = mo.marca_id
     LEFT JOIN devoluciones_caja dc ON dc.movimiento_id = mc.id
+    LEFT JOIN comprobantes_x cx ON cx.movimiento_id = mc.id
     WHERE mc.estado = 'COBRADO'
     GROUP BY mc.id
     ORDER BY mc.fecha_cobro DESC
@@ -888,7 +995,10 @@ cobrarCaja(uuid) {
       throw new Error('No hay un movimiento pendiente para cobrar');
     }
 
-    return obtenerMovimientoCaja(uuid);
+    const movimiento = obtenerMovimientoCaja(uuid);
+    const comprobante = obtenerOGenerarComprobanteX(uuid);
+
+    return { movimiento, comprobante };
   });
 
   return trx();
@@ -1000,6 +1110,14 @@ obtenerInformeCaja({ desde, hasta } = {}) {
 
 obtenerRutaDB() {
   return dbPath;
+},
+
+obtenerComprobanteX(uuid) {
+  return obtenerOGenerarComprobanteX(uuid);
+},
+
+obtenerRutaSalida() {
+  return outputPath;
 }
 
 

@@ -17,5 +17,14 @@ contextBridge.exposeInMainWorld('apiCaja', {
     ipcRenderer.invoke('caja:informe', filtros),
 
   rutaDB: () =>
-    ipcRenderer.invoke('caja:ruta-db')
+    ipcRenderer.invoke('caja:ruta-db'),
+
+  comprobanteX: uuid =>
+    ipcRenderer.invoke('caja:comprobante-x', uuid),
+
+  abrirPDF: ruta =>
+    ipcRenderer.invoke('caja:abrir-pdf', ruta),
+
+  whatsapp: data =>
+    ipcRenderer.invoke('caja:whatsapp', data)
 });
