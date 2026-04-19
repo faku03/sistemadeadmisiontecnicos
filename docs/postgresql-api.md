@@ -97,7 +97,11 @@ POST   /tickets/:uuid/presupuesto-enviar
 POST   /tickets/:uuid/entrega
 POST   /tickets/:uuid/derivaciones
 GET    /caja/pendientes
+GET    /caja/cobrados
+GET    /caja/informe
 POST   /caja/:uuid/cobrar
+POST   /caja/:uuid/devoluciones
+POST   /caja/:uuid/comprobante-x
 ```
 
 ## Derivacion de tickets
@@ -125,3 +129,37 @@ modo servidor API
 ```
 
 asi se puede migrar sin cortar el uso actual.
+
+## Modo API en los EXE
+
+Por defecto las apps siguen usando SQLite local:
+
+```text
+dataMode: 'local'
+```
+
+Para que Tickets y Caja consuman el servidor API:
+
+```powershell
+$env:SISTEMA_TICKETS_DATA_MODE="api"
+$env:SISTEMA_TICKETS_API_URL="http://SERVIDOR:3000"
+npm.cmd start
+```
+
+Para Caja:
+
+```powershell
+$env:SISTEMA_TICKETS_DATA_MODE="api"
+$env:SISTEMA_TICKETS_API_URL="http://SERVIDOR:3000"
+npm.cmd run start:caja
+```
+
+Tambien puede configurarse en `config/app.config.js`:
+
+```js
+module.exports = {
+  dataMode: 'api',
+  apiUrl: 'http://SERVIDOR:3000',
+  apiSucursalId: 1
+};
+```

@@ -1,6 +1,6 @@
 const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const path = require('path');
-const db = require('./db/dbservice');
+const db = require('./services/data-source');
 
 function createWindow() {
   const win = new BrowserWindow({

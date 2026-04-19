@@ -144,6 +144,10 @@ class ApiClient {
     return this.request(`/sucursales?includeDeleted=${includeDeleted ? 'true' : 'false'}`);
   }
 
+  listarEstadosTicket() {
+    return this.request('/estados-ticket');
+  }
+
   crearSucursal(data) {
     return this.request('/sucursales', {
       method: 'POST',
@@ -175,6 +179,10 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify(data)
     });
+  }
+
+  obtenerTicketParaPDF(uuid) {
+    return this.request(`/tickets/${uuid}/pdf-data`);
   }
 
   actualizarEstado(uuid, data) {
@@ -216,8 +224,34 @@ class ApiClient {
     return this.request('/caja/pendientes');
   }
 
+  listarCajaCobrada(limite = 100) {
+    return this.request(`/caja/cobrados?limite=${encodeURIComponent(limite)}`);
+  }
+
   cobrarCaja(uuid) {
     return this.request(`/caja/${uuid}/cobrar`, {
+      method: 'POST'
+    });
+  }
+
+  registrarDevolucionCaja(data) {
+    return this.request(`/caja/${data.ticket_uuid}/devoluciones`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  }
+
+  obtenerInformeCaja({ desde, hasta } = {}) {
+    const params = new URLSearchParams();
+
+    if (desde) params.set('desde', desde);
+    if (hasta) params.set('hasta', hasta);
+
+    return this.request(`/caja/informe?${params.toString()}`);
+  }
+
+  obtenerComprobanteX(uuid) {
+    return this.request(`/caja/${uuid}/comprobante-x`, {
       method: 'POST'
     });
   }

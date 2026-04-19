@@ -1,6 +1,6 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
-const db = require('./db/dbservice');
+const db = require('./services/data-source');
 const pdfIngreso = require('./pdf/ingreso');
 const pdfEntrega = require('./pdf/entrega');
 const pdfPresupuesto = require('./pdf/presupuesto');

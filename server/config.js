@@ -7,7 +7,8 @@ const config = {
     database: process.env.PGDATABASE || 'sistema_tickets',
     user: process.env.PGUSER || 'postgres',
     password: process.env.PGPASSWORD || ''
-  }
+  },
+  outputPath: process.env.SISTEMA_TICKETS_OUTPUT_PATH || 'pdfs'
 };
 
 module.exports = config;

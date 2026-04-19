@@ -2,6 +2,7 @@ const http = require('http');
 const { randomUUID } = require('crypto');
 const config = require('./config');
 const { query, withTransaction } = require('./db');
+const pdfComprobanteX = require('../pdf/comprobante_x');
 
 function sendJson(res, status, data) {
   const body = JSON.stringify(data);
@@ -360,6 +361,75 @@ async function cajaPendiente() {
   return result.rows;
 }
 
+async function obtenerTicketPDFData(uuid) {
+  const result = await query(
+    `
+    SELECT
+      t.*,
+      c.nombre AS cliente_nombre,
+      c.apellido AS cliente_apellido,
+      c.celular,
+      c.email,
+      te.descripcion AS tipo_equipo,
+      mo.nombre AS modelo,
+      ma.nombre AS marca
+    FROM tickets t
+    JOIN clientes c ON c.id = t.cliente_id
+    JOIN tipos_equipo te ON te.id = t.tipo_equipo_id
+    JOIN modelos mo ON mo.id = t.modelo_id
+    JOIN marcas ma ON ma.id = mo.marca_id
+    WHERE t.uuid = $1
+    `,
+    [uuid]
+  );
+
+  if (result.rowCount === 0) {
+    throw new Error('Ticket no encontrado');
+  }
+
+  return result.rows[0];
+}
+
+async function cajaCobrada(limite = 100) {
+  const result = await query(
+    `
+    SELECT
+      mc.id AS movimiento_id,
+      mc.ticket_uuid,
+      mc.importe_total,
+      mc.sena,
+      mc.saldo,
+      mc.estado,
+      mc.fecha_creacion,
+      mc.fecha_cobro,
+      c.nombre,
+      c.apellido,
+      c.celular,
+      te.descripcion AS tipo,
+      ma.nombre AS marca,
+      mo.nombre AS modelo,
+      COALESCE(SUM(dc.importe), 0) AS devoluciones,
+      cx.numero AS comprobante_numero,
+      cx.pdf_path AS comprobante_pdf
+    FROM movimientos_caja mc
+    JOIN tickets t ON t.uuid = mc.ticket_uuid
+    JOIN clientes c ON c.id = mc.cliente_id
+    JOIN tipos_equipo te ON te.id = t.tipo_equipo_id
+    JOIN modelos mo ON mo.id = t.modelo_id
+    JOIN marcas ma ON ma.id = mo.marca_id
+    LEFT JOIN devoluciones_caja dc ON dc.movimiento_id = mc.id
+    LEFT JOIN comprobantes_x cx ON cx.movimiento_id = mc.id
+    WHERE mc.estado = 'COBRADO'
+    GROUP BY mc.id, c.id, te.id, ma.id, mo.id, cx.id
+    ORDER BY mc.fecha_cobro DESC
+    LIMIT $1
+    `,
+    [Number(limite) || 100]
+  );
+
+  return result.rows;
+}
+
 async function cobrarCaja(uuid) {
   const result = await query(
     `
@@ -378,6 +448,188 @@ async function cobrarCaja(uuid) {
   }
 
   return result.rows[0];
+}
+
+async function registrarDevolucion(uuid, data) {
+  const importe = money(data.importe);
+
+  if (importe <= 0) {
+    throw new Error('La devolucion debe ser mayor a cero');
+  }
+
+  return withTransaction(async client => {
+    const movimiento = await client.query(
+      `SELECT * FROM movimientos_caja WHERE ticket_uuid = $1`,
+      [uuid]
+    );
+
+    if (movimiento.rowCount === 0) {
+      throw new Error('Movimiento no encontrado');
+    }
+
+    const mov = movimiento.rows[0];
+
+    if (mov.estado !== 'COBRADO') {
+      throw new Error('Solo se puede devolver un movimiento cobrado');
+    }
+
+    const devoluciones = await client.query(
+      `SELECT COALESCE(SUM(importe), 0) AS total FROM devoluciones_caja WHERE movimiento_id = $1`,
+      [mov.id]
+    );
+
+    if ((Number(devoluciones.rows[0].total || 0) + importe) > Number(mov.saldo || 0)) {
+      throw new Error('La devolucion supera el saldo cobrado');
+    }
+
+    const result = await client.query(
+      `
+      INSERT INTO devoluciones_caja (movimiento_id, ticket_uuid, importe, motivo)
+      VALUES ($1, $2, $3, $4)
+      RETURNING *
+      `,
+      [mov.id, uuid, importe, data.motivo || '']
+    );
+
+    return result.rows[0];
+  });
+}
+
+function filtrosFecha(searchParams, campo, startIndex = 1) {
+  const condiciones = [];
+  const params = [];
+
+  if (searchParams.get('desde')) {
+    params.push(searchParams.get('desde'));
+    condiciones.push(`date(${campo}) >= date($${startIndex + params.length - 1})`);
+  }
+
+  if (searchParams.get('hasta')) {
+    params.push(searchParams.get('hasta'));
+    condiciones.push(`date(${campo}) <= date($${startIndex + params.length - 1})`);
+  }
+
+  return {
+    where: condiciones.length ? `AND ${condiciones.join(' AND ')}` : '',
+    params
+  };
+}
+
+async function informeCaja(url) {
+  const filtroCobros = filtrosFecha(url.searchParams, 'mc.fecha_cobro');
+  const filtroDevoluciones = filtrosFecha(url.searchParams, 'dc.fecha');
+
+  const cobros = await query(
+    `
+    SELECT COUNT(*) AS cantidad, COALESCE(SUM(mc.saldo), 0) AS total
+    FROM movimientos_caja mc
+    WHERE mc.estado = 'COBRADO'
+      ${filtroCobros.where}
+    `,
+    filtroCobros.params
+  );
+
+  const devoluciones = await query(
+    `
+    SELECT COUNT(*) AS cantidad, COALESCE(SUM(dc.importe), 0) AS total
+    FROM devoluciones_caja dc
+    WHERE 1 = 1
+      ${filtroDevoluciones.where}
+    `,
+    filtroDevoluciones.params
+  );
+
+  const cobrado = Number(cobros.rows[0].total || 0);
+  const devuelto = Number(devoluciones.rows[0].total || 0);
+
+  return {
+    cobros: cobros.rows[0],
+    devoluciones: devoluciones.rows[0],
+    neto: cobrado - devuelto,
+    detalleCobros: [],
+    detalleDevoluciones: []
+  };
+}
+
+async function datosComprobanteX(uuid) {
+  const result = await query(
+    `
+    SELECT
+      mc.id AS movimiento_id,
+      mc.ticket_uuid,
+      mc.importe_total,
+      mc.sena,
+      mc.saldo,
+      mc.fecha_cobro,
+      c.nombre,
+      c.apellido,
+      c.dni,
+      c.celular,
+      te.descripcion AS tipo,
+      ma.nombre AS marca,
+      mo.nombre AS modelo,
+      t.descripcion_falla,
+      t.trabajo_realizado
+    FROM movimientos_caja mc
+    JOIN tickets t ON t.uuid = mc.ticket_uuid
+    JOIN clientes c ON c.id = mc.cliente_id
+    JOIN tipos_equipo te ON te.id = t.tipo_equipo_id
+    JOIN modelos mo ON mo.id = t.modelo_id
+    JOIN marcas ma ON ma.id = mo.marca_id
+    WHERE mc.ticket_uuid = $1
+    `,
+    [uuid]
+  );
+
+  if (result.rowCount === 0) {
+    throw new Error('Movimiento de caja no encontrado');
+  }
+
+  return result.rows[0];
+}
+
+async function comprobanteX(uuid) {
+  return withTransaction(async client => {
+    const movimiento = await client.query(
+      `SELECT * FROM movimientos_caja WHERE ticket_uuid = $1`,
+      [uuid]
+    );
+
+    if (movimiento.rowCount === 0) {
+      throw new Error('Movimiento de caja no encontrado');
+    }
+
+    const mov = movimiento.rows[0];
+
+    if (mov.estado !== 'COBRADO') {
+      throw new Error('El movimiento debe estar cobrado para emitir comprobante X');
+    }
+
+    const existente = await client.query(
+      `SELECT * FROM comprobantes_x WHERE movimiento_id = $1`,
+      [mov.id]
+    );
+
+    if (existente.rowCount > 0) {
+      return existente.rows[0];
+    }
+
+    const ultimo = await client.query(`SELECT COALESCE(MAX(numero), 0) AS numero FROM comprobantes_x`);
+    const numero = Number(ultimo.rows[0].numero || 0) + 1;
+    const datos = await datosComprobanteX(uuid);
+    const pdfPath = pdfComprobanteX({ ...datos, numero }, config.outputPath);
+
+    const result = await client.query(
+      `
+      INSERT INTO comprobantes_x (movimiento_id, ticket_uuid, numero, importe, pdf_path)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING *
+      `,
+      [mov.id, uuid, numero, mov.saldo, pdfPath]
+    );
+
+    return result.rows[0];
+  });
 }
 
 function incluyeEliminados(url) {
@@ -777,6 +1029,11 @@ async function handle(req, res) {
 
     const ticketMatch = path.match(/^\/tickets\/([^/]+)(?:\/([^/]+))?$/);
 
+    if (ticketMatch && method === 'GET' && ticketMatch[2] === 'pdf-data') {
+      sendJson(res, 200, await obtenerTicketPDFData(ticketMatch[1]));
+      return;
+    }
+
     if (ticketMatch && method === 'PATCH' && ticketMatch[2] === 'estado') {
       sendJson(res, 200, await actualizarEstado(ticketMatch[1], await readJson(req)));
       return;
@@ -807,10 +1064,34 @@ async function handle(req, res) {
       return;
     }
 
+    if (method === 'GET' && path === '/caja/cobrados') {
+      sendJson(res, 200, await cajaCobrada(url.searchParams.get('limite') || 100));
+      return;
+    }
+
+    if (method === 'GET' && path === '/caja/informe') {
+      sendJson(res, 200, await informeCaja(url));
+      return;
+    }
+
     const cajaCobroMatch = path.match(/^\/caja\/([^/]+)\/cobrar$/);
 
     if (method === 'POST' && cajaCobroMatch) {
       sendJson(res, 200, await cobrarCaja(cajaCobroMatch[1]));
+      return;
+    }
+
+    const cajaDevolucionMatch = path.match(/^\/caja\/([^/]+)\/devoluciones$/);
+
+    if (method === 'POST' && cajaDevolucionMatch) {
+      sendJson(res, 201, await registrarDevolucion(cajaDevolucionMatch[1], await readJson(req)));
+      return;
+    }
+
+    const comprobanteMatch = path.match(/^\/caja\/([^/]+)\/comprobante-x$/);
+
+    if (method === 'POST' && comprobanteMatch) {
+      sendJson(res, 200, await comprobanteX(comprobanteMatch[1]));
       return;
     }
 
