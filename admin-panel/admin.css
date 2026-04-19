@@ -32,7 +32,7 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: "Segoe UI", Arial, sans-serif;
-  font-size: 14px;
+  font-size: 12px;
   letter-spacing: 0;
 }
 
@@ -47,8 +47,8 @@ select {
   height: calc(100vh - 28px);
   margin: 14px auto;
   display: grid;
-  grid-template-rows: auto auto auto 1fr 150px;
-  gap: 12px;
+  grid-template-rows: auto auto auto minmax(0, 1fr) 104px;
+  gap: 8px;
 }
 
 .topbar,
@@ -61,8 +61,8 @@ select {
 }
 
 .topbar {
-  min-height: 82px;
-  padding: 16px 18px;
+  min-height: 60px;
+  padding: 10px 18px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -70,7 +70,7 @@ select {
 }
 
 .eyebrow {
-  margin: 0 0 4px;
+  margin: 0 0 2px;
   color: var(--muted);
   font-weight: 700;
   text-transform: uppercase;
@@ -84,15 +84,15 @@ h2 {
 }
 
 h1 {
-  font-size: 28px;
+  font-size: 25px;
 }
 
 h2 {
-  font-size: 18px;
+  font-size: 15px;
 }
 
 p {
-  margin: 5px 0 0;
+  margin: 3px 0 0;
   color: var(--muted);
 }
 
@@ -106,8 +106,8 @@ p {
 input,
 select {
   width: 100%;
-  height: 38px;
-  padding: 8px 10px;
+  height: 32px;
+  padding: 6px 8px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   outline: none;
@@ -122,8 +122,8 @@ select:focus {
 }
 
 .btn {
-  min-height: 38px;
-  padding: 8px 12px;
+  min-height: 32px;
+  padding: 6px 10px;
   border: 1px solid transparent;
   border-radius: var(--radius);
   cursor: pointer;
@@ -157,8 +157,8 @@ select:focus {
 }
 
 .message {
-  min-height: 36px;
-  padding: 9px 12px;
+  min-height: 30px;
+  padding: 7px 10px;
   border-radius: var(--radius);
   border: 1px solid var(--border);
   background: var(--surface-soft);
@@ -178,15 +178,15 @@ select:focus {
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
+  gap: 8px;
 }
 
 .summary-card {
-  min-height: 76px;
-  padding: 13px 15px;
+  min-height: 54px;
+  padding: 9px 14px;
   display: grid;
   align-content: center;
-  gap: 5px;
+  gap: 2px;
 }
 
 .summary-card span {
@@ -196,32 +196,37 @@ select:focus {
 
 .summary-card strong {
   color: var(--title);
-  font-size: 26px;
+  font-size: 22px;
 }
 
 .content-grid {
   min-height: 0;
   display: grid;
-  grid-template-columns: 310px 1fr;
-  gap: 12px;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 8px;
 }
 
 .forms-column {
   min-height: 0;
   display: grid;
-  grid-template-rows: auto auto auto;
-  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .panel {
   min-height: 0;
-  padding: 14px;
+  padding: 10px 12px;
 }
 
 .stack {
   display: grid;
-  gap: 9px;
-  margin-top: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.stack .btn {
+  grid-column: 1 / -1;
 }
 
 .main-panel {
@@ -234,7 +239,7 @@ select:focus {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .table-wrap {
@@ -264,7 +269,7 @@ table {
 
 th,
 td {
-  padding: 10px;
+  padding: 7px 9px;
   border-bottom: 1px solid var(--border);
   text-align: left;
   vertical-align: middle;
@@ -277,7 +282,7 @@ th {
   z-index: 1;
   background: var(--surface-soft);
   color: var(--title);
-  font-size: 13px;
+  font-size: 12px;
 }
 
 td.actions {
@@ -289,8 +294,8 @@ td.actions {
 .status-pill {
   display: inline-flex;
   align-items: center;
-  min-height: 26px;
-  padding: 4px 8px;
+  min-height: 23px;
+  padding: 3px 7px;
   border-radius: var(--radius);
   font-weight: 700;
   background: var(--secondary);
@@ -313,7 +318,7 @@ td.actions {
 
 .renew-box {
   display: grid;
-  grid-template-columns: 136px auto;
+  grid-template-columns: 122px auto;
   gap: 6px;
   align-items: center;
 }
@@ -330,21 +335,25 @@ td.actions {
   grid-template-rows: auto 1fr;
 }
 
+.audit-panel .panel-header {
+  margin-bottom: 6px;
+}
+
 .audit-list {
   min-height: 0;
   overflow: auto;
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .audit-item {
-  padding: 9px 10px;
+  padding: 7px 9px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface-soft);
   display: grid;
-  grid-template-columns: 130px 1fr 160px;
-  gap: 10px;
+  grid-template-columns: 110px 1fr 145px;
+  gap: 8px;
 }
 
 .audit-item strong {
