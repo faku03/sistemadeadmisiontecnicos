@@ -8,6 +8,7 @@ const {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_GRACE_DAYS = 7;
+const DEFAULT_LICENSE_SERVER_URL = 'http://localhost:3000';
 
 function addDays(date, days) {
   return new Date(date.getTime() + (days * DAY_MS));
@@ -51,7 +52,58 @@ function simulatedValidation(machineId) {
   };
 }
 
-function activateLicense(licenseKey) {
+function licenseServerUrl() {
+  return String(
+    process.env.SISTEMA_TICKETS_LICENSE_SERVER_URL ||
+    appConfig.licenseServerUrl ||
+    DEFAULT_LICENSE_SERVER_URL
+  ).replace(/\/$/, '');
+}
+
+function licenseMode() {
+  return String(process.env.SISTEMA_TICKETS_LICENSE_MODE || appConfig.licenseMode || 'mock').toLowerCase();
+}
+
+function shouldUseLicenseServer() {
+  return Boolean(process.env.SISTEMA_TICKETS_LICENSE_SERVER_URL) || licenseMode() === 'server';
+}
+
+async function requestLicenseServer(path, data) {
+  const response = await fetch(`${licenseServerUrl()}${path}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(data)
+  });
+
+  const body = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(body?.error || `Error HTTP ${response.status}`);
+  }
+
+  return body;
+}
+
+function appName() {
+  return process.env.SISTEMA_TICKETS_APP_NAME || 'sistema-tickets';
+}
+
+function appVersion() {
+  return process.env.SISTEMA_TICKETS_APP_VERSION || '1.0.0';
+}
+
+function activationPayload(licenseKey, machineId) {
+  return {
+    license_key: licenseKey,
+    machine_id: machineId,
+    app_name: appName(),
+    app_version: appVersion()
+  };
+}
+
+function localActivation(licenseKey) {
   const key = String(licenseKey || '').trim().toUpperCase();
 
   if (!key) {
@@ -92,6 +144,25 @@ function activateLicense(licenseKey) {
     machineId,
     cachePath: getLicensePath()
   };
+}
+
+async function activateLicense(licenseKey) {
+  const key = String(licenseKey || '').trim().toUpperCase();
+  const machineId = getMachineId();
+
+  if (shouldUseLicenseServer()) {
+    const validated = await requestLicenseServer('/licenses/activate', activationPayload(key, machineId));
+    writeLicenseCache(validated);
+
+    return {
+      ...evaluateCache(validated, { online: true }),
+      online: true,
+      machineId,
+      cachePath: getLicensePath()
+    };
+  }
+
+  return localActivation(key);
 }
 
 function evaluateCache(cache, { online = false } = {}) {
@@ -147,13 +218,19 @@ function evaluateCache(cache, { online = false } = {}) {
   };
 }
 
-function validateLicense({ forceOffline = false } = {}) {
+async function validateLicense({ forceOffline = false } = {}) {
   const machineId = getMachineId();
   const previous = readLicenseCache();
 
   if (!forceOffline) {
     try {
-      const validated = simulatedValidation(machineId);
+      const validated = shouldUseLicenseServer()
+        ? await requestLicenseServer(
+            '/licenses/validate',
+            activationPayload(previous?.licenseKey || appConfig.licenseKey, machineId)
+          )
+        : simulatedValidation(machineId);
+
       writeLicenseCache(validated);
       return {
         ...evaluateCache(validated, { online: true }),

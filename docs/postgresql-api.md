@@ -7,6 +7,7 @@ Arquitectura objetivo:
 ```text
 Tickets EXE  --->  API SistemaTickets  --->  PostgreSQL
 Caja EXE     --->  API SistemaTickets  --->  PostgreSQL
+Licencias   --->  API SistemaTickets  --->  PostgreSQL
 ```
 
 ## Requisitos
@@ -102,7 +103,12 @@ GET    /caja/informe
 POST   /caja/:uuid/cobrar
 POST   /caja/:uuid/devoluciones
 POST   /caja/:uuid/comprobante-x
+POST   /licenses/activate
+POST   /licenses/validate
+GET    /licenses
 ```
+
+La documentacion especifica de licencias esta en `docs/licensing-server.md`.
 
 ## Derivacion de tickets
 

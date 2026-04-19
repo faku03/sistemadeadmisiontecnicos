@@ -2,6 +2,7 @@ const http = require('http');
 const { randomUUID } = require('crypto');
 const config = require('./config');
 const { query, withTransaction } = require('./db');
+const { handleLicenseRoute } = require('./licenses');
 const pdfComprobanteX = require('../pdf/comprobante_x');
 
 function sendJson(res, status, data) {
@@ -888,6 +889,10 @@ async function handle(req, res) {
   try {
     if (method === 'GET' && path === '/health') {
       sendJson(res, 200, { ok: true });
+      return;
+    }
+
+    if (await handleLicenseRoute({ method, path, req, res, sendJson, readJson })) {
       return;
     }
 
