@@ -9,6 +9,9 @@ contextBridge.exposeInMainWorld('api', {
   marcarAvisoLicencia: () =>
     ipcRenderer.invoke('licencia:marcar-aviso'),
 
+  activarLicencia: clave =>
+    ipcRenderer.invoke('licencia:activar', clave),
+
   // ===== CLIENTES =====
   buscarClientePorDni: dni =>
     ipcRenderer.invoke('buscar-cliente-dni', dni),

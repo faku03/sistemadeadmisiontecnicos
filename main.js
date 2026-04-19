@@ -36,6 +36,10 @@ ipcMain.handle('licencia:marcar-aviso', () =>
   license.markWarningShown()
 );
 
+ipcMain.handle('licencia:activar', (_, clave) =>
+  license.activateLicense(clave)
+);
+
 ipcMain.handle('buscar-cliente-dni', (_, dni) =>
   db.buscarClientePorDni(dni)
 );

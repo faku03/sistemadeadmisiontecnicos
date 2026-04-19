@@ -7,6 +7,9 @@ contextBridge.exposeInMainWorld('apiCaja', {
   marcarAvisoLicencia: () =>
     ipcRenderer.invoke('licencia:marcar-aviso'),
 
+  activarLicencia: clave =>
+    ipcRenderer.invoke('licencia:activar', clave),
+
   listarPendientes: () =>
     ipcRenderer.invoke('caja:listar-pendientes'),
 

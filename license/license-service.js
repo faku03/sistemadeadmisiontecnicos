@@ -51,6 +51,49 @@ function simulatedValidation(machineId) {
   };
 }
 
+function activateLicense(licenseKey) {
+  const key = String(licenseKey || '').trim().toUpperCase();
+
+  if (!key) {
+    throw new Error('Ingresa una clave de licencia');
+  }
+
+  if (!/^([A-Z0-9]{4,}-?){2,}$/.test(key)) {
+    throw new Error('La clave de licencia no tiene un formato valido');
+  }
+
+  const machineId = getMachineId();
+  const now = new Date();
+  const graceDays = Number(appConfig.licenseGraceDays || DEFAULT_GRACE_DAYS);
+  const activated = {
+    licenseKey: key,
+    status: 'ACTIVE',
+    groupId: appConfig.licenseGroupId || 'DEV-GROUP',
+    unitId: appConfig.licenseUnitId || 'DEV-UNIT',
+    unitType: appConfig.licenseUnitType || 'SUCURSAL',
+    machineId,
+    plan: 'STANDARD',
+    expiresAt: addDays(now, 30).toISOString(),
+    lastOnlineValidation: now.toISOString(),
+    graceUntil: addDays(now, graceDays).toISOString(),
+    graceDays,
+    features: {
+      tickets: true,
+      caja: true,
+      derivaciones: true
+    }
+  };
+
+  writeLicenseCache(activated);
+
+  return {
+    ...evaluateCache(activated, { online: true }),
+    online: true,
+    machineId,
+    cachePath: getLicensePath()
+  };
+}
+
 function evaluateCache(cache, { online = false } = {}) {
   if (!cache) {
     return {
@@ -153,6 +196,7 @@ function shouldShowDailyWarning(status) {
 }
 
 module.exports = {
+  activateLicense,
   validateLicense,
   markWarningShown,
   shouldShowDailyWarning

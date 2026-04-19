@@ -32,6 +32,10 @@ ipcMain.handle('licencia:marcar-aviso', () =>
   license.markWarningShown()
 );
 
+ipcMain.handle('licencia:activar', (_, clave) =>
+  license.activateLicense(clave)
+);
+
 ipcMain.handle('caja:listar-cobrados', (_, limite) =>
   db.listarCajaCobrada(limite)
 );
