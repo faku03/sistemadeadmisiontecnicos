@@ -126,6 +126,42 @@ function cerrarMovimientoCajaInterno(uuid) {
   `).run(uuid);
 }
 
+function columnaExiste(tabla, columna) {
+  return db.prepare(`PRAGMA table_info(${tabla})`)
+    .all()
+    .some(c => c.name === columna);
+}
+
+function asegurarColumna(tabla, columna, definicion) {
+  if (!columnaExiste(tabla, columna)) {
+    db.prepare(`ALTER TABLE ${tabla} ADD COLUMN ${columna} ${definicion}`).run();
+  }
+}
+
+function asegurarEstadoTicket(codigo, descripcion, orden) {
+  const existente = db.prepare(`
+    SELECT id
+    FROM estados_ticket
+    WHERE codigo = ?
+  `).get(codigo);
+
+  if (existente) {
+    db.prepare(`
+      UPDATE estados_ticket
+      SET descripcion = ?,
+          orden = ?,
+          is_deleted = 0
+      WHERE codigo = ?
+    `).run(descripcion, orden, codigo);
+    return;
+  }
+
+  db.prepare(`
+    INSERT INTO estados_ticket (codigo, descripcion, orden)
+    VALUES (?, ?, ?)
+  `).run(codigo, descripcion, orden);
+}
+
 /* ================= TABLAS ================= */
 db.exec(`
 CREATE TABLE IF NOT EXISTS sucursales (
@@ -241,21 +277,21 @@ CREATE TABLE IF NOT EXISTS movimientos_caja (
 
 `);
 
-const countEstados = db.prepare(
-  `SELECT COUNT(*) as total FROM estados_ticket`
-).get()
+/* ================= MIGRACIONES ================= */
+asegurarColumna('tickets', 'valor_reparacion', 'REAL DEFAULT 0');
+asegurarColumna('tickets', 'sena', 'REAL DEFAULT 0');
+asegurarColumna('tickets', 'presupuesto_enviado', 'INTEGER DEFAULT 0');
 
-if (countEstados.total === 0) {
-  db.prepare(`
-    INSERT INTO estados_ticket (codigo, descripcion, orden)
-    VALUES
-      ('PENDIENTE', 'Pendiente', 1),
-      ('PRESUPUESTO_ENVIADO', 'Presupuesto enviado', 2),
-      ('EN_REPARACION', 'En reparación', 3),
-      ('LISTO', 'Listo para entregar', 4),
-      ('ENTREGADO', 'Entregado', 5)
-  `).run();
-}
+db.prepare(`
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_movimientos_caja_ticket_uuid
+  ON movimientos_caja(ticket_uuid)
+`).run();
+
+asegurarEstadoTicket('PENDIENTE', 'Pendiente', 1);
+asegurarEstadoTicket('PRESUPUESTO_ENVIADO', 'Presupuesto enviado', 2);
+asegurarEstadoTicket('EN_REPARACION', 'En reparacion', 3);
+asegurarEstadoTicket('LISTO', 'Listo para entregar', 4);
+asegurarEstadoTicket('ENTREGADO', 'Entregado', 5);
 
 
 module.exports = {

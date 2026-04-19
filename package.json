@@ -6,6 +6,7 @@
   "author": "TuNombre",
   "scripts": {
     "start": "electron .",
+    "smoke:db": "electron scripts/smoke-db.js",
     "build": "electron-builder",
     "postinstall": "electron-builder install-app-deps"
   },
