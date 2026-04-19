@@ -3,6 +3,7 @@ const state = {
   units: [],
   licenses: [],
   validations: [],
+  selectedGroupId: null,
   token: localStorage.getItem('sistemaAdminToken') || ''
 };
 
@@ -151,11 +152,94 @@ function renderValidations() {
   `).join('');
 }
 
+function unitsForGroup(groupId) {
+  return state.units.filter(unit => String(unit.group_id) === String(groupId));
+}
+
+function licenseForUnit(unitId) {
+  return state.licenses.find(license => String(license.unit_id) === String(unitId));
+}
+
+function renderGroupsMaster() {
+  const body = $('#groupsBody');
+
+  if (!state.groups.length) {
+    body.innerHTML = '<tr><td colspan="4">Sin grupos cargados.</td></tr>';
+    $('#groupUnitsBody').innerHTML = '<tr><td colspan="6">Selecciona un grupo.</td></tr>';
+    return;
+  }
+
+  if (!state.selectedGroupId || !state.groups.some(group => String(group.id) === String(state.selectedGroupId))) {
+    state.selectedGroupId = state.groups[0].id;
+  }
+
+  body.innerHTML = state.groups.map(group => {
+    const units = unitsForGroup(group.id);
+    const selected = String(group.id) === String(state.selectedGroupId) ? ' class="selected-row"' : '';
+    const statusClass = group.is_active ? 'status-active' : 'status-blocked';
+    const statusText = group.is_active ? 'Activo' : 'Inactivo';
+
+    return `
+      <tr${selected} data-group-id="${group.id}">
+        <td><strong>${group.codigo}</strong></td>
+        <td>${group.nombre}</td>
+        <td>${units.length}</td>
+        <td><span class="status-pill ${statusClass}">${statusText}</span></td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function renderGroupDetail() {
+  const group = state.groups.find(item => String(item.id) === String(state.selectedGroupId));
+  const body = $('#groupUnitsBody');
+
+  if (!group) {
+    $('#selectedGroupTitle').textContent = 'Sucursales y tecnicos';
+    $('#selectedGroupSubtitle').textContent = 'Selecciona un grupo para ver el detalle.';
+    body.innerHTML = '<tr><td colspan="6">Selecciona un grupo.</td></tr>';
+    return;
+  }
+
+  const units = unitsForGroup(group.id);
+  $('#selectedGroupTitle').textContent = `${group.codigo} - ${group.nombre}`;
+  $('#selectedGroupSubtitle').textContent = `${units.length} sucursal(es) o tecnico(s) dentro del grupo.`;
+
+  if (!units.length) {
+    body.innerHTML = '<tr><td colspan="6">Este grupo todavia no tiene sucursales ni tecnicos.</td></tr>';
+    return;
+  }
+
+  body.innerHTML = units.map(unit => {
+    const license = licenseForUnit(unit.id);
+    const status = license
+      ? statusInfo(license)
+      : { text: 'SIN LICENCIA', className: 'status-blocked' };
+
+    return `
+      <tr>
+        <td><strong>${unit.codigo}</strong></td>
+        <td>${unit.nombre}</td>
+        <td>${unit.tipo}</td>
+        <td><span class="status-pill ${status.className}">${status.text}</span></td>
+        <td>${license ? toDateInput(license.expires_at) : '-'}</td>
+        <td class="machine" title="${license?.machine_id || ''}">${license?.machine_id || 'Sin activar'}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function renderGroupsView() {
+  renderGroupsMaster();
+  renderGroupDetail();
+}
+
 function render() {
   renderSelects();
   renderSummary();
   renderLicenses();
   renderValidations();
+  renderGroupsView();
 }
 
 async function loadAll() {
@@ -314,6 +398,24 @@ function wireEvents() {
       : postAction(id, action === 'release' ? 'release-machine' : action);
 
     run.catch(error => showMessage(error.message, true));
+  });
+
+  document.querySelectorAll('.menu-item').forEach(button => {
+    button.addEventListener('click', () => {
+      document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
+      document.querySelectorAll('.view').forEach(view => view.classList.remove('active-view'));
+      button.classList.add('active');
+      $(`#${button.dataset.view}`).classList.add('active-view');
+    });
+  });
+
+  $('#groupsBody').addEventListener('click', event => {
+    const row = event.target.closest('tr[data-group-id]');
+
+    if (!row) return;
+
+    state.selectedGroupId = row.dataset.groupId;
+    renderGroupsView();
   });
 }
 

@@ -47,7 +47,7 @@ select {
   height: calc(100vh - 28px);
   margin: 14px auto;
   display: grid;
-  grid-template-rows: auto auto auto minmax(0, 1fr) 104px;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
   gap: 8px;
 }
 
@@ -63,9 +63,9 @@ select {
 .topbar {
   min-height: 60px;
   padding: 10px 18px;
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr minmax(320px, 440px);
   align-items: center;
-  justify-content: space-between;
   gap: 16px;
 }
 
@@ -97,10 +97,32 @@ p {
 }
 
 .token-box {
-  width: min(440px, 50vw);
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 8px;
+}
+
+.main-menu {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+
+.menu-item {
+  min-height: 32px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--secondary);
+  color: var(--title);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.menu-item.active {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #fff;
 }
 
 input,
@@ -206,6 +228,21 @@ select:focus {
   gap: 8px;
 }
 
+.view {
+  min-height: 0;
+  display: none;
+}
+
+.active-view {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) 104px;
+  gap: 8px;
+}
+
+#groupsView.active-view {
+  grid-template-rows: minmax(0, 1fr);
+}
+
 .forms-column {
   min-height: 0;
   display: grid;
@@ -232,6 +269,32 @@ select:focus {
 .main-panel {
   display: grid;
   grid-template-rows: auto 1fr;
+}
+
+.master-detail {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(360px, .85fr) minmax(0, 1.4fr);
+  gap: 8px;
+}
+
+.master-panel,
+.detail-panel {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+#groupsBody tr {
+  cursor: pointer;
+}
+
+#groupsBody tr.selected-row {
+  background: #eaf3ff;
+}
+
+#groupsBody tr:hover {
+  background: var(--surface-soft);
 }
 
 .panel-header {
@@ -374,14 +437,23 @@ td.actions {
   .topbar,
   .panel-header {
     align-items: stretch;
-    flex-direction: column;
+  }
+
+  .topbar {
+    grid-template-columns: 1fr;
   }
 
   .token-box,
   .content-grid,
-  .summary-grid {
+  .summary-grid,
+  .master-detail,
+  .forms-column {
     width: 100%;
     grid-template-columns: 1fr;
+  }
+
+  .active-view {
+    grid-template-rows: auto;
   }
 
   .audit-item {

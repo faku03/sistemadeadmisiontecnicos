@@ -13,6 +13,10 @@
         <p class="eyebrow">Sistema de Tickets</p>
         <h1>Licencias</h1>
       </div>
+      <nav class="main-menu" aria-label="Menu administrativo">
+        <button class="menu-item active" type="button" data-view="licensesView">Licencias</button>
+        <button class="menu-item" type="button" data-view="groupsView">Grupos y sucursales</button>
+      </nav>
       <form id="tokenForm" class="token-box">
         <input id="adminToken" type="password" placeholder="Token administrador">
         <button type="submit" class="btn btn-primary">Conectar</button>
@@ -40,7 +44,36 @@
       </article>
     </section>
 
-    <section class="content-grid">
+    <section id="licensesView" class="view active-view">
+      <section class="content-grid">
+      <section class="panel main-panel">
+        <div class="panel-header">
+          <div>
+            <h2>Licencias por sucursal o tecnico</h2>
+            <p>El codigo no cambia. Para renovar, actualiza la fecha de vencimiento.</p>
+          </div>
+          <button id="refreshBtn" class="btn btn-secondary" type="button">Actualizar</button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Grupo</th>
+                <th>Codigo</th>
+                <th>Nombre</th>
+                <th>Estado</th>
+                <th>Vence</th>
+                <th>Renovar</th>
+                <th>Equipo</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="licensesBody"></tbody>
+          </table>
+        </div>
+      </section>
+
       <aside class="forms-column">
         <section class="panel">
           <h2>Nuevo grupo</h2>
@@ -79,37 +112,9 @@
           </form>
         </section>
       </aside>
-
-      <section class="panel main-panel">
-        <div class="panel-header">
-          <div>
-            <h2>Licencias por sucursal o tecnico</h2>
-            <p>El codigo no cambia. Para renovar, actualiza la fecha de vencimiento.</p>
-          </div>
-          <button id="refreshBtn" class="btn btn-secondary" type="button">Actualizar</button>
-        </div>
-
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Grupo</th>
-                <th>Codigo</th>
-                <th>Nombre</th>
-                <th>Estado</th>
-                <th>Vence</th>
-                <th>Renovar</th>
-                <th>Equipo</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody id="licensesBody"></tbody>
-          </table>
-        </div>
       </section>
-    </section>
 
-    <section class="panel audit-panel">
+      <section class="panel audit-panel">
       <div class="panel-header">
         <div>
           <h2>Ultimas validaciones</h2>
@@ -117,6 +122,57 @@
         </div>
       </div>
       <div class="audit-list" id="validationsList"></div>
+      </section>
+    </section>
+
+    <section id="groupsView" class="view">
+      <section class="master-detail">
+        <section class="panel master-panel">
+          <div class="panel-header">
+            <div>
+              <h2>Grupos</h2>
+              <p>Selecciona un grupo para ver sus sucursales y tecnicos.</p>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Codigo</th>
+                  <th>Nombre</th>
+                  <th>Unidades</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody id="groupsBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel detail-panel">
+          <div class="panel-header">
+            <div>
+              <h2 id="selectedGroupTitle">Sucursales y tecnicos</h2>
+              <p id="selectedGroupSubtitle">El codigo de cada unidad se mantiene estable.</p>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Codigo</th>
+                  <th>Nombre</th>
+                  <th>Tipo</th>
+                  <th>Licencia</th>
+                  <th>Vence</th>
+                  <th>Equipo</th>
+                </tr>
+              </thead>
+              <tbody id="groupUnitsBody"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
     </section>
   </main>
 
