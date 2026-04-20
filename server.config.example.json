@@ -1,0 +1,9 @@
+{
+  "PGHOST": "localhost",
+  "PGPORT": "5432",
+  "PGDATABASE": "sistema_tickets",
+  "PGUSER": "postgres",
+  "PGPASSWORD": "CAMBIAR_PASSWORD",
+  "SISTEMA_TICKETS_API_PORT": "3000",
+  "SISTEMA_TICKETS_ADMIN_TOKEN": "CAMBIAR_TOKEN_ADMIN"
+}

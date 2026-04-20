@@ -1,10 +1,20 @@
-# Instalador unico Tickets y Caja
+# Instalador servidor Tickets, Caja y Gateway
 
-El instalador combinado permite instalar:
+Este instalador esta pensado para la PC servidor del local.
+
+Instala siempre:
+
+- Gateway/API.
+- Panel administrativo web.
+- Scripts de arranque automatico del Gateway.
+
+Permite elegir ademas:
 
 - Sistema de Tickets / Servicio Tecnico.
 - Sistema de Caja.
 - Ambos modulos en la misma PC.
+
+El Gateway se registra para iniciar con Windows mediante una tarea programada ejecutada como `SYSTEM`.
 
 ## Generar instalador
 
@@ -35,7 +45,9 @@ Durante la instalacion aparece una pantalla para elegir:
 [x] Sistema de Caja
 ```
 
-Debe quedar seleccionado al menos un modulo.
+El Gateway/API no se pregunta: se instala siempre.
+
+Debe quedar seleccionado al menos un modulo operativo.
 
 El instalador crea accesos directos separados:
 
@@ -51,9 +63,39 @@ Sistema de Tickets.exe
 Sistema de Caja.exe
 ```
 
-Ambos usan el mismo paquete interno, pero arrancan en modo distinto.
+## Configuracion del Gateway
 
-## Configuracion posterior
+Despues de instalar, crear:
+
+```text
+C:\mardeltech\sistemadetickets\server.config.json
+```
+
+Usar como base:
+
+```text
+server.config.example.json
+```
+
+Ejemplo:
+
+```json
+{
+  "PGHOST": "localhost",
+  "PGPORT": "5432",
+  "PGDATABASE": "sistema_tickets",
+  "PGUSER": "postgres",
+  "PGPASSWORD": "CAMBIAR_PASSWORD",
+  "SISTEMA_TICKETS_API_PORT": "3000",
+  "SISTEMA_TICKETS_ADMIN_TOKEN": "CAMBIAR_TOKEN_ADMIN"
+}
+```
+
+Si PostgreSQL esta en la misma PC del servidor, usar `localhost`.
+
+Si PostgreSQL esta en otra PC, usar su IP o nombre de red.
+
+## Configuracion de Tickets/Caja en el servidor
 
 Despues de instalar, colocar `app.config.json` al lado de los EXE o en:
 
@@ -67,23 +109,76 @@ Usar como base:
 app.config.example.json
 ```
 
-Ejemplo:
+Ejemplo misma PC:
 
 ```json
 {
-  "apiUrl": "http://SERVIDOR-GATEWAY:3000",
-  "sucursalId": "CODIGO-SUCURSAL-O-TECNICO",
-  "sucursalNombre": "Nombre visible",
+  "apiUrl": "http://localhost:3000",
+  "sucursalId": "CENTRAL",
+  "sucursalNombre": "Casa Central",
   "licenseMode": "server",
-  "licenseServerUrl": "http://SERVIDOR-GATEWAY:3000",
+  "licenseServerUrl": "http://localhost:3000",
   "licenseGraceDays": 7
 }
 ```
 
 La clave de licencia se ingresa desde la pantalla de activacion del sistema.
 
+## Tarea programada
+
+Nombre:
+
+```text
+MardelTech Sistema Tickets Gateway
+```
+
+El instalador la crea y la inicia automaticamente.
+
+Para reiniciarla manualmente:
+
+```powershell
+Start-ScheduledTask -TaskName "MardelTech Sistema Tickets Gateway"
+```
+
+Para detener el proceso del Gateway:
+
+```powershell
+Get-Process | Where-Object { $_.Path -like "*Sistema Tecnico y Caja.exe" } | Stop-Process -Force
+```
+
+Para quitar la tarea:
+
+```powershell
+powershell.exe -ExecutionPolicy Bypass -File "C:\mardeltech\sistemadetickets\resources\server\uninstall-gateway-task.ps1"
+```
+
+## Panel administrativo
+
+Con el Gateway iniciado:
+
+```text
+http://localhost:3000/admin-panel
+```
+
+Desde otra PC de la red:
+
+```text
+http://IP-DEL-SERVIDOR:3000/admin-panel
+```
+
+## Logs
+
+Los logs del Gateway quedan en:
+
+```text
+C:\ProgramData\MardelTech\SistemaTickets\logs
+```
+
 ## Archivos de build
 
-- `main-instalador.js`: decide si abrir Tickets o Caja.
-- `electron-builder.instalador.json`: configuracion del paquete combinado.
-- `installer/installer-components.nsh`: pantalla NSIS de seleccion de componentes y accesos.
+- `main-instalador.js`: decide si abrir Tickets, Caja o Gateway.
+- `electron-builder.instalador.json`: configuracion del paquete servidor.
+- `installer/installer-components.nsh`: pantalla NSIS de seleccion de modulos operativos y registro de Gateway.
+- `server/start-gateway.ps1`: arranca el Gateway en modo oculto.
+- `server/install-gateway-task.ps1`: registra la tarea programada.
+- `server/uninstall-gateway-task.ps1`: elimina la tarea programada.

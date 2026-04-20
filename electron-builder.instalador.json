@@ -13,8 +13,31 @@
     "!*.zip",
     "!*.log",
     "!app.config.json",
+    "!server.config.json",
     "!.env",
     "!.env.*"
+  ],
+  "extraResources": [
+    {
+      "from": "server/start-gateway.ps1",
+      "to": "server/start-gateway.ps1"
+    },
+    {
+      "from": "server/install-gateway-task.ps1",
+      "to": "server/install-gateway-task.ps1"
+    },
+    {
+      "from": "server/uninstall-gateway-task.ps1",
+      "to": "server/uninstall-gateway-task.ps1"
+    },
+    {
+      "from": "server.config.example.json",
+      "to": "server.config.example.json"
+    },
+    {
+      "from": "app.config.example.json",
+      "to": "app.config.example.json"
+    }
   ],
   "extraMetadata": {
     "main": "main-instalador.js"

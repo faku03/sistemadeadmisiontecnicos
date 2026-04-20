@@ -68,6 +68,8 @@ FunctionEnd
     CreateShortCut "$SMPROGRAMS\Sistema Tecnico y Caja\Sistema de Caja.lnk" "$INSTDIR\Sistema de Caja.exe" "--modulo=caja" "$INSTDIR\Sistema de Caja.exe" 0 "" "" "Sistema de Caja"
     CreateShortCut "$DESKTOP\Sistema de Caja.lnk" "$INSTDIR\Sistema de Caja.exe" "--modulo=caja" "$INSTDIR\Sistema de Caja.exe" 0 "" "" "Sistema de Caja"
   ${EndIf}
+
+  nsExec::ExecToLog 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\resources\server\install-gateway-task.ps1" -InstallDir "$INSTDIR"'
 !macroend
 
 !macro customUnInstall
@@ -78,4 +80,5 @@ FunctionEnd
   RMDir "$SMPROGRAMS\Sistema Tecnico y Caja"
   Delete "$INSTDIR\Sistema de Tickets.exe"
   Delete "$INSTDIR\Sistema de Caja.exe"
+  nsExec::ExecToLog 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\resources\server\uninstall-gateway-task.ps1"'
 !macroend
