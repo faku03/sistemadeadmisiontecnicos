@@ -1,6 +1,14 @@
 # Configuracion de clientes Tickets y Caja
 
-Los EXE de Tickets y Caja leen la configuracion desde un archivo externo `app.config.json`.
+Los EXE de Tickets y Caja trabajan siempre contra el Gateway/API. No usan base local.
+
+El Gateway puede estar:
+
+- En la misma PC donde se usa el sistema.
+- En otra PC servidor dentro de la red local.
+- En un servidor remoto o cloud.
+
+Los clientes leen la configuracion desde `app.config.json`.
 
 Orden de busqueda:
 
@@ -18,7 +26,6 @@ Copiar `app.config.example.json` como `app.config.json` y ajustar:
 
 ```json
 {
-  "dataMode": "api",
   "apiUrl": "http://SERVIDOR-GATEWAY:3000",
   "sucursalId": "CODIGO-SUCURSAL-O-TECNICO",
   "sucursalNombre": "Nombre visible de la sucursal o tecnico",
@@ -28,16 +35,41 @@ Copiar `app.config.example.json` como `app.config.json` y ajustar:
 }
 ```
 
+## Misma PC
+
+Si PostgreSQL, Gateway, Tickets y Caja estan en la misma PC:
+
+```json
+{
+  "apiUrl": "http://localhost:3000",
+  "sucursalId": "CENTRAL",
+  "sucursalNombre": "Casa Central",
+  "licenseMode": "server",
+  "licenseServerUrl": "http://localhost:3000",
+  "licenseGraceDays": 7
+}
+```
+
+## Red local
+
+Si PostgreSQL y Gateway estan en una PC servidor de la red:
+
+```json
+{
+  "apiUrl": "http://192.168.1.50:3000",
+  "sucursalId": "CENTRAL",
+  "sucursalNombre": "Casa Central",
+  "licenseMode": "server",
+  "licenseServerUrl": "http://192.168.1.50:3000",
+  "licenseGraceDays": 7
+}
+```
+
 ## Campos
-
-`dataMode`
-
-- `api`: usa el gateway y PostgreSQL.
-- `local`: usa SQLite local. Queda solo para desarrollo o emergencia.
 
 `apiUrl`
 
-URL del gateway del sistema.
+URL del Gateway/API del sistema.
 
 `sucursalId`
 
@@ -56,24 +88,9 @@ URL del gateway que expone `/licenses/activate` y `/licenses/validate`.
 
 Dias de gracia offline. Valor esperado: `7`.
 
-## Ejemplo local
-
-```json
-{
-  "dataMode": "api",
-  "apiUrl": "http://localhost:3000",
-  "sucursalId": "DEV-UNIT",
-  "sucursalNombre": "Sucursal desarrollo",
-  "licenseMode": "server",
-  "licenseServerUrl": "http://localhost:3000",
-  "licenseGraceDays": 7
-}
-```
-
 ## Variables equivalentes
 
 ```powershell
-$env:SISTEMA_TICKETS_DATA_MODE="api"
 $env:SISTEMA_TICKETS_API_URL="http://SERVIDOR-GATEWAY:3000"
 $env:SISTEMA_TICKETS_SUCURSAL_ID="CODIGO-SUCURSAL-O-TECNICO"
 $env:SISTEMA_TICKETS_LICENSE_MODE="server"

@@ -10,8 +10,6 @@
     "server:start": "node server/index.js",
     "server:migrate": "node server/migrate.js",
     "server:seed-licenses": "node server/seed-licenses.js",
-    "smoke:db": "electron scripts/smoke-db.js",
-    "smoke:circuit": "electron scripts/smoke-circuit.js",
     "smoke:api-postgres": "node scripts/smoke-api-postgres.js",
     "smoke:license-server": "node scripts/smoke-license-server.js",
     "smoke:license-admin": "node scripts/smoke-license-admin.js",
@@ -21,7 +19,6 @@
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
-    "better-sqlite3": "^12.6.2",
     "pdfkit": "^0.17.2",
     "pg": "^8.20.0",
     "uuid": "^13.0.0"

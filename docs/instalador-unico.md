@@ -71,7 +71,6 @@ Ejemplo:
 
 ```json
 {
-  "dataMode": "api",
   "apiUrl": "http://SERVIDOR-GATEWAY:3000",
   "sucursalId": "CODIGO-SUCURSAL-O-TECNICO",
   "sucursalNombre": "Nombre visible",

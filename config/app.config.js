@@ -4,9 +4,7 @@ const path = require('path');
 const defaults = {
   sucursalId: '',
   sucursalNombre: '',
-  databasePath: null,
   outputPath: null,
-  dataMode: 'local',
   apiUrl: 'http://localhost:3000',
   apiSucursalId: null,
   licenseServerUrl: 'http://localhost:3000',
@@ -63,9 +61,7 @@ function envConfig() {
   return {
     sucursalId: process.env.SISTEMA_TICKETS_SUCURSAL_ID,
     sucursalNombre: process.env.SISTEMA_TICKETS_SUCURSAL_NOMBRE,
-    databasePath: process.env.SISTEMA_TICKETS_DB_PATH,
     outputPath: process.env.SISTEMA_TICKETS_OUTPUT_PATH,
-    dataMode: process.env.SISTEMA_TICKETS_DATA_MODE,
     apiUrl: process.env.SISTEMA_TICKETS_API_URL,
     apiSucursalId: process.env.SISTEMA_TICKETS_API_SUCURSAL_ID,
     licenseServerUrl: process.env.SISTEMA_TICKETS_LICENSE_SERVER_URL,

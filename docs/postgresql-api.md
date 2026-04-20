@@ -1,18 +1,41 @@
 # Servidor API con PostgreSQL
 
-Este servidor es la base para dejar de compartir el archivo SQLite por red.
+Este servidor es el gateway unico para Tickets, Caja, licencias, administracion y futuras webs.
 
-Arquitectura objetivo:
+Arquitectura:
 
 ```text
-Tickets EXE  --->  API SistemaTickets  --->  PostgreSQL
-Caja EXE     --->  API SistemaTickets  --->  PostgreSQL
-Licencias   --->  API SistemaTickets  --->  PostgreSQL
+Tickets EXE  --->  Gateway/API  --->  PostgreSQL
+Caja EXE     --->  Gateway/API  --->  PostgreSQL
+Licencias   --->  Gateway/API  --->  PostgreSQL
+Admin web   --->  Gateway/API  --->  PostgreSQL
+```
+
+Puede correr todo en la misma PC:
+
+```text
+PC unica
+  PostgreSQL
+  Gateway/API
+  Tickets
+  Caja
+```
+
+O en red local:
+
+```text
+PC servidor
+  PostgreSQL
+  Gateway/API
+
+PCs cliente
+  Tickets
+  Caja
 ```
 
 ## Requisitos
 
-- PostgreSQL instalado en la PC servidor.
+- PostgreSQL instalado.
 - Base creada, por ejemplo `sistema_tickets`.
 - Variables de entorno configuradas.
 
@@ -25,12 +48,13 @@ $env:PGDATABASE="sistema_tickets"
 $env:PGUSER="postgres"
 $env:PGPASSWORD="postgres"
 $env:SISTEMA_TICKETS_API_PORT="3000"
+$env:SISTEMA_TICKETS_ADMIN_TOKEN="cambiar-este-token"
 ```
 
 Tambien se puede usar `DATABASE_URL`:
 
 ```powershell
-$env:DATABASE_URL="postgres://postgres:postgres@localhost:5432/sistema_tickets"
+$env:DATABASE_URL="postgres://usuario:password@localhost:5432/sistema_tickets"
 ```
 
 ## Inicializar esquema
@@ -50,6 +74,7 @@ Esto crea:
 - movimientos de caja
 - devoluciones
 - comprobantes X
+- grupos, unidades y licencias
 
 ## Ejecutar API
 
@@ -63,7 +88,7 @@ Health check:
 http://localhost:3000/health
 ```
 
-## Rutas iniciales
+## Rutas principales
 
 ```text
 GET    /health
@@ -105,7 +130,6 @@ POST   /caja/:uuid/devoluciones
 POST   /caja/:uuid/comprobante-x
 POST   /licenses/activate
 POST   /licenses/validate
-GET    /licenses
 GET    /admin/license-groups
 POST   /admin/license-groups
 GET    /admin/license-units
@@ -136,49 +160,30 @@ Cada derivacion queda en:
 
 Esto permite consultar donde se origino un equipo, donde esta ahora y el historial de envios.
 
-## Siguiente etapa
+## Configuracion de clientes
 
-Las apps Electron todavia usan SQLite directo. El proximo paso es cambiar `main.js` y `main-caja.js` para consumir la API usando `api/client.js`.
+Tickets y Caja deben apuntar al Gateway/API con `app.config.json`.
 
-Conviene hacerlo con una opcion configurable:
+Misma PC:
 
-```text
-modo local SQLite
-modo servidor API
+```json
+{
+  "apiUrl": "http://localhost:3000",
+  "sucursalId": "CENTRAL",
+  "licenseMode": "server",
+  "licenseServerUrl": "http://localhost:3000",
+  "licenseGraceDays": 7
+}
 ```
 
-asi se puede migrar sin cortar el uso actual.
+Servidor de red local:
 
-## Modo API en los EXE
-
-Por defecto las apps siguen usando SQLite local:
-
-```text
-dataMode: 'local'
-```
-
-Para que Tickets y Caja consuman el servidor API:
-
-```powershell
-$env:SISTEMA_TICKETS_DATA_MODE="api"
-$env:SISTEMA_TICKETS_API_URL="http://SERVIDOR:3000"
-npm.cmd start
-```
-
-Para Caja:
-
-```powershell
-$env:SISTEMA_TICKETS_DATA_MODE="api"
-$env:SISTEMA_TICKETS_API_URL="http://SERVIDOR:3000"
-npm.cmd run start:caja
-```
-
-Tambien puede configurarse en `config/app.config.js`:
-
-```js
-module.exports = {
-  dataMode: 'api',
-  apiUrl: 'http://SERVIDOR:3000',
-  apiSucursalId: 1
-};
+```json
+{
+  "apiUrl": "http://192.168.1.50:3000",
+  "sucursalId": "CENTRAL",
+  "licenseMode": "server",
+  "licenseServerUrl": "http://192.168.1.50:3000",
+  "licenseGraceDays": 7
+}
 ```

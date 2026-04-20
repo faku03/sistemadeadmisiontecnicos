@@ -13,7 +13,6 @@
     "!*.zip",
     "!*.log",
     "!app.config.json",
-    "!caja.config.json",
     "!.env",
     "!.env.*"
   ],
