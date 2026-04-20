@@ -17,6 +17,7 @@
     "smoke:license-admin": "node scripts/smoke-license-admin.js",
     "build": "electron-builder",
     "build:caja": "electron-builder --config electron-builder.caja.json",
+    "build:instalador": "electron-builder --config electron-builder.instalador.json",
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {

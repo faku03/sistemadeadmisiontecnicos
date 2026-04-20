@@ -1,0 +1,34 @@
+{
+  "appId": "com.sistematecnicocaja.app",
+  "productName": "Sistema Tecnico y Caja",
+  "directories": {
+    "output": "dist-instalador"
+  },
+  "files": [
+    "**/*",
+    "!dist/**",
+    "!dist-caja/**",
+    "!dist-instalador/**",
+    "!pdfs/**",
+    "!*.zip",
+    "!*.log",
+    "!app.config.json",
+    "!caja.config.json",
+    "!.env",
+    "!.env.*"
+  ],
+  "extraMetadata": {
+    "main": "main-instalador.js"
+  },
+  "win": {
+    "target": "nsis",
+    "artifactName": "SistemaTecnicoCaja-Setup-${version}.${ext}"
+  },
+  "nsis": {
+    "oneClick": false,
+    "perMachine": false,
+    "allowToChangeInstallationDirectory": true,
+    "include": "installer/installer-components.nsh",
+    "shortcutName": "Sistema Tecnico y Caja"
+  }
+}

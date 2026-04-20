@@ -1,6 +1,7 @@
 node_modules/
 dist/
 dist-caja/
+dist-instalador/
 
 db/*.db
 db/*.db-shm
