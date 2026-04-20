@@ -6,6 +6,10 @@ const pdfComprobanteX = require('../pdf/comprobante_x');
 
 let appConfig = {};
 
+function defaultDataDir() {
+  return path.join(process.env.APPDATA || process.cwd(), 'SistemaTickets');
+}
+
 function leerConfigExterno() {
   const rutas = [
     process.env.SISTEMA_TICKETS_CONFIG,
@@ -37,12 +41,15 @@ const externalConfig = leerConfigExterno();
 const dbPath = process.env.SISTEMA_TICKETS_DB_PATH ||
   externalConfig.databasePath ||
   appConfig.databasePath ||
-  path.join(__dirname, 'tickets.db');
+  path.join(defaultDataDir(), 'tickets.db');
 
 const outputPath = process.env.SISTEMA_TICKETS_OUTPUT_PATH ||
   externalConfig.outputPath ||
   appConfig.outputPath ||
   path.join(path.dirname(dbPath), 'pdfs');
+
+fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+fs.mkdirSync(outputPath, { recursive: true });
 
 const db = new Database(dbPath);
 
