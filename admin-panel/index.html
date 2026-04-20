@@ -16,6 +16,7 @@
       <nav class="main-menu" aria-label="Menu administrativo">
         <button class="menu-item active" type="button" data-view="licensesView">Licencias</button>
         <button class="menu-item" type="button" data-view="groupsView">Grupos y sucursales</button>
+        <button class="menu-item" type="button" data-view="expiringView">Vencimientos</button>
       </nav>
       <form id="tokenForm" class="token-box">
         <input id="adminToken" type="password" placeholder="Token administrador">
@@ -174,6 +175,36 @@
             </table>
           </div>
         </section>
+      </section>
+    </section>
+
+    <section id="expiringView" class="view">
+      <section class="panel expiring-panel">
+        <div class="panel-header">
+          <div>
+            <h2>Licencias vencidas o por vencer</h2>
+            <p>Se muestran vencidas y licencias con 7 dias o menos disponibles.</p>
+          </div>
+          <button id="refreshExpiringBtn" class="btn btn-secondary" type="button">Actualizar</button>
+        </div>
+        <input id="expiringSearch" class="grid-search" placeholder="Buscar por grupo, codigo, nombre o estado">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Grupo</th>
+                <th>Codigo</th>
+                <th>Nombre</th>
+                <th>Estado</th>
+                <th>Dias</th>
+                <th>Vence</th>
+                <th>Nuevo vencimiento</th>
+                <th>Equipo</th>
+              </tr>
+            </thead>
+            <tbody id="expiringBody"></tbody>
+          </table>
+        </div>
       </section>
     </section>
   </main>

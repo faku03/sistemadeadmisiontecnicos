@@ -243,6 +243,10 @@ select:focus {
   grid-template-rows: minmax(0, 1fr);
 }
 
+#expiringView.active-view {
+  grid-template-rows: minmax(0, 1fr);
+}
+
 .forms-column {
   min-height: 0;
   display: grid;
@@ -279,7 +283,8 @@ select:focus {
 }
 
 .master-panel,
-.detail-panel {
+.detail-panel,
+.expiring-panel {
   min-height: 0;
   display: grid;
   grid-template-rows: auto auto 1fr;
@@ -299,6 +304,20 @@ select:focus {
 
 #groupsBody tr:hover {
   background: var(--surface-soft);
+}
+
+.expiring-danger-row {
+  background: #fff1f1;
+}
+
+.expiring-danger-row td {
+  border-bottom-color: #f0b8b8;
+  color: var(--danger);
+}
+
+.expiring-danger-row .machine,
+.expiring-danger-row input {
+  color: var(--text);
 }
 
 .panel-header {

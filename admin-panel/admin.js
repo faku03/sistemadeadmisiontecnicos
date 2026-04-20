@@ -6,6 +6,7 @@ const state = {
   selectedGroupId: null,
   groupSearch: '',
   unitSearch: '',
+  expiringSearch: '',
   token: localStorage.getItem('sistemaAdminToken') || ''
 };
 
@@ -98,6 +99,16 @@ function statusInfo(license) {
   return { text: 'ACTIVA', className: 'status-active' };
 }
 
+function expiringStatusClass(license) {
+  const remaining = daysTo(license.expires_at);
+
+  if (license.status !== 'ACTIVE' || remaining < 0 || remaining <= 7) {
+    return 'expiring-danger-row';
+  }
+
+  return '';
+}
+
 function renderSummary() {
   $('#groupsCount').textContent = state.groups.length;
   $('#unitsCount').textContent = state.units.length;
@@ -142,6 +153,52 @@ function renderLicenses() {
           ${activeAction}
           <button class="btn btn-secondary" data-action="release" data-id="${license.id}">Liberar PC</button>
         </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function isExpiringLicense(license) {
+  return daysTo(license.expires_at) <= 7 || license.status !== 'ACTIVE';
+}
+
+function renderExpiringLicenses() {
+  const body = $('#expiringBody');
+  const visible = state.licenses
+    .filter(isExpiringLicense)
+    .filter(license => includesText(
+      license,
+      ['group_code', 'group_name', 'unit_code', 'unit_name', 'status'],
+      state.expiringSearch
+    ))
+    .sort((a, b) => daysTo(a.expires_at) - daysTo(b.expires_at));
+
+  if (!visible.length) {
+    body.innerHTML = '<tr><td colspan="8">No hay licencias vencidas o por vencer para esa busqueda.</td></tr>';
+    return;
+  }
+
+  body.innerHTML = visible.map(license => {
+    const status = statusInfo(license);
+    const remaining = daysTo(license.expires_at);
+    const dateId = `expiring-renew-${license.id}`;
+    const daysText = remaining < 0 ? `Vencida hace ${Math.abs(remaining)} dias` : `${remaining} dias`;
+
+    return `
+      <tr class="${expiringStatusClass(license)}">
+        <td>${license.group_code}</td>
+        <td><strong>${license.unit_code}</strong></td>
+        <td>${license.unit_name}</td>
+        <td><span class="status-pill ${status.className}">${status.text}</span></td>
+        <td><strong>${daysText}</strong></td>
+        <td>${toDateInput(license.expires_at)}</td>
+        <td>
+          <div class="renew-box">
+            <input id="${dateId}" type="date" value="${toDateInput(license.expires_at)}">
+            <button class="btn btn-primary" data-expiring-action="renew" data-id="${license.id}">Guardar</button>
+          </div>
+        </td>
+        <td class="machine" title="${license.machine_id || ''}">${license.machine_id || 'Sin activar'}</td>
       </tr>
     `;
   }).join('');
@@ -268,6 +325,7 @@ function render() {
   renderSelects();
   renderSummary();
   renderLicenses();
+  renderExpiringLicenses();
   renderValidations();
   renderGroupsView();
 }
@@ -420,6 +478,10 @@ function wireEvents() {
     loadAll().catch(error => showMessage(error.message, true));
   });
 
+  $('#refreshExpiringBtn').addEventListener('click', () => {
+    loadAll().catch(error => showMessage(error.message, true));
+  });
+
   $('#licensesBody').addEventListener('click', event => {
     const button = event.target.closest('button[data-action]');
 
@@ -460,6 +522,38 @@ function wireEvents() {
     state.unitSearch = event.target.value;
     renderGroupDetail();
   });
+
+  $('#expiringSearch').addEventListener('input', event => {
+    state.expiringSearch = event.target.value;
+    renderExpiringLicenses();
+  });
+
+  $('#expiringBody').addEventListener('click', event => {
+    const button = event.target.closest('button[data-expiring-action]');
+
+    if (!button) return;
+
+    renewExpiringLicense(button.dataset.id).catch(error => showMessage(error.message, true));
+  });
+}
+
+async function renewExpiringLicense(id) {
+  const license = licenseById(id);
+  const expiresAt = $(`#expiring-renew-${id}`).value;
+
+  await request(`/admin/licenses/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      status: 'ACTIVE',
+      plan: license.plan,
+      grace_days: license.grace_days,
+      expires_at: expiresAt,
+      features: license.features
+    })
+  });
+
+  await loadAll();
+  showMessage(`Vencimiento actualizado para ${license.unit_code}.`);
 }
 
 wireEvents();
