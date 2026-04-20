@@ -1,6 +1,6 @@
 {
   "appId": "com.sistematecnicocaja.app",
-  "productName": "Sistema Tecnico y Caja",
+  "productName": "sistemadetickets",
   "directories": {
     "output": "dist-instalador"
   },

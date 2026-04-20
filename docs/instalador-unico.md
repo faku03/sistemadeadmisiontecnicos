@@ -63,6 +63,8 @@ Sistema de Tickets.exe
 Sistema de Caja.exe
 ```
 
+El ejecutable base del paquete queda como `sistemadetickets.exe`. Ese nombre interno evita que el instalador cree una subcarpeta extra y permite instalar directamente en `C:\mardeltech\sistemadetickets`.
+
 ## Configuracion del Gateway
 
 Despues de instalar, crear:
@@ -143,7 +145,7 @@ Start-ScheduledTask -TaskName "MardelTech Sistema Tickets Gateway"
 Para detener el proceso del Gateway:
 
 ```powershell
-Get-Process | Where-Object { $_.Path -like "*Sistema Tecnico y Caja.exe" } | Stop-Process -Force
+Get-Process | Where-Object { $_.Path -like "*sistemadetickets.exe" -or $_.Path -like "*Sistema de Tickets.exe" } | Stop-Process -Force
 ```
 
 Para quitar la tarea:

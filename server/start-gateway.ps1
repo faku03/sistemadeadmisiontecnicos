@@ -4,6 +4,13 @@ $installDir = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $logDir = Join-Path $env:ProgramData "MardelTech\SistemaTickets\logs"
 $configPath = Join-Path $installDir "server.config.json"
 
+if (-not (Test-Path $configPath)) {
+  $parentConfigPath = Join-Path (Split-Path -Parent $installDir) "server.config.json"
+  if (Test-Path $parentConfigPath) {
+    $configPath = $parentConfigPath
+  }
+}
+
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 
 if (Test-Path $configPath) {
@@ -24,6 +31,15 @@ New-Item -ItemType Directory -Force -Path $env:SISTEMA_TICKETS_OUTPUT_PATH | Out
 
 $stdout = Join-Path $logDir "gateway.out.log"
 $stderr = Join-Path $logDir "gateway.err.log"
+$gatewayExe = @(
+  (Join-Path $installDir "sistemadetickets.exe"),
+  (Join-Path $installDir "Sistema Tecnico y Caja.exe"),
+  (Join-Path $installDir "Sistema de Tickets.exe")
+) | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+if (-not $gatewayExe) {
+  throw "No se encontro el ejecutable del gateway en $installDir"
+}
 
 Set-Location $installDir
-Start-Process -FilePath (Join-Path $installDir "Sistema Tecnico y Caja.exe") -ArgumentList "--gateway" -WindowStyle Hidden -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+Start-Process -FilePath $gatewayExe -ArgumentList "--gateway" -WindowStyle Hidden -RedirectStandardOutput $stdout -RedirectStandardError $stderr
