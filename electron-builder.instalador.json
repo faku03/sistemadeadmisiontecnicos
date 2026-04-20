@@ -26,7 +26,7 @@
   },
   "nsis": {
     "oneClick": false,
-    "perMachine": false,
+    "perMachine": true,
     "allowToChangeInstallationDirectory": true,
     "include": "installer/installer-components.nsh",
     "shortcutName": "Sistema Tecnico y Caja"

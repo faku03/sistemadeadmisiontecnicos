@@ -7,6 +7,10 @@ Var InstallCaja
 Var TicketsCheckbox
 Var CajaCheckbox
 
+!macro customInit
+  StrCpy $INSTDIR "C:\mardeltech\sistemadetickets"
+!macroend
+
 !macro customPageAfterChangeDir
   PageEx custom
     PageCallbacks componentsPageCreate componentsPageLeave

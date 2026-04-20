@@ -18,6 +18,14 @@ El instalador queda en:
 dist-instalador/SistemaTecnicoCaja-Setup-1.0.0.exe
 ```
 
+La carpeta sugerida por defecto es:
+
+```text
+C:\mardeltech\sistemadetickets
+```
+
+El instalador se genera en modo por equipo, por lo que Windows puede pedir permisos de administrador.
+
 ## Seleccion de componentes
 
 Durante la instalacion aparece una pantalla para elegir:
