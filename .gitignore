@@ -10,6 +10,7 @@ pdfs/*.pdf
 *.log
 *.zip
 caja.config.json
+app.config.json
 
 .env
 .env.*

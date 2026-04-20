@@ -33,10 +33,10 @@ function simulatedValidation(machineId) {
   const graceDays = Number(appConfig.licenseGraceDays || DEFAULT_GRACE_DAYS);
 
   return {
-    licenseKey: process.env.SISTEMA_TICKETS_LICENSE_KEY || appConfig.licenseKey || 'DEV-LICENSE',
+    licenseKey: process.env.SISTEMA_TICKETS_LICENSE_KEY || appConfig.licenseKey || '',
     status: process.env.SISTEMA_TICKETS_LICENSE_STATUS || 'ACTIVE',
-    groupId: process.env.SISTEMA_TICKETS_LICENSE_GROUP || appConfig.licenseGroupId || 'DEV-GROUP',
-    unitId: process.env.SISTEMA_TICKETS_LICENSE_UNIT || appConfig.licenseUnitId || 'DEV-UNIT',
+    groupId: process.env.SISTEMA_TICKETS_LICENSE_GROUP || appConfig.licenseGroupId || '',
+    unitId: process.env.SISTEMA_TICKETS_LICENSE_UNIT || appConfig.licenseUnitId || '',
     unitType: process.env.SISTEMA_TICKETS_LICENSE_UNIT_TYPE || appConfig.licenseUnitType || 'SUCURSAL',
     machineId,
     plan: process.env.SISTEMA_TICKETS_LICENSE_PLAN || 'STANDARD',
@@ -120,8 +120,8 @@ function localActivation(licenseKey) {
   const activated = {
     licenseKey: key,
     status: 'ACTIVE',
-    groupId: appConfig.licenseGroupId || 'DEV-GROUP',
-    unitId: appConfig.licenseUnitId || 'DEV-UNIT',
+    groupId: appConfig.licenseGroupId || '',
+    unitId: appConfig.licenseUnitId || '',
     unitType: appConfig.licenseUnitType || 'SUCURSAL',
     machineId,
     plan: 'STANDARD',

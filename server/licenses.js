@@ -240,7 +240,7 @@ function hasAdminAccess(req) {
   const token = process.env.SISTEMA_TICKETS_ADMIN_TOKEN;
 
   if (!token) {
-    return true;
+    return process.env.SISTEMA_TICKETS_ALLOW_UNPROTECTED_ADMIN === 'true';
   }
 
   const auth = String(req.headers.authorization || '');

@@ -67,12 +67,22 @@ $env:SISTEMA_TICKETS_API_PORT="3000"
 $env:SISTEMA_TICKETS_ADMIN_TOKEN="cambiar-este-token"
 ```
 
+El token administrativo es obligatorio para usar `/admin/*` y el panel web. Solo en desarrollo se puede desproteger con:
+
+```powershell
+$env:SISTEMA_TICKETS_ALLOW_UNPROTECTED_ADMIN="true"
+```
+
+No usar esa opcion en produccion.
+
 Clientes Tickets/Caja:
 
 ```powershell
 $env:SISTEMA_TICKETS_LICENSE_MODE="server"
 $env:SISTEMA_TICKETS_LICENSE_SERVER_URL="http://SERVIDOR:3000"
 ```
+
+Para instaladores conviene usar `app.config.json`. La guia de clientes esta en `docs/configuracion-clientes.md`.
 
 En desarrollo local:
 
