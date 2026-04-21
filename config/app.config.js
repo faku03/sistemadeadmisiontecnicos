@@ -5,6 +5,14 @@ const defaults = {
   sucursalId: '',
   sucursalNombre: '',
   outputPath: null,
+  pdfBusinessStreet: '',
+  pdfBusinessLocality: '',
+  pdfBusinessProvince: '',
+  pdfBusinessName: '',
+  pdfBusinessAddress: '',
+  pdfBusinessPhone: '',
+  pdfBusinessEmail: '',
+  pdfLogoPath: '',
   apiUrl: 'http://localhost:3000',
   apiSucursalId: null,
   licenseServerUrl: 'http://localhost:3000',
@@ -13,7 +21,11 @@ const defaults = {
   licenseGroupId: '',
   licenseUnitId: '',
   licenseUnitType: 'SUCURSAL',
-  licenseGraceDays: 7
+  licenseGraceDays: 7,
+  alertPendingDays: 2,
+  alertRepairDays: 5,
+  alertBudgetDays: 3,
+  alertReadyDays: 7
 };
 
 function readJson(filePath) {
@@ -62,6 +74,14 @@ function envConfig() {
     sucursalId: process.env.SISTEMA_TICKETS_SUCURSAL_ID,
     sucursalNombre: process.env.SISTEMA_TICKETS_SUCURSAL_NOMBRE,
     outputPath: process.env.SISTEMA_TICKETS_OUTPUT_PATH,
+    pdfBusinessStreet: process.env.SISTEMA_TICKETS_PDF_BUSINESS_STREET,
+    pdfBusinessLocality: process.env.SISTEMA_TICKETS_PDF_BUSINESS_LOCALITY,
+    pdfBusinessProvince: process.env.SISTEMA_TICKETS_PDF_BUSINESS_PROVINCE,
+    pdfBusinessName: process.env.SISTEMA_TICKETS_PDF_BUSINESS_NAME,
+    pdfBusinessAddress: process.env.SISTEMA_TICKETS_PDF_BUSINESS_ADDRESS,
+    pdfBusinessPhone: process.env.SISTEMA_TICKETS_PDF_BUSINESS_PHONE,
+    pdfBusinessEmail: process.env.SISTEMA_TICKETS_PDF_BUSINESS_EMAIL,
+    pdfLogoPath: process.env.SISTEMA_TICKETS_PDF_LOGO_PATH,
     apiUrl: process.env.SISTEMA_TICKETS_API_URL,
     apiSucursalId: process.env.SISTEMA_TICKETS_API_SUCURSAL_ID,
     licenseServerUrl: process.env.SISTEMA_TICKETS_LICENSE_SERVER_URL,
@@ -70,7 +90,11 @@ function envConfig() {
     licenseGroupId: process.env.SISTEMA_TICKETS_LICENSE_GROUP,
     licenseUnitId: process.env.SISTEMA_TICKETS_LICENSE_UNIT,
     licenseUnitType: process.env.SISTEMA_TICKETS_LICENSE_UNIT_TYPE,
-    licenseGraceDays: process.env.SISTEMA_TICKETS_LICENSE_GRACE_DAYS
+    licenseGraceDays: process.env.SISTEMA_TICKETS_LICENSE_GRACE_DAYS,
+    alertPendingDays: process.env.SISTEMA_TICKETS_ALERT_PENDING_DAYS,
+    alertRepairDays: process.env.SISTEMA_TICKETS_ALERT_REPAIR_DAYS,
+    alertBudgetDays: process.env.SISTEMA_TICKETS_ALERT_BUDGET_DAYS,
+    alertReadyDays: process.env.SISTEMA_TICKETS_ALERT_READY_DAYS
   };
 }
 

@@ -3,13 +3,17 @@ let estadosActuales = [];
 let ticketSeleccionado = null;
 let ticketEntregaActual = null;
 let ticketPresupuestoActual = null;
+let historialCache = new Map();
 
 document.addEventListener('DOMContentLoaded', () => {
   const listaTickets = document.getElementById('listaTicketsFull');
   const buscadorTickets = document.getElementById('buscadorTicketsFull');
   const filtroEstado = document.getElementById('filtroEstadoFull');
+  const btnHistorialTicket = document.getElementById('btnHistorialTicketFull');
   const btnActualizar = document.getElementById('btnActualizarTicketsFull');
   const ticketSeleccionadoInfo = document.getElementById('ticketSeleccionadoFullInfo');
+  const ticketDetalleBody = document.getElementById('ticketDetalleBody');
+  const ticketAcciones = document.getElementById('ticketAccionesFull');
   const btnPdfTicket = document.getElementById('btnPdfTicketFull');
   const btnPresupuestoTicket = document.getElementById('btnPresupuestoTicketFull');
   const btnEnviarPresupuestoTicket = document.getElementById('btnEnviarPresupuestoTicketFull');
@@ -67,6 +71,122 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function descripcionEquipo(ticket) {
     return [ticket.tipo, ticket.marca, ticket.modelo].filter(Boolean).join(' - ');
+  }
+
+  function detalleTexto(value, fallback = 'Sin dato') {
+    const texto = String(value ?? '').trim();
+    return texto ? escapeHtml(texto) : fallback;
+  }
+
+  function renderEstadoVisual(ticket) {
+    if (!ticket) return '';
+
+    const etapas = [
+      { codigo: 'PENDIENTE', label: 'Pendiente' },
+      { codigo: 'PRESUPUESTO_ENVIADO', label: 'Presupuesto' },
+      { codigo: 'EN_REPARACION', label: 'En reparacion' },
+      { codigo: 'LISTO', label: 'Listo' },
+      { codigo: 'ENTREGADO', label: 'Entregado' }
+    ];
+    const indiceActual = etapas.findIndex(etapa => etapa.codigo === ticket.estado_codigo);
+    const estadoAlternativo = {
+      PRESUPUESTO_RECHAZADO: 'Presupuesto rechazado',
+      RETIRADO_SIN_REPARAR: 'Retirado sin reparar',
+      DEVUELTO_SIN_REPARAR: 'Devuelto sin reparar'
+    }[ticket.estado_codigo];
+
+    const pasos = etapas.map((etapa, indice) => {
+      const clase = indiceActual === indice
+        ? 'is-current'
+        : (indiceActual > indice ? 'is-done' : '');
+      const icono = indiceActual > indice ? 'OK' : String(indice + 1);
+
+      return `
+        <button type="button" class="estado-step ${clase}" data-estado-codigo="${escapeHtml(etapa.codigo)}" data-estado-label="${escapeHtml(etapa.label)}">
+          <div class="estado-step-marker">${icono}</div>
+          <div class="estado-step-label">${escapeHtml(etapa.label)}</div>
+        </button>
+      `;
+    }).join('');
+
+    return `
+      <div class="estado-panel">
+        <div class="estado-track">
+          ${pasos}
+        </div>
+        <div class="estado-actual">
+          <strong>Estado actual:</strong>
+          <span>${escapeHtml(estadoLegible(ticket))}</span>
+        </div>
+        ${estadoAlternativo ? `<div class="estado-alternativo">${escapeHtml(estadoAlternativo)}</div>` : ''}
+      </div>
+    `;
+  }
+
+  async function obtenerHistorialTicket(uuid) {
+    if (!uuid) return [];
+    if (historialCache.has(uuid)) {
+      return historialCache.get(uuid);
+    }
+
+    const historial = await window.api.obtenerHistorialTicket(uuid);
+    historialCache.set(uuid, historial);
+    return historial;
+  }
+
+  function fechaHoraLarga(valor) {
+    if (!valor) return '';
+    const fecha = new Date(valor);
+    if (Number.isNaN(fecha.getTime())) return '';
+    return fecha.toLocaleString('es-AR');
+  }
+
+  function buscarPasoHistorial(historial, estadoCodigo) {
+    const equivalencias = {
+      PENDIENTE: ['Pendiente'],
+      PRESUPUESTO_ENVIADO: ['Presupuesto enviado'],
+      EN_REPARACION: ['En reparacion'],
+      LISTO: ['Listo para entregar'],
+      ENTREGADO: ['Entregado']
+    };
+
+    const descripciones = equivalencias[estadoCodigo] || [];
+    return historial.find(item => descripciones.includes(item.estado_destino));
+  }
+
+  function conectarEstadoVisual(ticket) {
+    const botones = ticketDetalleBody.querySelectorAll('.estado-step');
+    botones.forEach(boton => {
+      boton.addEventListener('click', async () => {
+        if (!ticket) return;
+
+        const estadoCodigo = boton.dataset.estadoCodigo;
+        const estadoLabel = boton.dataset.estadoLabel || estadoCodigo;
+
+        try {
+          const historial = await obtenerHistorialTicket(ticket.uuid);
+          const paso = buscarPasoHistorial(historial, estadoCodigo);
+
+          if (paso) {
+            await mostrarAlerta(
+              'Paso del ticket',
+              `${estadoLabel}: ${fechaHoraLarga(paso.fecha)}`
+            );
+            return;
+          }
+
+          await mostrarAlerta(
+            'Paso del ticket',
+            `El ticket todavia no paso por ${estadoLabel}.`
+          );
+        } catch (error) {
+          await mostrarAlerta(
+            'No se pudo consultar el historial',
+            error.message || 'No se pudo consultar el historial del ticket.'
+          );
+        }
+      });
+    });
   }
 
   function puedeEnviarPresupuesto(ticket) {
@@ -220,14 +340,50 @@ document.addEventListener('DOMContentLoaded', () => {
     btnRechazarPresupuestoTicket.disabled = !tieneTicket;
     btnRetiradoSinRepararTicket.disabled = !tieneTicket;
     btnEntregarTicket.disabled = !tieneTicket;
+    btnHistorialTicket.disabled = !tieneTicket;
+    ticketAcciones.classList.toggle('hidden', !tieneTicket);
 
     if (!tieneTicket) {
       ticketSeleccionadoInfo.textContent = 'Seleccione un ticket para operar.';
+      ticketDetalleBody.innerHTML = '<div class="alert-detail-empty">Seleccione un ticket de la grilla para ver el detalle completo.</div>';
       return;
     }
 
     ticketSeleccionadoInfo.textContent =
       `${ticketCodigo(ticketSeleccionado)} - ${ticketSeleccionado.nombre} ${ticketSeleccionado.apellido} - ${descripcionEquipo(ticketSeleccionado)}`;
+    ticketDetalleBody.innerHTML = `
+      <div class="alert-detail-grid">
+        ${renderEstadoVisual(ticketSeleccionado)}
+        <div class="detail-row"><strong>Fecha ingreso:</strong><span>${detalleTexto(fechaCorta(ticketSeleccionado.fecha_ingreso))}</span></div>
+        <div class="detail-row"><strong>Ticket:</strong><span>${detalleTexto(ticketCodigo(ticketSeleccionado))}</span></div>
+        <div class="detail-row"><strong>Estado:</strong><span>${detalleTexto(estadoLegible(ticketSeleccionado))}</span></div>
+        <div class="detail-row"><strong>Cliente:</strong><span>${detalleTexto(`${ticketSeleccionado.nombre || ''} ${ticketSeleccionado.apellido || ''}`)}</span></div>
+        <div class="detail-row"><strong>DNI:</strong><span>${detalleTexto(ticketSeleccionado.dni)}</span></div>
+        <div class="detail-row"><strong>Celular:</strong><span>${detalleTexto(ticketSeleccionado.celular)}</span></div>
+        <div class="detail-row"><strong>Email:</strong><span>${detalleTexto(ticketSeleccionado.email)}</span></div>
+        <hr>
+        <div class="detail-row"><strong>Equipo:</strong><span>${detalleTexto(descripcionEquipo(ticketSeleccionado))}</span></div>
+        <div class="detail-row"><strong>Codigo / Serie:</strong><span>${detalleTexto(ticketSeleccionado.codigo_equipo)}</span></div>
+        <div class="detail-row"><strong>Falla:</strong><span>${detalleTexto(ticketSeleccionado.descripcion_falla)}</span></div>
+        <div class="detail-row"><strong>Reparacion presupuestada:</strong><span>${detalleTexto(ticketSeleccionado.reparacion_presupuestada)}</span></div>
+        <hr>
+        <div class="detail-row"><strong>Presupuesto:</strong><span>${detalleTexto(
+          Number(ticketSeleccionado.valor_reparacion || 0) > 0 ? dinero(ticketSeleccionado.valor_reparacion) : '',
+          'Sin cargar'
+        )}</span></div>
+        <div class="detail-row"><strong>Sena:</strong><span>${detalleTexto(
+          Number(ticketSeleccionado.sena || 0) > 0 ? dinero(ticketSeleccionado.sena) : '',
+          'Sin sena'
+        )}</span></div>
+        <div class="detail-row"><strong>Saldo:</strong><span>${detalleTexto(
+          Number(ticketSeleccionado.valor_reparacion || 0) > 0
+            ? dinero(Number(ticketSeleccionado.valor_reparacion || 0) - Number(ticketSeleccionado.sena || 0))
+            : '',
+          'Sin calcular'
+        )}</span></div>
+      </div>
+    `;
+    conectarEstadoVisual(ticketSeleccionado);
   }
 
   async function cambiarEstadoTicket(ticket, nuevoEstado) {
@@ -245,6 +401,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     await cargarTickets();
+    historialCache.delete(ticket.uuid);
   }
 
   function estadoPorCodigo(codigo) {
@@ -412,6 +569,7 @@ document.addEventListener('DOMContentLoaded', () => {
       await enviarPresupuestoCliente(ticket, presupuesto);
       await cargarFiltroEstados();
       await cargarTickets();
+      historialCache.delete(ticket.uuid);
     } catch (error) {
       await mostrarAlerta('No se pudo enviar', error.message || 'No se pudo enviar el presupuesto');
     }
@@ -428,6 +586,7 @@ document.addEventListener('DOMContentLoaded', () => {
       await mostrarAlerta('Ticket enviado a Caja', 'El ticket paso a Entregado y se envio a Caja para cobrar.');
       modalEntrega.classList.add('hidden');
       await cargarTickets();
+      historialCache.delete(ticketEntregaActual);
     } catch (error) {
       await mostrarAlerta('No se pudo entregar', error.message || 'No se pudo entregar el ticket');
     }
@@ -463,6 +622,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       await cargarTickets();
+      historialCache.delete(ticketPresupuestoActual.uuid);
     } catch (error) {
       await mostrarAlerta('No se pudo guardar', error.message || 'No se pudo guardar el presupuesto');
     }
@@ -484,6 +644,7 @@ document.addEventListener('DOMContentLoaded', () => {
       modalPresupuesto.classList.add('hidden');
       await cargarFiltroEstados();
       await cargarTickets();
+      historialCache.delete(ticketPresupuestoActual.uuid);
     } catch (error) {
       await mostrarAlerta('No se pudo enviar', error.message || 'No se pudo enviar el presupuesto');
     }
@@ -498,6 +659,14 @@ document.addEventListener('DOMContentLoaded', () => {
   btnActualizar.addEventListener('click', async () => {
     await cargarFiltroEstados();
     await cargarTickets();
+  });
+  btnHistorialTicket.addEventListener('click', async () => {
+    if (!ticketSeleccionado) {
+      await mostrarAlerta('Sin ticket seleccionado', 'Seleccione un ticket para ver el historial.');
+      return;
+    }
+
+    await window.api.abrirHistorialTicket(ticketSeleccionado.uuid);
   });
   btnPdfTicket.addEventListener('click', () => generarPDFIngresoSeleccionado(ticketSeleccionado));
   btnPresupuestoTicket.addEventListener('click', () => {

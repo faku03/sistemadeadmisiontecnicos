@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Devoluciones de Caja</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="app devoluciones-app">
+    <section class="panel caja-table-panel">
+      <div class="tickets-header">
+        <h2>Tickets cobrados</h2>
+        <input id="buscarCobradosDevolucion" placeholder="Buscar cliente, equipo o ticket">
+      </div>
+
+      <div class="ticket-actions-bar">
+        <div id="devolucionSeleccionadoInfo" class="ticket-selected-text">Seleccione un ticket cobrado para registrar la devolucion.</div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="tabla tabla-caja">
+          <thead>
+            <tr>
+              <th>Cliente</th>
+              <th>Equipo</th>
+              <th>Ticket</th>
+              <th>Cobrado</th>
+              <th>Devuelto</th>
+              <th>Fecha</th>
+            </tr>
+          </thead>
+          <tbody id="tablaCobradosDevolucion"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel devolucion-form-panel">
+      <h2>Registrar devolucion</h2>
+      <div class="ticket-context" id="devolucionTicketInfo"></div>
+      <input id="devolucionTicket" placeholder="Ticket">
+      <input id="devolucionImporte" type="number" min="0" step="0.01" placeholder="Importe">
+      <textarea id="devolucionMotivo" placeholder="Motivo de la devolucion"></textarea>
+      <div class="ticket-actions caja-ticket-actions">
+        <button id="btnRegistrarDevolucion" type="button">Registrar devolucion</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="app-dialog.js"></script>
+  <script src="devoluciones-caja.js"></script>
+</body>
+</html>

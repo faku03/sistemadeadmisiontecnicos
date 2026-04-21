@@ -472,6 +472,40 @@ button:active,
   gap: 10px;
 }
 
+.tickets-grid-layout {
+  height: 100%;
+}
+
+.ticket-detail .ticket-selected-text {
+  display: block;
+  padding: 0 0 6px;
+  border-bottom: 1px solid var(--color-border);
+  line-height: 1.45;
+  font-size: 12px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.detail-row {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.detail-row strong {
+  line-height: 1.35;
+}
+
+.detail-row span {
+  min-width: 0;
+  line-height: 1.4;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .alerts-table-wrap {
   height: 100%;
 }
@@ -488,6 +522,10 @@ button:active,
   gap: 10px;
 }
 
+.ticket-detail {
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+}
+
 .alert-detail-body {
   min-height: 0;
   overflow: auto;
@@ -499,6 +537,95 @@ button:active,
   gap: 8px;
   color: var(--color-text);
   font-size: 13px;
+}
+
+.estado-panel {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #cfe0f4;
+  border-radius: var(--radius);
+  background: #f7fbff;
+}
+
+.estado-track {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.estado-step {
+  display: grid;
+  gap: 5px;
+  justify-items: center;
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.estado-step-marker {
+  width: 26px;
+  height: 26px;
+  border: 1px solid #c8d5e5;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--color-text-muted);
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.estado-step-label {
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+.estado-step.is-done .estado-step-marker {
+  border-color: #8fb4ef;
+  background: #e9f2ff;
+  color: var(--color-primary);
+}
+
+.estado-step.is-done .estado-step-label {
+  color: var(--color-title);
+}
+
+.estado-step.is-current .estado-step-marker {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.estado-step.is-current .estado-step-label {
+  color: var(--color-title);
+  font-weight: 750;
+}
+
+.estado-actual {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  color: var(--color-text);
+  font-size: 12px;
+}
+
+.estado-actual strong {
+  color: var(--color-title);
+}
+
+.estado-alternativo {
+  padding: 6px 8px;
+  border: 1px solid #f2c2bf;
+  border-radius: 6px;
+  background: #fff2f1;
+  color: #a23a31;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .alert-detail-grid strong {
@@ -664,6 +791,10 @@ tr:hover td,
   background: #eaf2ff;
 }
 
+.tabla tr.selected-row td {
+  background: #eaf2ff;
+}
+
 td button {
   min-height: 30px;
   padding: 5px 9px;
@@ -791,35 +922,58 @@ td button {
 }
 
 .caja-app {
-  grid-template-columns: minmax(0, 1fr) 360px;
-  grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: 240px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  gap: 10px;
 }
 
-.caja-summary {
-  grid-column: 1 / -1;
+.caja-side-panel {
+  grid-column: 1;
+  grid-row: 1;
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) repeat(3, minmax(150px, 220px));
-  align-items: center;
+  align-content: start;
+  gap: 10px;
+}
+
+.caja-main-tabs {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 10px;
+}
+
+.caja-tabs {
+  align-self: start;
+}
+
+.caja-tab-panel {
+  min-height: 0;
+}
+
+.caja-side-header {
+  display: grid;
+  gap: 4px;
 }
 
 .summary-card {
-  min-height: 76px;
-  padding: 12px;
+  min-height: 66px;
+  padding: 10px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   background: var(--color-surface-soft);
   display: grid;
-  gap: 5px;
+  gap: 3px;
 }
 
 .summary-card span {
   color: var(--color-text-muted);
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .summary-card strong {
   color: var(--color-title);
-  font-size: 22px;
+  font-size: 19px;
 }
 
 .summary-card.primary {
@@ -827,14 +981,169 @@ td button {
   background: #eef5ff;
 }
 
-.caja-actions {
-  grid-column: 2;
-  grid-row: 2 / 4;
-  align-self: stretch;
+.caja-side-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.caja-side-actions button {
+  width: 100%;
 }
 
 .caja-table-panel {
   overflow: hidden;
+  padding: 10px;
+}
+
+.caja-ticket-actions {
+  grid-template-columns: repeat(2, auto);
+  justify-content: flex-end;
+}
+
+.caja-panel-pendientes .caja-ticket-actions {
+  grid-template-columns: auto;
+}
+
+.tabla-caja td,
+.tabla-caja th {
+  white-space: nowrap;
+  padding: 7px 8px;
+  font-size: 12.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tabla-caja {
+  table-layout: fixed;
+}
+
+.tabla-caja-pendientes th:nth-child(1),
+.tabla-caja-pendientes td:nth-child(1) {
+  width: 20%;
+}
+
+.tabla-caja-pendientes th:nth-child(2),
+.tabla-caja-pendientes td:nth-child(2) {
+  width: 14%;
+}
+
+.tabla-caja-pendientes th:nth-child(3),
+.tabla-caja-pendientes td:nth-child(3) {
+  width: 22%;
+}
+
+.tabla-caja-pendientes th:nth-child(4),
+.tabla-caja-pendientes td:nth-child(4) {
+  width: 17%;
+}
+
+.tabla-caja-pendientes th:nth-child(5),
+.tabla-caja-pendientes td:nth-child(5),
+.tabla-caja-pendientes th:nth-child(6),
+.tabla-caja-pendientes td:nth-child(6),
+.tabla-caja-pendientes th:nth-child(7),
+.tabla-caja-pendientes td:nth-child(7) {
+  width: 9%;
+  text-align: right;
+}
+
+.tabla-caja-cobrados {
+  table-layout: fixed;
+}
+
+.tabla-caja-cobrados th:nth-child(1),
+.tabla-caja-cobrados td:nth-child(1) {
+  width: 12%;
+}
+
+.tabla-caja-cobrados th:nth-child(2),
+.tabla-caja-cobrados td:nth-child(2) {
+  width: 18%;
+}
+
+.tabla-caja-cobrados th:nth-child(3),
+.tabla-caja-cobrados td:nth-child(3) {
+  width: 18%;
+}
+
+.tabla-caja-cobrados th:nth-child(4),
+.tabla-caja-cobrados td:nth-child(4),
+.tabla-caja-cobrados th:nth-child(5),
+.tabla-caja-cobrados td:nth-child(5),
+.tabla-caja-cobrados th:nth-child(6),
+.tabla-caja-cobrados td:nth-child(6) {
+  text-align: right;
+}
+
+.tabla-caja-cobrados th:nth-child(4),
+.tabla-caja-cobrados td:nth-child(4) {
+  width: 26%;
+}
+
+.tabla-caja-cobrados th:nth-child(5),
+.tabla-caja-cobrados td:nth-child(5) {
+  width: 10%;
+}
+
+.tabla-caja-cobrados th:nth-child(6),
+.tabla-caja-cobrados td:nth-child(6) {
+  width: 10%;
+}
+
+.tabla-caja-pendientes th:nth-child(5),
+.tabla-caja-pendientes th:nth-child(6),
+.tabla-caja-pendientes th:nth-child(7),
+.tabla-caja-cobrados th:nth-child(5),
+.tabla-caja-cobrados th:nth-child(6),
+.tabla-caja-cobrados th:nth-child(1) {
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.devoluciones-app {
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 12px;
+}
+
+.devolucion-form-panel {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+
+.table-empty {
+  padding: 18px 12px;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.caja-table-panel .tickets-header {
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.caja-table-panel .ticket-actions-bar {
+  margin-bottom: 8px;
+  padding: 6px 8px;
+  gap: 8px;
+}
+
+.caja-table-panel .ticket-selected-text {
+  font-size: 12px;
+}
+
+.caja-table-panel .table-wrap {
+  height: calc(100% - 84px);
+}
+
+.caja-full-table {
+  height: calc(100% - 84px);
+}
+
+.caja-side-panel h2,
+.caja-table-panel h2 {
+  font-size: 16px;
+  margin-bottom: 4px;
 }
 
 .abm-shell {
@@ -843,6 +1152,64 @@ td button {
   padding: 14px;
   display: grid;
   place-items: center;
+}
+
+.config-layout {
+  width: min(100%, 980px);
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 12px;
+}
+
+.config-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.config-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.config-tab {
+  min-width: 180px;
+}
+
+.config-tab.is-active {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.config-panel {
+  min-height: 0;
+}
+
+.config-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  align-content: start;
+}
+
+.config-input-action {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.config-inline-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-start;
+}
+
+.config-grid-alertas {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .abm-layout {
@@ -933,14 +1300,21 @@ td button {
     grid-template-columns: 1fr;
   }
 
+  .estado-track {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .caja-app,
-  .caja-summary {
+  .devoluciones-app {
     grid-template-columns: 1fr;
   }
 
-  .caja-actions {
-    grid-column: auto;
+  .caja-side-panel {
     grid-row: auto;
+  }
+
+  .caja-ticket-actions {
+    grid-template-columns: 1fr;
   }
 }
 

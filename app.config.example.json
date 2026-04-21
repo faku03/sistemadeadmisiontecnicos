@@ -2,6 +2,13 @@
   "apiUrl": "http://SERVIDOR-GATEWAY:3000",
   "sucursalId": "CODIGO-SUCURSAL-O-TECNICO",
   "sucursalNombre": "Nombre visible de la sucursal o tecnico",
+  "pdfBusinessStreet": "Av. Independencia 1234",
+  "pdfBusinessLocality": "Mar del Plata",
+  "pdfBusinessProvince": "Buenos Aires",
+  "pdfBusinessName": "Nombre del negocio para PDF",
+  "pdfBusinessAddress": "Direccion visible en PDF",
+  "pdfBusinessPhone": "Telefono visible en PDF",
+  "pdfBusinessEmail": "Email visible en PDF",
   "licenseMode": "server",
   "licenseServerUrl": "http://SERVIDOR-GATEWAY:3000",
   "licenseGraceDays": 7

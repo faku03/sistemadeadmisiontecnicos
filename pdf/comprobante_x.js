@@ -1,6 +1,7 @@
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
+const { drawHeader, drawDocumentTitle, sectionTitle, infoLine, money, signatureLine } = require('./common');
 
 function generarComprobanteX(datos, outputDir) {
   const numero = String(datos.numero).padStart(8, '0');
@@ -17,41 +18,40 @@ function generarComprobanteX(datos, outputDir) {
   const cliente = `${datos.nombre} ${datos.apellido}`;
   const equipo = `${datos.tipo} - ${datos.marca} ${datos.modelo}`;
 
-  doc.fontSize(26).text('X', { align: 'center' });
-  doc.fontSize(14).text('DOCUMENTO NO VALIDO COMO FACTURA', { align: 'center' });
-  doc.moveDown();
+  drawHeader(doc, datos);
+  doc.fontSize(26).font('Helvetica-Bold').fillColor('#0f4c81').text('X', { align: 'center' });
+  doc.fontSize(14).font('Helvetica-Bold').fillColor('#2d4766').text('DOCUMENTO NO VALIDO COMO FACTURA', { align: 'center' });
+  doc.moveDown(0.4);
+  drawDocumentTitle(doc, 'COMPROBANTE DE COBRO');
 
-  doc.fontSize(18).text('COMPROBANTE DE COBRO', { align: 'center' });
-  doc.moveDown();
+  sectionTitle(doc, 'Comprobante');
+  infoLine(doc, 'Comprobante X Nro', numero);
+  infoLine(doc, 'Fecha', datos.fecha_cobro || new Date().toLocaleString('es-AR'));
+  infoLine(doc, 'Ticket', ticketCodigo);
 
-  doc.fontSize(12);
-  doc.text(`Comprobante X Nro: ${numero}`);
-  doc.text(`Fecha: ${datos.fecha_cobro || new Date().toLocaleString('es-AR')}`);
-  doc.text(`Ticket: ${ticketCodigo}`);
-  doc.moveDown();
+  sectionTitle(doc, 'Cliente');
+  infoLine(doc, 'Nombre', cliente);
+  infoLine(doc, 'DNI', datos.dni);
+  infoLine(doc, 'Celular', datos.celular);
 
-  doc.text('CLIENTE', { underline: true });
-  doc.text(`Nombre: ${cliente}`);
-  doc.text(`DNI: ${datos.dni || '---'}`);
-  doc.text(`Celular: ${datos.celular || '---'}`);
-  doc.moveDown();
+  sectionTitle(doc, 'Equipo');
+  infoLine(doc, 'Equipo', equipo);
+  infoLine(doc, 'Falla', datos.descripcion_falla);
+  infoLine(doc, 'Trabajo realizado', datos.trabajo_realizado);
 
-  doc.text('EQUIPO', { underline: true });
-  doc.text(equipo);
-  doc.text(`Falla: ${datos.descripcion_falla || '---'}`);
-  doc.text(`Trabajo realizado: ${datos.trabajo_realizado || '---'}`);
-  doc.moveDown();
-
-  doc.text('IMPORTE', { underline: true });
-  doc.text(`Total presupuesto: $${Number(datos.importe_total || 0).toFixed(2)}`);
-  doc.text(`Sena: $${Number(datos.sena || 0).toFixed(2)}`);
-  doc.fontSize(15).text(`Saldo cobrado: $${total.toFixed(2)}`);
+  sectionTitle(doc, 'Importe');
+  infoLine(doc, 'Total presupuesto', money(datos.importe_total));
+  infoLine(doc, 'Sena', money(datos.sena));
+  doc.font('Helvetica-Bold').fontSize(15).fillColor('#0f4c81').text(`Saldo cobrado: ${money(total)}`);
   doc.moveDown(2);
 
-  doc.fontSize(10).text(
+  doc.font('Helvetica').fontSize(10).fillColor('#000000').text(
     'Este comprobante respalda un cobro interno y no reemplaza la factura electronica fiscal correspondiente.',
     { align: 'center' }
   );
+
+  doc.moveDown(3);
+  signatureLine(doc, 'Firma / aclaracion');
 
   doc.end();
   return ruta;

@@ -1,7 +1,19 @@
 const { app, BrowserWindow, ipcMain, shell } = require('electron');
+const fs = require('fs');
 const path = require('path');
 const db = require('./services/data-source');
 const license = require('./license/license-service');
+
+const appDataBase = path.join(process.env.APPDATA || app.getPath('appData'), 'SistemaTicketsCaja');
+const electronSessionDir = path.join(appDataBase, 'electron-session');
+const electronCacheDir = path.join(appDataBase, 'electron-cache');
+
+fs.mkdirSync(electronSessionDir, { recursive: true });
+fs.mkdirSync(electronCacheDir, { recursive: true });
+
+app.setPath('sessionData', electronSessionDir);
+app.commandLine.appendSwitch('disk-cache-dir', electronCacheDir);
+app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -18,6 +30,25 @@ function createWindow() {
   });
 
   win.loadFile('index-caja.html');
+}
+
+function abrirVentana(ruta, titulo, width = 1060, height = 720) {
+  const win = new BrowserWindow({
+    width,
+    height,
+    minWidth: 900,
+    minHeight: 620,
+    center: true,
+    autoHideMenuBar: true,
+    title: titulo,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload-caja.js'),
+      contextIsolation: true,
+      sandbox: true
+    }
+  });
+
+  win.loadFile(ruta);
 }
 
 ipcMain.handle('caja:listar-pendientes', () =>
@@ -74,5 +105,9 @@ ipcMain.handle('caja:whatsapp', (_, data) => {
 
   return shell.openExternal(url);
 });
+
+ipcMain.handle('caja:abrir-devoluciones', () =>
+  abrirVentana('devoluciones-caja.html', 'Devoluciones de Caja', 1120, 720)
+);
 
 app.whenReady().then(createWindow);

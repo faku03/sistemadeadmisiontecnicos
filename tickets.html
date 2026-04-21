@@ -22,35 +22,42 @@
         </div>
       </div>
 
-      <div class="ticket-actions-bar">
-        <div id="ticketSeleccionadoFullInfo" class="ticket-selected-text">Seleccione un ticket para operar.</div>
-        <div class="ticket-actions">
-          <button id="btnPdfTicketFull" type="button" disabled>PDF ingreso</button>
-          <button id="btnPresupuestoTicketFull" type="button" disabled>Presupuesto</button>
-          <button id="btnEnviarPresupuestoTicketFull" type="button" disabled>Enviar presupuesto</button>
-          <button id="btnAceptarPresupuestoTicketFull" type="button" disabled>Aceptar presupuesto</button>
-          <button id="btnRechazarPresupuestoTicketFull" type="button" disabled>Rechazar presupuesto</button>
-          <button id="btnRetiradoSinRepararTicketFull" type="button" disabled>Retirado sin reparar</button>
-          <button id="btnEntregarTicketFull" type="button" disabled>Entregar</button>
+      <div class="alerts-grid-layout tickets-grid-layout">
+        <div class="table-wrap alerts-table-wrap">
+          <table class="tabla-tickets">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Ticket</th>
+                <th>Cliente</th>
+                <th>Celular</th>
+                <th>Equipo</th>
+                <th>Falla</th>
+                <th>Estado</th>
+                <th>Presupuesto</th>
+              </tr>
+            </thead>
+            <tbody id="listaTicketsFull"></tbody>
+          </table>
         </div>
-      </div>
 
-      <div class="table-wrap">
-        <table class="tabla-tickets">
-          <thead>
-            <tr>
-              <th>Fecha</th>
-              <th>Ticket</th>
-              <th>Cliente</th>
-              <th>Celular</th>
-              <th>Equipo</th>
-              <th>Falla</th>
-              <th>Estado</th>
-              <th>Presupuesto</th>
-            </tr>
-          </thead>
-          <tbody id="listaTicketsFull"></tbody>
-        </table>
+        <aside class="alert-detail ticket-detail">
+          <h3>Detalle del ticket</h3>
+          <div id="ticketSeleccionadoFullInfo" class="ticket-selected-text">Seleccione un ticket para operar.</div>
+          <div class="alert-detail-body" id="ticketDetalleBody">
+            <div class="alert-detail-empty">Seleccione un ticket de la grilla para ver el detalle completo.</div>
+          </div>
+          <div class="alert-detail-actions hidden" id="ticketAccionesFull">
+            <button id="btnPdfTicketFull" type="button" disabled>PDF ingreso</button>
+            <button id="btnPresupuestoTicketFull" type="button" disabled>Presupuesto</button>
+            <button id="btnEnviarPresupuestoTicketFull" type="button" disabled>Enviar presupuesto</button>
+            <button id="btnAceptarPresupuestoTicketFull" type="button" disabled>Aceptar presupuesto</button>
+            <button id="btnRechazarPresupuestoTicketFull" type="button" disabled>Rechazar presupuesto</button>
+            <button id="btnRetiradoSinRepararTicketFull" type="button" disabled>Retirado sin reparar</button>
+            <button id="btnHistorialTicketFull" type="button" disabled>Historial</button>
+            <button id="btnEntregarTicketFull" type="button" disabled>Entregar</button>
+          </div>
+        </aside>
       </div>
     </section>
   </main>

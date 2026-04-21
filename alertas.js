@@ -20,6 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnAceptarPresupuestoTicket = document.getElementById('btnAceptarPresupuestoTicket');
   const btnRechazarPresupuestoTicket = document.getElementById('btnRechazarPresupuestoTicket');
   const btnRetiradoSinRepararTicket = document.getElementById('btnRetiradoSinRepararTicket');
+  const btnHistorialTicket = document.getElementById('btnHistorialTicket');
   const btnEntregarTicket = document.getElementById('btnEntregarTicket');
   const modalEntrega = document.getElementById('modalEntrega');
   const inputTrabajo = document.getElementById('trabajoEntrega');
@@ -47,6 +48,8 @@ document.addEventListener('DOMContentLoaded', () => {
   let alertaSeleccionada = null;
   let ticketEntregaActual = null;
   let ticketPresupuestoActual = null;
+  let historialCache = new Map();
+  let alertasConfigActual = { ...alertasDefaults };
 
   function mostrarAlerta(title, message) {
     return window.appDialog?.alert({ title, message }) || Promise.resolve(alert(message));
@@ -89,6 +92,126 @@ document.addEventListener('DOMContentLoaded', () => {
     return `$${Number(valor || 0).toFixed(2)}`;
   }
 
+  function escapeHtml(value) {
+    return String(value ?? '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
+  }
+
+  function renderEstadoVisual(ticket) {
+    if (!ticket) return '';
+
+    const etapas = [
+      { codigo: 'PENDIENTE', label: 'Pendiente' },
+      { codigo: 'PRESUPUESTO_ENVIADO', label: 'Presupuesto' },
+      { codigo: 'EN_REPARACION', label: 'En reparacion' },
+      { codigo: 'LISTO', label: 'Listo' },
+      { codigo: 'ENTREGADO', label: 'Entregado' }
+    ];
+    const indiceActual = etapas.findIndex(etapa => etapa.codigo === ticket.estado_codigo);
+    const estadoAlternativo = {
+      PRESUPUESTO_RECHAZADO: 'Presupuesto rechazado',
+      RETIRADO_SIN_REPARAR: 'Retirado sin reparar',
+      DEVUELTO_SIN_REPARAR: 'Devuelto sin reparar'
+    }[ticket.estado_codigo];
+
+    const pasos = etapas.map((etapa, indice) => {
+      const clase = indiceActual === indice
+        ? 'is-current'
+        : (indiceActual > indice ? 'is-done' : '');
+      const icono = indiceActual > indice ? 'OK' : String(indice + 1);
+
+      return `
+        <button type="button" class="estado-step ${clase}" data-estado-codigo="${escapeHtml(etapa.codigo)}" data-estado-label="${escapeHtml(etapa.label)}">
+          <div class="estado-step-marker">${icono}</div>
+          <div class="estado-step-label">${escapeHtml(etapa.label)}</div>
+        </button>
+      `;
+    }).join('');
+
+    return `
+      <div class="estado-panel">
+        <div class="estado-track">
+          ${pasos}
+        </div>
+        <div class="estado-actual">
+          <strong>Estado actual:</strong>
+          <span>${escapeHtml(estadoLegible(ticket))}</span>
+        </div>
+        ${estadoAlternativo ? `<div class="estado-alternativo">${escapeHtml(estadoAlternativo)}</div>` : ''}
+      </div>
+    `;
+  }
+
+  async function obtenerHistorialTicket(uuid) {
+    if (!uuid) return [];
+    if (historialCache.has(uuid)) {
+      return historialCache.get(uuid);
+    }
+
+    const historial = await window.api.obtenerHistorialTicket(uuid);
+    historialCache.set(uuid, historial);
+    return historial;
+  }
+
+  function fechaHoraLarga(valor) {
+    if (!valor) return '';
+    const fecha = new Date(valor);
+    if (Number.isNaN(fecha.getTime())) return '';
+    return fecha.toLocaleString('es-AR');
+  }
+
+  function buscarPasoHistorial(historial, estadoCodigo) {
+    const equivalencias = {
+      PENDIENTE: ['Pendiente'],
+      PRESUPUESTO_ENVIADO: ['Presupuesto enviado'],
+      EN_REPARACION: ['En reparacion'],
+      LISTO: ['Listo para entregar'],
+      ENTREGADO: ['Entregado']
+    };
+
+    const descripciones = equivalencias[estadoCodigo] || [];
+    return historial.find(item => descripciones.includes(item.estado_destino));
+  }
+
+  function conectarEstadoVisual(ticket) {
+    const botones = alertaDetalleBody.querySelectorAll('.estado-step');
+    botones.forEach(boton => {
+      boton.addEventListener('click', async () => {
+        if (!ticket) return;
+
+        const estadoCodigo = boton.dataset.estadoCodigo;
+        const estadoLabel = boton.dataset.estadoLabel || estadoCodigo;
+
+        try {
+          const historial = await obtenerHistorialTicket(ticket.uuid);
+          const paso = buscarPasoHistorial(historial, estadoCodigo);
+
+          if (paso) {
+            await mostrarAlerta(
+              'Paso del ticket',
+              `${estadoLabel}: ${fechaHoraLarga(paso.fecha)}`
+            );
+            return;
+          }
+
+          await mostrarAlerta(
+            'Paso del ticket',
+            `El ticket todavia no paso por ${estadoLabel}.`
+          );
+        } catch (error) {
+          await mostrarAlerta(
+            'No se pudo consultar el historial',
+            error.message || 'No se pudo consultar el historial del ticket.'
+          );
+        }
+      });
+    });
+  }
+
   function puedeEnviarPresupuesto(ticket) {
     return Boolean(ticket) &&
       ['PENDIENTE', 'PRESUPUESTO_ENVIADO'].includes(ticket.estado_codigo);
@@ -123,30 +246,25 @@ document.addEventListener('DOMContentLoaded', () => {
     return Number.isFinite(numero) && numero > 0 ? Math.floor(numero) : defecto;
   }
 
-  function cargarConfigAlertas() {
-    try {
-      const guardada = JSON.parse(localStorage.getItem('ticketAlertThresholds') || '{}');
-      return {
-        pendiente: normalizarDias(guardada.pendiente, alertasDefaults.pendiente),
-        reparacion: normalizarDias(guardada.reparacion, alertasDefaults.reparacion),
-        presupuesto: normalizarDias(guardada.presupuesto, alertasDefaults.presupuesto),
-        listo: normalizarDias(guardada.listo, alertasDefaults.listo)
-      };
-    } catch {
-      return { ...alertasDefaults };
-    }
-  }
-
-  function guardarConfigAlertas(config) {
-    const normalizada = {
+  function aplicarConfigAlertas(config = {}) {
+    alertasConfigActual = {
       pendiente: normalizarDias(config.pendiente, alertasDefaults.pendiente),
       reparacion: normalizarDias(config.reparacion, alertasDefaults.reparacion),
       presupuesto: normalizarDias(config.presupuesto, alertasDefaults.presupuesto),
       listo: normalizarDias(config.listo, alertasDefaults.listo)
     };
-    localStorage.setItem('ticketAlertThresholds', JSON.stringify(normalizada));
-    cargarInputsAlertas(normalizada);
-    return normalizada;
+    cargarInputsAlertas(alertasConfigActual);
+    return alertasConfigActual;
+  }
+
+  async function cargarConfigAlertasSistema() {
+    const config = await window.api.obtenerConfiguracion();
+    return aplicarConfigAlertas({
+      pendiente: config.alertPendingDays,
+      reparacion: config.alertRepairDays,
+      presupuesto: config.alertBudgetDays,
+      listo: config.alertReadyDays
+    });
   }
 
   function cargarInputsAlertas(config) {
@@ -206,6 +324,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const ticket = alerta.ticket;
     alertaDetalleBody.innerHTML = `
       <div class="alert-detail-grid">
+        ${renderEstadoVisual(ticket)}
         <div><strong>Alerta:</strong> ${alerta.titulo}</div>
         <div><strong>Estado:</strong> ${ticket.estado}</div>
         <div><strong>Fecha del estado:</strong> ${fechaCorta(alerta.fecha)}</div>
@@ -220,6 +339,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div><strong>Sena:</strong> $${Number(ticket.sena || 0).toFixed(2)}</div>
       </div>
     `;
+    conectarEstadoVisual(ticket);
     alertaAcciones.classList.remove('hidden');
     actualizarAcciones(ticket);
   }
@@ -232,6 +352,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btnAceptarPresupuestoTicket.disabled = !tieneTicket;
     btnRechazarPresupuestoTicket.disabled = !tieneTicket;
     btnRetiradoSinRepararTicket.disabled = !tieneTicket;
+    btnHistorialTicket.disabled = !tieneTicket;
     btnEntregarTicket.disabled = !tieneTicket;
   }
 
@@ -307,6 +428,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     await cargarAlertas();
+    historialCache.delete(ticket.uuid);
   }
 
   function estadoPorCodigo(codigo) {
@@ -467,15 +589,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
       await enviarPresupuestoCliente(ticket, presupuesto);
       await cargarAlertas();
+      historialCache.delete(ticket.uuid);
     } catch (error) {
       await mostrarAlerta('No se pudo enviar', error.message || 'No se pudo enviar el presupuesto');
     }
   }
 
   async function cargarAlertas() {
-    const config = cargarConfigAlertas();
-    cargarInputsAlertas(config);
-
+    const config = await cargarConfigAlertasSistema();
     ticketsActuales = await window.api.listarTickets();
     alertasActuales = alertasDeTickets(ticketsActuales, config);
     cargarFiltroEstados(alertasActuales);
@@ -483,11 +604,11 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   btnGuardarAlertas.addEventListener('click', async () => {
-    guardarConfigAlertas({
-      pendiente: alertaDiasPendiente.value,
-      reparacion: alertaDiasReparacion.value,
-      presupuesto: alertaDiasPresupuesto.value,
-      listo: alertaDiasListo.value
+    await window.api.guardarConfiguracion({
+      alertPendingDays: normalizarDias(alertaDiasPendiente.value, alertasDefaults.pendiente),
+      alertRepairDays: normalizarDias(alertaDiasReparacion.value, alertasDefaults.reparacion),
+      alertBudgetDays: normalizarDias(alertaDiasPresupuesto.value, alertasDefaults.presupuesto),
+      alertReadyDays: normalizarDias(alertaDiasListo.value, alertasDefaults.listo)
     });
     await cargarAlertas();
     await mostrarAlerta('Alertas actualizadas', 'Los dias de alerta fueron guardados.');
@@ -495,7 +616,12 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   btnRestaurarAlertas.addEventListener('click', async () => {
-    guardarConfigAlertas(alertasDefaults);
+    await window.api.guardarConfiguracion({
+      alertPendingDays: alertasDefaults.pendiente,
+      alertRepairDays: alertasDefaults.reparacion,
+      alertBudgetDays: alertasDefaults.presupuesto,
+      alertReadyDays: alertasDefaults.listo
+    });
     await cargarAlertas();
     await mostrarAlerta('Alertas actualizadas', 'Se restauraron los valores por defecto.');
     alertasConfig.classList.add('hidden');
@@ -506,7 +632,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   btnConfigAlertas.addEventListener('click', () => {
-    alertasConfig.classList.toggle('hidden');
+    window.api.abrirConfiguracion();
   });
 
   filtroEstadoAlerta.addEventListener('change', renderTabla);
@@ -537,6 +663,15 @@ document.addEventListener('DOMContentLoaded', () => {
     `El ticket ${alertaSeleccionada?.ticket ? ticketCodigo(alertaSeleccionada.ticket) : ''} quedara como Retirado sin reparar.`,
     'Confirmar'
   ));
+  btnHistorialTicket.addEventListener('click', async () => {
+    const ticket = alertaSeleccionada?.ticket;
+    if (!ticket) {
+      await mostrarAlerta('Sin ticket seleccionado', 'Seleccione una alerta para ver el historial del ticket.');
+      return;
+    }
+
+    await window.api.abrirHistorialTicket(ticket.uuid);
+  });
   btnEntregarTicket.addEventListener('click', async () => {
     const ticket = alertaSeleccionada?.ticket;
     if (!ticket) return;
@@ -563,6 +698,7 @@ document.addEventListener('DOMContentLoaded', () => {
       await mostrarAlerta('Ticket enviado a Caja', 'El ticket paso a Entregado y se envio a Caja para cobrar.');
       modalEntrega.classList.add('hidden');
       await cargarAlertas();
+      historialCache.delete(ticketEntregaActual);
     } catch (error) {
       await mostrarAlerta('No se pudo entregar', error.message || 'No se pudo entregar el ticket');
     }
@@ -597,6 +733,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       await cargarAlertas();
+      historialCache.delete(ticketPresupuestoActual.uuid);
     } catch (error) {
       await mostrarAlerta('No se pudo guardar', error.message || 'No se pudo guardar el presupuesto');
     }
@@ -617,6 +754,7 @@ document.addEventListener('DOMContentLoaded', () => {
       await enviarPresupuestoCliente(ticketPresupuestoActual, presupuesto);
       modalPresupuesto.classList.add('hidden');
       await cargarAlertas();
+      historialCache.delete(ticketPresupuestoActual.uuid);
     } catch (error) {
       await mostrarAlerta('No se pudo enviar', error.message || 'No se pudo enviar el presupuesto');
     }
@@ -624,6 +762,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   btnCancelarPresupuesto.addEventListener('click', () => {
     modalPresupuesto.classList.add('hidden');
+  });
+
+  window.eventos.onConfiguracionActualizada(async (config) => {
+    aplicarConfigAlertas({
+      pendiente: config.alertPendingDays,
+      reparacion: config.alertRepairDays,
+      presupuesto: config.alertBudgetDays,
+      listo: config.alertReadyDays
+    });
+    await cargarAlertas();
   });
 
   cargarAlertas().catch(error => mostrarAlerta('No se pudieron cargar', error.message || 'No se pudieron cargar las alertas.'));

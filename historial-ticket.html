@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Historial del Ticket</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="app alerts-app">
+    <section class="panel alerts-layout">
+      <div class="tickets-header">
+        <div>
+          <h2>Historial del ticket</h2>
+          <p class="muted" id="historialResumen">Cargando movimientos...</p>
+        </div>
+        <div class="alerts-head-actions">
+          <button id="btnActualizarHistorial" type="button">Actualizar</button>
+          <button id="btnCerrarHistorial" type="button">Cerrar</button>
+        </div>
+      </div>
+
+      <div class="alerts-grid-layout tickets-grid-layout">
+        <div class="table-wrap alerts-table-wrap">
+          <table class="tabla-tickets">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Evento</th>
+                <th>Origen</th>
+                <th>Destino</th>
+              </tr>
+            </thead>
+            <tbody id="listaHistorialTicket"></tbody>
+          </table>
+        </div>
+
+        <aside class="alert-detail ticket-detail">
+          <h3>Detalle del movimiento</h3>
+          <div class="alert-detail-body" id="historialDetalleBody">
+            <div class="alert-detail-empty">Seleccione un movimiento para ver el detalle completo.</div>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <script src="historial-ticket.js"></script>
+</body>
+</html>

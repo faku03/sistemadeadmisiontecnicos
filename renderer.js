@@ -3,7 +3,14 @@ let clienteActual = null;
 let ticketEntregaActual = null;
 
 document.addEventListener('DOMContentLoaded', () => {
-  window.licenseUI?.init();
+  const inicioPantalla = performance.now();
+  const tiemposInicio = [];
+  const medirPaso = (nombre) => {
+    tiemposInicio.push({
+      nombre,
+      ms: Math.round(performance.now() - inicioPantalla)
+    });
+  };
 
   // ================= ELEMENTOS =================
   const dni = document.getElementById('dni');
@@ -50,6 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnRetiradoSinRepararTicket = document.getElementById('btnRetiradoSinRepararTicket');
   const btnEntregarTicket = document.getElementById('btnEntregarTicket');
   const btnVerAlertasTickets = document.getElementById('btnVerAlertasTickets');
+  const btnConfiguracion = document.getElementById('btnConfiguracion');
   const alertasResumen = document.getElementById('alertasResumen');
 
   let ticketPresupuestoActual = null;
@@ -59,13 +67,15 @@ document.addEventListener('DOMContentLoaded', () => {
   let estadosPromise = null;
   let tiposPromise = null;
   let ticketSeleccionado = null;
+  let pantallaInicializada = false;
+  let refrescoCombosTimer = null;
   const alertasDefaults = {
     pendiente: 2,
     reparacion: 5,
     presupuesto: 3,
     listo: 7
   };
-  let alertasConfigActual = cargarConfigAlertas();
+  let alertasConfigActual = { ...alertasDefaults };
 
   const modalPresupuesto = document.getElementById('modalPresupuesto');
   const presupuestoTicketInfo = document.getElementById('presupuestoTicketInfo');
@@ -120,34 +130,30 @@ document.addEventListener('DOMContentLoaded', () => {
     return [ticket.tipo, ticket.marca, ticket.modelo].filter(Boolean).join(' - ');
   }
 
-  function cargarConfigAlertas() {
-    try {
-      const guardada = JSON.parse(localStorage.getItem('ticketAlertThresholds') || '{}');
-      return {
-        pendiente: normalizarDias(guardada.pendiente, alertasDefaults.pendiente),
-        reparacion: normalizarDias(guardada.reparacion, alertasDefaults.reparacion),
-        presupuesto: normalizarDias(guardada.presupuesto, alertasDefaults.presupuesto),
-        listo: normalizarDias(guardada.listo, alertasDefaults.listo)
-      };
-    } catch {
-      return { ...alertasDefaults };
-    }
-  }
-
   function normalizarDias(valor, defecto) {
     const numero = Number(valor);
     return Number.isFinite(numero) && numero > 0 ? Math.floor(numero) : defecto;
   }
 
-  function guardarConfigAlertas(config) {
+  function aplicarConfigAlertas(config = {}) {
     alertasConfigActual = {
       pendiente: normalizarDias(config.pendiente, alertasDefaults.pendiente),
       reparacion: normalizarDias(config.reparacion, alertasDefaults.reparacion),
       presupuesto: normalizarDias(config.presupuesto, alertasDefaults.presupuesto),
       listo: normalizarDias(config.listo, alertasDefaults.listo)
     };
-    localStorage.setItem('ticketAlertThresholds', JSON.stringify(alertasConfigActual));
     actualizarPanelAlertas(ticketsActuales);
+  }
+
+  async function cargarConfiguracionSistema() {
+    const config = await window.api.obtenerConfiguracion();
+    aplicarConfigAlertas({
+      pendiente: config.alertPendingDays,
+      reparacion: config.alertRepairDays,
+      presupuesto: config.alertBudgetDays,
+      listo: config.alertReadyDays
+    });
+    return config;
   }
 
   function puedeEnviarPresupuesto(ticket) {
@@ -614,11 +620,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function inicializarPantalla() {
     await Promise.all([
-      inicializarCombos(),
-      cargarFiltroEstados(),
-      cargarTickets(),
-      cargarSucursalLocal()
+      cargarConfiguracionSistema().then(() => medirPaso('configuracion')),
+      inicializarCombos().then(() => medirPaso('combos')),
+      cargarFiltroEstados().then(() => medirPaso('filtro-estados')),
+      cargarTickets().then(() => medirPaso('tickets')),
+      cargarSucursalLocal().then(() => medirPaso('sucursal'))
     ]);
+    pantallaInicializada = true;
+    medirPaso('pantalla-lista');
+    console.info('[startup]', tiemposInicio);
+    setTimeout(() => {
+      window.licenseUI?.init();
+    }, 250);
   }
 
   function estadoLegible(ticket) {
@@ -808,6 +821,7 @@ document.addEventListener('DOMContentLoaded', () => {
   buscadorTickets.addEventListener('input', cargarTickets);
   filtroEstado.addEventListener('change', cargarTickets);
   btnVerAlertasTickets?.addEventListener('click', () => window.api.abrirAlertasTickets());
+  btnConfiguracion?.addEventListener('click', () => window.api.abrirConfiguracion());
   btnVerTodosTickets.addEventListener('click', () => window.api.abrirTickets());
   btnPdfTicket.addEventListener('click', () => generarPDFIngresoSeleccionado(ticketSeleccionado));
   btnPresupuestoTicket.addEventListener('click', () => {
@@ -991,12 +1005,29 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   window.eventos.onRefrescarCombos(() => {
-    tiposActuales = [];
-    estadosActuales = [];
-    tiposPromise = null;
-    estadosPromise = null;
-    inicializarCombos();
-    cargarFiltroEstados();
+    if (!pantallaInicializada) {
+      return;
+    }
+
+    clearTimeout(refrescoCombosTimer);
+    refrescoCombosTimer = setTimeout(() => {
+      tiposActuales = [];
+      estadosActuales = [];
+      tiposPromise = null;
+      estadosPromise = null;
+      inicializarCombos();
+      cargarFiltroEstados();
+    }, 180);
   });
+
+  window.eventos.onConfiguracionActualizada((config) => {
+    aplicarConfigAlertas({
+      pendiente: config.alertPendingDays,
+      reparacion: config.alertRepairDays,
+      presupuesto: config.alertBudgetDays,
+      listo: config.alertReadyDays
+    });
+  });
+
   setTimeout(() => dni.focus(), 0);
 });

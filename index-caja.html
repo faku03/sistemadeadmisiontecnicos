@@ -15,11 +15,12 @@
   </header>
 
   <main class="app caja-app">
-    <section class="panel caja-summary">
-      <div>
+    <section class="panel caja-side-panel">
+      <div class="caja-side-header">
         <h2>Caja del dia</h2>
         <p class="muted">Cobros, devoluciones y neto</p>
       </div>
+
       <div class="summary-card">
         <span>Cobrado</span>
         <strong id="totalCobrado">$0.00</strong>
@@ -32,69 +33,87 @@
         <span>Neto</span>
         <strong id="totalNeto">$0.00</strong>
       </div>
-    </section>
 
-    <section class="panel caja-actions">
-      <h2>Devolucion</h2>
-      <input id="devolucionTicket" placeholder="Ticket">
-      <input id="devolucionImporte" type="number" min="0" step="0.01" placeholder="Importe">
-      <input id="devolucionMotivo" placeholder="Motivo">
-      <button id="btnDevolver">Registrar devolucion</button>
-    </section>
-
-    <section class="panel caja-table-panel">
-      <div class="tickets-header">
-        <h2>Pendientes de cobro</h2>
-        <input id="buscarPendientes" placeholder="Buscar cliente, equipo o ticket">
-      </div>
-      <div class="table-wrap">
-        <table class="tabla">
-          <thead>
-            <tr>
-              <th>Cliente</th>
-              <th>Celular</th>
-              <th>Equipo</th>
-              <th>Ticket</th>
-              <th>Total</th>
-              <th>Sena</th>
-              <th>Saldo</th>
-              <th>Accion</th>
-            </tr>
-          </thead>
-          <tbody id="tablaPendientes"></tbody>
-        </table>
+      <div class="caja-side-actions">
+        <button id="btnAbrirDevoluciones" type="button">Devoluciones</button>
+        <button id="btnListadoCaja" type="button">Listado</button>
       </div>
     </section>
 
-    <section class="panel caja-table-panel">
-      <div class="tickets-header">
-        <h2>Ultimos cobrados</h2>
-        <div class="filtros-tickets">
-          <input id="informeDesde" type="date">
-          <input id="informeHasta" type="date">
-          <button id="btnInforme">Ver informe</button>
+    <section class="caja-main-tabs">
+      <div class="config-tabs caja-tabs">
+        <button class="config-tab is-active" id="tabCobrar" type="button" data-tab="cobrar">Cobrar</button>
+        <button class="config-tab" id="tabCobrados" type="button" data-tab="cobrados">Cobrados</button>
+      </div>
+
+      <section class="panel caja-table-panel caja-tab-panel" data-panel="cobrar">
+        <div class="tickets-header">
+          <h2>Pendientes de cobro</h2>
+          <input id="buscarPendientes" placeholder="Buscar cliente, equipo o ticket">
         </div>
-      </div>
-      <div class="table-wrap">
-        <table class="tabla">
-          <thead>
-            <tr>
-              <th>Cliente</th>
-              <th>Equipo</th>
-              <th>Ticket</th>
-              <th>Cobrado</th>
-              <th>Devuelto</th>
-              <th>Fecha</th>
-              <th>Comprobante</th>
-            </tr>
-          </thead>
-          <tbody id="tablaCobrados"></tbody>
-        </table>
-      </div>
+
+        <div class="ticket-actions-bar">
+          <div id="pendienteSeleccionadoInfo" class="ticket-selected-text">Seleccione un ticket pendiente para cobrar.</div>
+          <div class="ticket-actions caja-ticket-actions">
+            <button id="btnCobrarSeleccionado" type="button" disabled>Cobrar</button>
+          </div>
+        </div>
+
+        <div class="table-wrap caja-full-table">
+          <table class="tabla tabla-caja tabla-caja-pendientes">
+            <thead>
+              <tr>
+                <th>Cliente</th>
+                <th>Celular</th>
+                <th>Equipo</th>
+                <th>Ticket</th>
+                <th>Total</th>
+                <th>Sena</th>
+                <th>Saldo</th>
+              </tr>
+            </thead>
+            <tbody id="tablaPendientes"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel caja-table-panel caja-tab-panel hidden" data-panel="cobrados">
+        <div class="tickets-header">
+          <h2>Ultimos cobrados</h2>
+          <div class="filtros-tickets">
+            <input id="buscarCobrados" placeholder="Buscar cliente, equipo o ticket">
+          </div>
+        </div>
+
+        <div class="ticket-actions-bar">
+          <div id="cobradoSeleccionadoInfo" class="ticket-selected-text">Seleccione un ticket cobrado para operar.</div>
+          <div class="ticket-actions caja-ticket-actions">
+            <button id="btnPdfComprobante" type="button" disabled>PDF</button>
+            <button id="btnWhatsappComprobante" type="button" disabled>Whatsapp</button>
+          </div>
+        </div>
+
+        <div class="table-wrap caja-full-table">
+          <table class="tabla tabla-caja tabla-caja-cobrados">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Cliente</th>
+                <th>Equipo</th>
+                <th>Ticket</th>
+                <th>Cobrado</th>
+                <th>Devuelto</th>
+              </tr>
+            </thead>
+            <tbody id="tablaCobrados"></tbody>
+          </table>
+        </div>
+      </section>
     </section>
   </main>
 
   <script src="license-ui.js"></script>
+  <script src="app-dialog.js"></script>
   <script src="renderer-caja.js"></script>
 </body>
 </html>

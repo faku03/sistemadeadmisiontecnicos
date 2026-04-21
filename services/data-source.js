@@ -48,6 +48,9 @@ module.exports = {
   obtenerTicketParaPDF: uuid =>
     api.obtenerTicketParaPDF(uuid),
 
+  obtenerHistorialTicket: uuid =>
+    api.obtenerHistorialTicket(uuid),
+
   entregarTicket: (uuid, trabajo, garantia) =>
     api.entregarTicket(uuid, { trabajo, garantia }),
 

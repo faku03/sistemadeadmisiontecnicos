@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Configuracion</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="abm-shell">
+    <section class="config-layout">
+      <div class="abm-header">
+        <h2>Configuracion</h2>
+        <div class="config-actions">
+          <button id="btnGuardarConfiguracion" class="btn-primary" type="button">Guardar</button>
+          <button id="btnCerrarConfiguracion" type="button">Cerrar</button>
+        </div>
+      </div>
+
+      <div class="config-tabs">
+        <button class="config-tab is-active" type="button" data-tab="general">Datos del negocio</button>
+        <button class="config-tab" type="button" data-tab="pdf">Configuracion de PDF</button>
+        <button class="config-tab" type="button" data-tab="alertas">Configuracion de alertas</button>
+        <button class="config-tab" type="button" data-tab="licencia">Servidor y licencia</button>
+      </div>
+
+      <div class="panel config-panel" data-panel="general">
+        <div class="config-grid">
+          <label class="field-label">Codigo de sucursal
+            <input id="cfgSucursalId" type="text" placeholder="CODIGO-SUCURSAL">
+          </label>
+          <label class="field-label">Nombre visible
+            <input id="cfgSucursalNombre" type="text" placeholder="Nombre visible del negocio">
+          </label>
+          <label class="field-label full-row">Calle y numero
+            <input id="cfgPdfBusinessStreet" type="text" placeholder="Av. Independencia 1234">
+          </label>
+          <label class="field-label">Localidad
+            <input id="cfgPdfBusinessLocality" type="text" placeholder="Mar del Plata">
+          </label>
+          <label class="field-label">Provincia
+            <input id="cfgPdfBusinessProvince" type="text" placeholder="Buenos Aires">
+          </label>
+          <label class="field-label">Telefono
+            <input id="cfgPdfBusinessPhone" type="text" placeholder="Telefono del negocio">
+          </label>
+          <label class="field-label">Email
+            <input id="cfgPdfBusinessEmail" type="text" placeholder="correo@negocio.com">
+          </label>
+        </div>
+      </div>
+
+      <div class="panel config-panel hidden" data-panel="pdf">
+        <div class="config-grid">
+          <label class="field-label">Nombre para encabezado PDF
+            <input id="cfgPdfBusinessName" type="text" placeholder="Nombre del negocio">
+          </label>
+          <label class="field-label full-row">Ruta del logo PDF
+            <div class="config-input-action">
+              <input id="cfgPdfLogoPath" type="text" placeholder="C:\\mardeltech\\sistemadetickets\\images\\logopdf.png">
+              <button id="btnSeleccionarLogoPdf" type="button">Examinar</button>
+            </div>
+          </label>
+          <label class="field-label full-row">Carpeta de salida PDF
+            <input id="cfgOutputPath" type="text" placeholder="pdfs">
+          </label>
+          <div class="inline-notice">Si no completas logo, el sistema intenta usar <strong>images/logopdf.png</strong> o <strong>images/logo.png</strong>.</div>
+          <div class="config-inline-actions">
+            <button id="btnProbarPdfConfiguracion" type="button">Probar PDF</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel config-panel hidden" data-panel="alertas">
+        <div class="config-grid config-grid-alertas">
+          <label class="field-label">Pendiente
+            <input id="cfgAlertPendingDays" type="number" min="1" step="1">
+          </label>
+          <label class="field-label">En reparacion
+            <input id="cfgAlertRepairDays" type="number" min="1" step="1">
+          </label>
+          <label class="field-label">Presupuesto enviado
+            <input id="cfgAlertBudgetDays" type="number" min="1" step="1">
+          </label>
+          <label class="field-label">Listo para entregar
+            <input id="cfgAlertReadyDays" type="number" min="1" step="1">
+          </label>
+        </div>
+      </div>
+
+      <div class="panel config-panel hidden" data-panel="licencia">
+        <div class="config-grid">
+          <label class="field-label">URL del gateway / API
+            <input id="cfgApiUrl" type="text" placeholder="http://localhost:3000">
+          </label>
+          <label class="field-label">Modo de licencia
+            <select id="cfgLicenseMode">
+              <option value="server">Servidor</option>
+              <option value="offline">Offline</option>
+            </select>
+          </label>
+          <label class="field-label">URL servidor de licencias
+            <input id="cfgLicenseServerUrl" type="text" placeholder="http://localhost:3000">
+          </label>
+          <label class="field-label">Clave de licencia
+            <input id="cfgLicenseKey" type="text" placeholder="Clave actual del sistema">
+          </label>
+          <label class="field-label">Codigo de grupo
+            <input id="cfgLicenseGroupId" type="text" placeholder="Grupo del local">
+          </label>
+          <label class="field-label">Codigo de unidad
+            <input id="cfgLicenseUnitId" type="text" placeholder="Sucursal o tecnico">
+          </label>
+          <label class="field-label">Tipo de unidad
+            <select id="cfgLicenseUnitType">
+              <option value="SUCURSAL">Sucursal</option>
+              <option value="TECNICO">Tecnico</option>
+            </select>
+          </label>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="app-dialog.js"></script>
+  <script src="configuracion.js"></script>
+</body>
+</html>

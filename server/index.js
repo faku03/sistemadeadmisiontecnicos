@@ -215,6 +215,32 @@ async function generarMovimientoCaja(client, uuid) {
   return insert.rows[0];
 }
 
+async function registrarHistorial(client, data) {
+  await client.query(
+    `
+    INSERT INTO ticket_historial (
+      ticket_uuid,
+      tipo,
+      titulo,
+      detalle,
+      estado_origen_id,
+      estado_destino_id,
+      metadata
+    )
+    VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
+    `,
+    [
+      data.ticket_uuid,
+      data.tipo,
+      data.titulo,
+      data.detalle || '',
+      data.estado_origen_id || null,
+      data.estado_destino_id || null,
+      JSON.stringify(data.metadata || {})
+    ]
+  );
+}
+
 async function listarTickets(url) {
   const sucursalId = url.searchParams.get('sucursal_id');
   const params = [];
@@ -304,12 +330,42 @@ async function crearTicket(data) {
       ]
     );
 
+    await registrarHistorial(client, {
+      ticket_uuid: uuid,
+      tipo: 'CREACION',
+      titulo: 'Ticket creado',
+      detalle: `Ingreso inicial del ticket ${result.rows[0].codigo || uuid}.`,
+      estado_destino_id: estado.id,
+      metadata: {
+        codigo: result.rows[0].codigo,
+        tecnico_codigo: ticketCodigo.tecnico
+      }
+    });
+
     return result.rows[0];
   });
 }
 
 async function actualizarEstado(uuid, data) {
   return withTransaction(async client => {
+    const ticketActual = await client.query(
+      `
+      SELECT
+        t.uuid,
+        t.estado_id,
+        COALESCE(t.codigo, t.uuid) AS codigo,
+        et.descripcion AS estado_descripcion
+      FROM tickets t
+      JOIN estados_ticket et ON et.id = t.estado_id
+      WHERE t.uuid = $1
+      `,
+      [uuid]
+    );
+
+    if (ticketActual.rowCount === 0) {
+      throw new Error('Ticket no encontrado');
+    }
+
     const estado = data.estado_codigo
       ? await estadoPorCodigo(client, data.estado_codigo)
       : (await client.query(
@@ -320,6 +376,8 @@ async function actualizarEstado(uuid, data) {
     if (!estado) {
       throw new Error('Estado no encontrado');
     }
+
+    const actual = ticketActual.rows[0];
 
     const result = await client.query(
       `
@@ -335,6 +393,19 @@ async function actualizarEstado(uuid, data) {
     if (result.rowCount === 0) {
       throw new Error('Ticket no encontrado');
     }
+
+    await registrarHistorial(client, {
+      ticket_uuid: uuid,
+      tipo: 'ESTADO',
+      titulo: 'Estado actualizado',
+      detalle: `El ticket ${actual.codigo} paso de ${actual.estado_descripcion} a ${estado.codigo}.`,
+      estado_origen_id: actual.estado_id,
+      estado_destino_id: estado.id,
+      metadata: {
+        codigo: actual.codigo,
+        estado_codigo: estado.codigo
+      }
+    });
 
     if (estado.codigo === 'ENTREGADO') {
       await generarMovimientoCaja(client, uuid);
@@ -381,6 +452,21 @@ async function actualizarPresupuesto(uuid, data, enviar) {
       throw new Error('Ticket no encontrado');
     }
 
+    await registrarHistorial(client, {
+      ticket_uuid: uuid,
+      tipo: enviar ? 'PRESUPUESTO_ENVIADO' : 'PRESUPUESTO_GUARDADO',
+      titulo: enviar ? 'Presupuesto enviado' : 'Presupuesto actualizado',
+      detalle: enviar
+        ? `Se envio presupuesto por ${valor.toFixed(2)} con sena ${sena.toFixed(2)}.`
+        : `Se guardo presupuesto por ${valor.toFixed(2)} con sena ${sena.toFixed(2)}.`,
+      estado_destino_id: enviar ? params[4] : null,
+      metadata: {
+        valor_reparacion: valor,
+        sena,
+        reparacion_presupuestada: reparacion
+      }
+    });
+
     return result.rows[0];
   });
 }
@@ -405,6 +491,18 @@ async function entregarTicket(uuid, data) {
     if (result.rowCount === 0) {
       throw new Error('Ticket no encontrado');
     }
+
+    await registrarHistorial(client, {
+      ticket_uuid: uuid,
+      tipo: 'ENTREGA',
+      titulo: 'Equipo entregado',
+      detalle: `Trabajo realizado: ${data.trabajo || 'Sin detalle'}. Garantia: ${data.garantia || 0} dias.`,
+      estado_destino_id: estado.id,
+      metadata: {
+        trabajo: data.trabajo || '',
+        garantia: data.garantia || 0
+      }
+    });
 
     await generarMovimientoCaja(client, uuid);
     return result.rows[0];
@@ -448,8 +546,81 @@ async function derivarTicket(uuid, data) {
       [data.sucursal_destino_id, uuid]
     );
 
+    await registrarHistorial(client, {
+      ticket_uuid: uuid,
+      tipo: 'DERIVACION',
+      titulo: 'Ticket derivado',
+      detalle: data.observacion || 'Derivacion entre sucursales.',
+      metadata: {
+        sucursal_origen_id: origen,
+        sucursal_destino_id: data.sucursal_destino_id
+      }
+    });
+
     return result.rows[0];
   });
+}
+
+async function listarHistorialTicket(uuid) {
+  const ticketUuid = await resolverTicketUuid(uuid);
+  const result = await query(
+    `
+    SELECT
+      h.id,
+      h.ticket_uuid,
+      h.fecha,
+      h.tipo,
+      h.titulo,
+      h.detalle,
+      h.metadata,
+      eo.descripcion AS estado_origen,
+      ed.descripcion AS estado_destino
+    FROM ticket_historial h
+    LEFT JOIN estados_ticket eo ON eo.id = h.estado_origen_id
+    LEFT JOIN estados_ticket ed ON ed.id = h.estado_destino_id
+    WHERE h.ticket_uuid = $1
+    ORDER BY h.fecha DESC, h.id DESC
+    `,
+    [ticketUuid]
+  );
+
+  if (result.rowCount > 0) {
+    return result.rows;
+  }
+
+  const ticket = await query(
+    `
+    SELECT
+      t.uuid,
+      COALESCE(t.codigo, t.uuid) AS codigo,
+      t.fecha_ingreso,
+      t.updated_at,
+      et.descripcion AS estado
+    FROM tickets t
+    JOIN estados_ticket et ON et.id = t.estado_id
+    WHERE t.uuid = $1
+    `,
+    [ticketUuid]
+  );
+
+  if (ticket.rowCount === 0) {
+    throw new Error('Ticket no encontrado');
+  }
+
+  const actual = ticket.rows[0];
+  return [
+    {
+      id: 0,
+      ticket_uuid: actual.uuid,
+      fecha: actual.updated_at || actual.fecha_ingreso,
+      tipo: 'RESUMEN',
+      titulo: 'Estado actual del ticket',
+      detalle: `No hay historial guardado para movimientos anteriores. Estado actual: ${actual.estado}. Ticket: ${actual.codigo}.`,
+      metadata: {},
+      estado_origen: null,
+      estado_destino: actual.estado
+    }
+  ];
 }
 
 async function cajaPendiente() {
@@ -492,11 +663,15 @@ async function obtenerTicketPDFData(uuid) {
       c.apellido AS cliente_apellido,
       c.celular,
       c.email,
+      so.nombre AS sucursal_nombre,
+      so.direccion AS sucursal_direccion,
+      so.telefono AS sucursal_telefono,
       te.descripcion AS tipo_equipo,
       mo.nombre AS modelo,
       ma.nombre AS marca
     FROM tickets t
     JOIN clientes c ON c.id = t.cliente_id
+    JOIN sucursales so ON so.id = t.sucursal_origen_id
     JOIN tipos_equipo te ON te.id = t.tipo_equipo_id
     JOIN modelos mo ON mo.id = t.modelo_id
     JOIN marcas ma ON ma.id = mo.marca_id
@@ -692,6 +867,9 @@ async function datosComprobanteX(uuid) {
       c.apellido,
       c.dni,
       c.celular,
+      s.nombre AS sucursal_nombre,
+      s.direccion AS sucursal_direccion,
+      s.telefono AS sucursal_telefono,
       te.descripcion AS tipo,
       ma.nombre AS marca,
       mo.nombre AS modelo,
@@ -700,6 +878,7 @@ async function datosComprobanteX(uuid) {
     FROM movimientos_caja mc
     JOIN tickets t ON t.uuid = mc.ticket_uuid
     JOIN clientes c ON c.id = mc.cliente_id
+    JOIN sucursales s ON s.id = mc.sucursal_id
     JOIN tipos_equipo te ON te.id = t.tipo_equipo_id
     JOIN modelos mo ON mo.id = t.modelo_id
     JOIN marcas ma ON ma.id = mo.marca_id
@@ -1221,6 +1400,11 @@ async function handle(req, res) {
 
     if (ticketMatch && method === 'GET' && ticketMatch[2] === 'pdf-data') {
       sendJson(res, 200, await obtenerTicketPDFData(ticketMatch[1]));
+      return;
+    }
+
+    if (ticketMatch && method === 'GET' && ticketMatch[2] === 'historial') {
+      sendJson(res, 200, await listarHistorialTicket(ticketMatch[1]));
       return;
     }
 

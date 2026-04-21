@@ -35,5 +35,8 @@ contextBridge.exposeInMainWorld('apiCaja', {
     ipcRenderer.invoke('caja:abrir-pdf', ruta),
 
   whatsapp: data =>
-    ipcRenderer.invoke('caja:whatsapp', data)
+    ipcRenderer.invoke('caja:whatsapp', data),
+
+  abrirDevoluciones: () =>
+    ipcRenderer.invoke('caja:abrir-devoluciones')
 });

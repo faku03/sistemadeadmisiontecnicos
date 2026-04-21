@@ -1,23 +1,38 @@
 const fs = require('fs');
 const path = require('path');
 const PDFDocument = require('pdfkit');
+const { outputDir, drawHeader, drawDocumentTitle, sectionTitle, infoLine, signatureLine } = require('./common');
 
-module.exports = (ticket) => {
-  const filePath = path.join(
-    __dirname,
-    `../pdfs/ingreso_${ticket.uuid}.pdf`
-  );
+module.exports = ticket => {
+  const filePath = path.join(outputDir('pdfs'), `ingreso_${ticket.uuid}.pdf`);
+  const doc = new PDFDocument({ margin: 40 });
 
-  const doc = new PDFDocument();
   doc.pipe(fs.createWriteStream(filePath));
 
-  doc.text(`Ticket: ${ticket.codigo || ticket.uuid}`);
-  doc.text(`Cliente: ${ticket.cliente_nombre} ${ticket.cliente_apellido}`);
-  doc.text(`Equipo: ${ticket.tipo_equipo}`);
-  doc.text(`Modelo: ${ticket.marca} ${ticket.modelo}`);
-  doc.text(`Falla: ${ticket.descripcion_falla}`);
+  drawHeader(doc, ticket);
+  drawDocumentTitle(doc, 'COMPROBANTE DE INGRESO');
+
+  sectionTitle(doc, 'Datos del ticket');
+  infoLine(doc, 'Ticket', ticket.codigo || ticket.uuid);
+  infoLine(doc, 'Fecha de ingreso', ticket.fecha_ingreso || new Date().toLocaleString('es-AR'));
+
+  sectionTitle(doc, 'Cliente');
+  infoLine(doc, 'Nombre', `${ticket.cliente_nombre} ${ticket.cliente_apellido}`);
+  infoLine(doc, 'Celular', ticket.celular);
+  infoLine(doc, 'Email', ticket.email);
+
+  sectionTitle(doc, 'Equipo');
+  infoLine(doc, 'Tipo', ticket.tipo_equipo);
+  infoLine(doc, 'Modelo', `${ticket.marca} ${ticket.modelo}`);
+  infoLine(doc, 'Falla', ticket.descripcion_falla);
+
+  doc.moveDown(2);
+  doc.font('Helvetica').fontSize(10).fillColor('#000000')
+    .text('Recibido para revision y/o reparacion. Sujeto a presupuesto previo.', { align: 'center' });
+
+  doc.moveDown(3);
+  signatureLine(doc);
 
   doc.end();
-
-  return filePath; // 🔥 ESTO ES CLAVE
+  return filePath;
 };

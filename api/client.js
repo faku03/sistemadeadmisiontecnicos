@@ -208,6 +208,10 @@ class ApiClient {
     return this.request(`/tickets/${uuid}/pdf-data`);
   }
 
+  obtenerHistorialTicket(uuid) {
+    return this.request(`/tickets/${uuid}/historial`);
+  }
+
   actualizarEstado(uuid, data) {
     return this.request(`/tickets/${uuid}/estado`, {
       method: 'PATCH',

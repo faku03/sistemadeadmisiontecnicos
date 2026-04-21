@@ -156,6 +156,18 @@ CREATE TABLE IF NOT EXISTS derivaciones_ticket (
   observacion TEXT
 );
 
+CREATE TABLE IF NOT EXISTS ticket_historial (
+  id SERIAL PRIMARY KEY,
+  ticket_uuid TEXT NOT NULL REFERENCES tickets(uuid),
+  fecha TIMESTAMPTZ DEFAULT NOW(),
+  tipo TEXT NOT NULL,
+  titulo TEXT NOT NULL,
+  detalle TEXT,
+  estado_origen_id INTEGER REFERENCES estados_ticket(id),
+  estado_destino_id INTEGER REFERENCES estados_ticket(id),
+  metadata JSONB DEFAULT '{}'::jsonb
+);
+
 CREATE TABLE IF NOT EXISTS movimientos_caja (
   id SERIAL PRIMARY KEY,
   ticket_uuid TEXT NOT NULL UNIQUE REFERENCES tickets(uuid),
@@ -193,6 +205,7 @@ CREATE INDEX IF NOT EXISTS idx_tickets_estado ON tickets(estado_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_tickets_codigo_unique ON tickets(codigo) WHERE codigo IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_tickets_tecnico_sucursal_numero ON tickets(tecnico_codigo, sucursal_origen_id, numero);
 CREATE INDEX IF NOT EXISTS idx_derivaciones_ticket_uuid ON derivaciones_ticket(ticket_uuid);
+CREATE INDEX IF NOT EXISTS idx_ticket_historial_ticket_fecha ON ticket_historial(ticket_uuid, fecha DESC);
 CREATE INDEX IF NOT EXISTS idx_movimientos_caja_estado ON movimientos_caja(estado);
 CREATE INDEX IF NOT EXISTS idx_devoluciones_caja_fecha ON devoluciones_caja(fecha);
 CREATE INDEX IF NOT EXISTS idx_comprobantes_x_fecha ON comprobantes_x(fecha);

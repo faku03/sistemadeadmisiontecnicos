@@ -83,8 +83,29 @@ contextBridge.exposeInMainWorld('api', {
   abrirAlertasTickets: () =>
     ipcRenderer.invoke('abrir-alertas-tickets'),
 
+  abrirConfiguracion: () =>
+    ipcRenderer.invoke('abrir-configuracion'),
+
+  abrirHistorialTicket: uuid =>
+    ipcRenderer.invoke('abrir-historial-ticket', uuid),
+
   listarEstadosTicket: () =>  ipcRenderer.invoke('listar-estados-ticket'),
-  actualizarEstadoTicket: data => ipcRenderer.invoke('actualizar-estado-ticket', data)
+  actualizarEstadoTicket: data => ipcRenderer.invoke('actualizar-estado-ticket', data),
+
+  obtenerHistorialTicket: uuid =>
+    ipcRenderer.invoke('ticket-obtener-historial', uuid),
+
+  obtenerConfiguracion: () =>
+    ipcRenderer.invoke('configuracion-obtener'),
+
+  guardarConfiguracion: data =>
+    ipcRenderer.invoke('configuracion-guardar', data),
+
+  seleccionarLogoPdf: () =>
+    ipcRenderer.invoke('configuracion-seleccionar-logo'),
+
+  probarPdfConfiguracion: data =>
+    ipcRenderer.invoke('configuracion-probar-pdf', data)
 
 });
 
@@ -147,7 +168,10 @@ contextBridge.exposeInMainWorld('apiModelos', {
 
 contextBridge.exposeInMainWorld('eventos', {
   onRefrescarCombos: (callback) =>
-    ipcRenderer.on('refrescar-combos', callback)
+    ipcRenderer.on('refrescar-combos', callback),
+
+  onConfiguracionActualizada: (callback) =>
+    ipcRenderer.on('configuracion-actualizada', (_, data) => callback(data))
 });
 
 /* ================= API SUCURSALES ================= */

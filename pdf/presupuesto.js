@@ -1,51 +1,11 @@
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
-
-function appBaseDir() {
-  if (
-    fs.existsSync(path.join(process.cwd(), 'package.json')) &&
-    fs.existsSync(path.join(process.cwd(), 'main.js'))
-  ) {
-    return process.cwd();
-  }
-
-  const execDir = process.execPath ? path.dirname(process.execPath) : process.cwd();
-  const normalizedExecDir = execDir.toLowerCase();
-
-  if (process.defaultApp || normalizedExecDir.includes(`${path.sep}node_modules${path.sep}`)) {
-    return process.cwd();
-  }
-
-  return execDir;
-}
-
-function sanitizeFilePart(value) {
-  return String(value || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[<>:"/\\|?*\x00-\x1F]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, 120);
-}
-
-function uniquePath(dir, baseName) {
-  let candidate = path.join(dir, `${baseName}.pdf`);
-  let counter = 2;
-
-  while (fs.existsSync(candidate)) {
-    candidate = path.join(dir, `${baseName} ${counter}.pdf`);
-    counter += 1;
-  }
-
-  return candidate;
-}
+const { appBaseDir, sanitizeFilePart, uniquePath, drawHeader, drawDocumentTitle, sectionTitle, infoLine, money, signatureLine } = require('./common');
 
 function generarPDFPresupuesto(ticket) {
   const baseDir = appBaseDir();
   const outputDir = path.join(baseDir, 'pdf_presupuesto');
-  const logoPath = path.join(baseDir, 'images', 'logopdf.png');
   const cliente = sanitizeFilePart(`${ticket.cliente_nombre} ${ticket.cliente_apellido}`) || 'Cliente';
   const equipo = sanitizeFilePart(`${ticket.tipo_equipo} ${ticket.marca} ${ticket.modelo}`) || 'Equipo';
   const ruta = uniquePath(outputDir, sanitizeFilePart(`${cliente} ${equipo} Presupuesto`) || `Presupuesto ${ticket.codigo || ticket.uuid}`);
@@ -59,36 +19,29 @@ function generarPDFPresupuesto(ticket) {
   const sena = Number(ticket.sena || 0);
   const saldo = valor - sena;
 
-  if (fs.existsSync(logoPath)) {
-    doc.image(logoPath, 40, 28, { fit: [130, 60] });
-    doc.moveDown(3);
-  }
+  drawHeader(doc, ticket);
+  drawDocumentTitle(doc, 'PRESUPUESTO DE REPARACION');
 
-  doc.fontSize(18).text('PRESUPUESTO DE REPARACION', { align: 'center' });
-  doc.moveDown();
+  sectionTitle(doc, 'Datos del ticket');
+  infoLine(doc, 'Ticket', ticket.codigo || ticket.uuid);
+  infoLine(doc, 'Cliente', `${ticket.cliente_nombre} ${ticket.cliente_apellido}`);
+  infoLine(doc, 'Celular', ticket.celular);
 
-  doc.fontSize(12);
-  doc.text(`Ticket: ${ticket.codigo || ticket.uuid}`);
-  doc.text(`Cliente: ${ticket.cliente_nombre} ${ticket.cliente_apellido}`);
-  doc.text(`Celular: ${ticket.celular || '---'}`);
-  doc.moveDown();
+  sectionTitle(doc, 'Equipo');
+  infoLine(doc, 'Equipo', `${ticket.tipo_equipo} - ${ticket.marca} ${ticket.modelo}`);
+  infoLine(doc, 'Falla', ticket.descripcion_falla);
 
-  doc.text('EQUIPO', { underline: true });
-  doc.text(`${ticket.tipo_equipo} - ${ticket.marca} ${ticket.modelo}`);
-  doc.text(`Falla: ${ticket.descripcion_falla}`);
-  doc.moveDown();
-
-  doc.text('REPARACION A REALIZAR', { underline: true });
+  sectionTitle(doc, 'Reparacion a realizar');
   doc.text(ticket.reparacion_presupuestada || '---');
   doc.moveDown();
 
-  doc.text('IMPORTES', { underline: true });
-  doc.text(`Valor reparacion: $${valor.toFixed(2)}`);
-  doc.text(`Sena: $${sena.toFixed(2)}`);
-  doc.text(`Saldo: $${saldo.toFixed(2)}`);
+  sectionTitle(doc, 'Importes');
+  infoLine(doc, 'Valor reparacion', money(valor));
+  infoLine(doc, 'Sena', money(sena));
+  infoLine(doc, 'Saldo', money(saldo));
   doc.moveDown(3);
 
-  doc.text('Firma del cliente: __________________________');
+  signatureLine(doc);
 
   doc.end();
   return ruta;

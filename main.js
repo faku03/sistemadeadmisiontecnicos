@@ -1,12 +1,27 @@
-const { app, BrowserWindow, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, dialog } = require('electron');
+const fs = require('fs');
 const path = require('path');
 const db = require('./services/data-source');
 const pdfIngreso = require('./pdf/ingreso');
 const pdfEntrega = require('./pdf/entrega');
 const pdfPresupuesto = require('./pdf/presupuesto');
+const pdfConfiguracionPreview = require('./pdf/configuracion-preview');
 const license = require('./license/license-service');
+const configStore = require('./config/store');
+
+const appDataBase = path.join(process.env.APPDATA || app.getPath('appData'), 'SistemaTickets');
+const electronSessionDir = path.join(appDataBase, 'electron-session');
+const electronCacheDir = path.join(appDataBase, 'electron-cache');
+
+fs.mkdirSync(electronSessionDir, { recursive: true });
+fs.mkdirSync(electronCacheDir, { recursive: true });
+
+app.setPath('sessionData', electronSessionDir);
+app.commandLine.appendSwitch('disk-cache-dir', electronCacheDir);
+app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
 
 function createWindow() {
+  const createdAt = Date.now();
   const win = new BrowserWindow({
     width: 1120,
     height: 720,
@@ -23,6 +38,9 @@ function createWindow() {
 
   // 🔔 cuando vuelve a tomar foco
   win.on('focus', () => {
+    if ((Date.now() - createdAt) < 2500) {
+      return;
+    }
     win.webContents.send('refrescar-combos');
   });
 }
@@ -141,6 +159,48 @@ ipcMain.handle('obtener-sucursal-local', () =>
   db.obtenerSucursalLocal()
 );
 
+ipcMain.handle('configuracion-obtener', () =>
+  configStore.getConfig()
+);
+
+ipcMain.handle('configuracion-guardar', (_, data) => {
+  const saved = configStore.saveConfig(data);
+
+  BrowserWindow.getAllWindows().forEach(window => {
+    if (!window.isDestroyed()) {
+      window.webContents.send('configuracion-actualizada', saved);
+    }
+  });
+
+  return saved;
+});
+
+ipcMain.handle('configuracion-seleccionar-logo', async (event) => {
+  const parent = BrowserWindow.fromWebContents(event.sender);
+  const result = await dialog.showOpenDialog(parent || undefined, {
+    title: 'Seleccionar logo para PDF',
+    properties: ['openFile'],
+    filters: [
+      { name: 'Imagenes', extensions: ['png', 'jpg', 'jpeg', 'webp'] }
+    ]
+  });
+
+  if (result.canceled || !result.filePaths?.length) {
+    return null;
+  }
+
+  return result.filePaths[0];
+});
+
+ipcMain.handle('configuracion-probar-pdf', async (_, data) => {
+  const filePath = pdfConfiguracionPreview(data);
+  const error = await shell.openPath(filePath);
+  if (error) {
+    throw new Error(error);
+  }
+  return filePath;
+});
+
 
 /* ================= ABM TIPOS DE EQUIPO ================= */
 ipcMain.handle('tipos-equipo-listar', (_, includeDeleted) =>
@@ -213,6 +273,30 @@ function abrirABM(ruta, titulo, w = 1060, h = 720) {
   win.loadFile(path.join(__dirname, ruta));
 }
 
+function abrirVentanaModal(event, ruta, titulo, w = 860, h = 620) {
+  const parent = BrowserWindow.fromWebContents(event.sender);
+  const win = new BrowserWindow({
+    width: w,
+    height: h,
+    minWidth: 760,
+    minHeight: 520,
+    center: true,
+    title: titulo,
+    autoHideMenuBar: true,
+    modal: Boolean(parent),
+    parent: parent || undefined,
+    alwaysOnTop: true,
+    minimizable: false,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      sandbox: true
+    }
+  });
+
+  win.loadFile(path.join(__dirname, ruta));
+}
+
 ipcMain.handle('abrir-tipos-equipo', () =>
   abrirABM('abm/tipos_equipo.html', 'Tipos de Equipo')
 );
@@ -239,6 +323,42 @@ ipcMain.handle('abrir-tickets', () =>
 
 ipcMain.handle('abrir-alertas-tickets', () =>
   abrirABM('alertas.html', 'Alertas de Tickets', 1120, 760)
+);
+
+ipcMain.handle('abrir-configuracion', () =>
+  abrirABM('configuracion.html', 'Configuracion', 980, 720)
+);
+
+ipcMain.handle('abrir-historial-ticket', (event, uuid) =>
+  (() => {
+    const parent = BrowserWindow.fromWebContents(event.sender);
+    const win = new BrowserWindow({
+      width: 920,
+      height: 640,
+      minWidth: 760,
+      minHeight: 520,
+      center: true,
+      title: 'Historial del Ticket',
+      autoHideMenuBar: true,
+      modal: Boolean(parent),
+      parent: parent || undefined,
+      alwaysOnTop: true,
+      minimizable: false,
+      webPreferences: {
+        preload: path.join(__dirname, 'preload.js'),
+        contextIsolation: true,
+        sandbox: true
+      }
+    });
+
+    win.loadFile(path.join(__dirname, 'historial-ticket.html'), {
+      query: { uuid }
+    });
+  })()
+);
+
+ipcMain.handle('ticket-obtener-historial', (_, uuid) =>
+  db.obtenerHistorialTicket(uuid)
 );
 
 // ================= ABM MODELOS =================
