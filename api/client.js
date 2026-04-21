@@ -43,6 +43,29 @@ class ApiClient {
     });
   }
 
+  listarClientes(includeDeleted = false) {
+    return this.request(`/clientes?includeDeleted=${includeDeleted ? 'true' : 'false'}`);
+  }
+
+  actualizarCliente(id, data) {
+    return this.request(`/clientes/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  }
+
+  eliminarCliente(id) {
+    return this.request(`/clientes/${id}`, {
+      method: 'DELETE'
+    });
+  }
+
+  reactivarCliente(id) {
+    return this.request(`/clientes/${id}/reactivar`, {
+      method: 'POST'
+    });
+  }
+
   listarTiposEquipo(includeDeleted = false) {
     return this.request(`/tipos-equipo?includeDeleted=${includeDeleted ? 'true' : 'false'}`);
   }

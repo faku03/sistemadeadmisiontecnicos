@@ -38,6 +38,9 @@ contextBridge.exposeInMainWorld('api', {
   enviarPresupuesto: data =>
     ipcRenderer.invoke('enviar-presupuesto', data),
 
+  enviarWhatsAppPresupuesto: data =>
+    ipcRenderer.invoke('whatsapp-presupuesto', data),
+
   generarMovimientoCaja: uuid =>
     ipcRenderer.invoke('caja-generar-movimiento', uuid),
 
@@ -68,8 +71,18 @@ contextBridge.exposeInMainWorld('api', {
   abrirModelos: () =>
     ipcRenderer.invoke('abrir-modelos'),
 
+  abrirClientes: () =>
+    ipcRenderer.invoke('abrir-clientes'),
+
   abrirSucursales: () =>
     ipcRenderer.invoke('abrir-sucursales'),
+
+  abrirTickets: () =>
+    ipcRenderer.invoke('abrir-tickets'),
+
+  abrirAlertasTickets: () =>
+    ipcRenderer.invoke('abrir-alertas-tickets'),
+
   listarEstadosTicket: () =>  ipcRenderer.invoke('listar-estados-ticket'),
   actualizarEstadoTicket: data => ipcRenderer.invoke('actualizar-estado-ticket', data)
 
@@ -156,4 +169,22 @@ contextBridge.exposeInMainWorld('apiSucursales', {
 
   obtenerSucursalLocal: () =>
     ipcRenderer.invoke('obtener-sucursal-local')
+});
+
+/* ================= API CLIENTES (ABM) ================= */
+contextBridge.exposeInMainWorld('apiClientes', {
+  listar: verEliminados =>
+    ipcRenderer.invoke('clientes-listar', verEliminados),
+
+  crear: data =>
+    ipcRenderer.invoke('clientes-crear', data),
+
+  actualizar: data =>
+    ipcRenderer.invoke('clientes-actualizar', data),
+
+  eliminar: id =>
+    ipcRenderer.invoke('clientes-eliminar', id),
+
+  reactivar: id =>
+    ipcRenderer.invoke('clientes-reactivar', id)
 });

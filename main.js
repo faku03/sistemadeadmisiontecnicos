@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const path = require('path');
 const db = require('./services/data-source');
 const pdfIngreso = require('./pdf/ingreso');
@@ -48,9 +48,29 @@ ipcMain.handle('crear-cliente', (_, data) =>
   db.crearCliente(data)
 );
 
+ipcMain.handle('clientes-listar', (_, includeDeleted) =>
+  db.listarClientes(includeDeleted)
+);
+
+ipcMain.handle('clientes-crear', (_, data) =>
+  db.crearCliente(data)
+);
+
+ipcMain.handle('clientes-actualizar', (_, data) =>
+  db.actualizarCliente(data)
+);
+
+ipcMain.handle('clientes-eliminar', (_, id) =>
+  db.eliminarCliente(id)
+);
+
+ipcMain.handle('clientes-reactivar', (_, id) =>
+  db.reactivarCliente(id)
+);
+
 /* ================= TICKETS ================= */
-ipcMain.handle('crear-ticket', (_, data) => {
-  const sucursal = db.obtenerSucursalLocal();
+ipcMain.handle('crear-ticket', async (_, data) => {
+  const sucursal = await db.obtenerSucursalLocal();
 
   if (!sucursal) {
     throw new Error('No hay sucursal local configurada');
@@ -67,25 +87,40 @@ ipcMain.handle('listar-tickets', () =>
   db.listarTickets()
 );
 
-ipcMain.handle('pdf-ingreso', (_, uuid) => {
-  const ticket = db.obtenerTicketParaPDF(uuid);
-  return pdfIngreso(ticket);
+ipcMain.handle('pdf-ingreso', async (_, uuid) => {
+  const ticket = await db.obtenerTicketParaPDF(uuid);
+  const filePath = pdfIngreso(ticket);
+  const error = await shell.openPath(filePath);
+  if (error) {
+    throw new Error(error);
+  }
+  return filePath;
 });
 
-ipcMain.handle('entregar-ticket', (_, data) => {
-  db.entregarTicket(data.uuid, data.trabajo, data.garantia);
-  const ticket = db.obtenerTicketParaPDF(data.uuid);
+ipcMain.handle('entregar-ticket', async (_, data) => {
+  await db.entregarTicket(data.uuid, data.trabajo, data.garantia);
+  const ticket = await db.obtenerTicketParaPDF(data.uuid);
   return pdfEntrega(ticket, data.garantia, data.trabajo);
 });
 
 ipcMain.handle('actualizar-presupuesto', (_, data) =>
-  db.actualizarPresupuesto(data.uuid, data.valor_reparacion, data.sena)
+  db.actualizarPresupuesto(data.uuid, data.valor_reparacion, data.sena, data.reparacion_presupuestada)
 );
 
-ipcMain.handle('enviar-presupuesto', (_, data) => {
-  db.enviarPresupuesto(data.uuid, data.valor_reparacion, data.sena);
-  const ticket = db.obtenerTicketParaPDF(data.uuid);
+ipcMain.handle('enviar-presupuesto', async (_, data) => {
+  await db.enviarPresupuesto(data.uuid, data.valor_reparacion, data.sena, data.reparacion_presupuestada);
+  const ticket = await db.obtenerTicketParaPDF(data.uuid);
   return pdfPresupuesto(ticket);
+});
+
+ipcMain.handle('whatsapp-presupuesto', (_, data) => {
+  const telefono = String(data.telefono || '').replace(/\D/g, '');
+  const texto = encodeURIComponent(data.texto || '');
+  const url = telefono
+    ? `https://wa.me/${telefono}?text=${texto}`
+    : `https://wa.me/?text=${texto}`;
+
+  return shell.openExternal(url);
 });
 
 /* ================= COMBOS ================= */
@@ -159,11 +194,15 @@ ipcMain.handle('actualizar-estado-ticket', (_, data) =>
 
 
 /* ================= ABRIR ABMs ================= */
-function abrirABM(ruta, titulo, w = 700, h = 600) {
+function abrirABM(ruta, titulo, w = 1060, h = 720) {
   const win = new BrowserWindow({
     width: w,
     height: h,
+    minWidth: 900,
+    minHeight: 620,
+    center: true,
     title: titulo,
+    autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -186,8 +225,20 @@ ipcMain.handle('abrir-modelos', () =>
   abrirABM('abm/modelos.html', 'Modelos')
 );
 
+ipcMain.handle('abrir-clientes', () =>
+  abrirABM('abm/clientes.html', 'Clientes')
+);
+
 ipcMain.handle('abrir-sucursales', () =>
   abrirABM('abm/sucursales.html', 'Sucursales')
+);
+
+ipcMain.handle('abrir-tickets', () =>
+  abrirABM('tickets.html', 'Todos los Tickets', 1220, 760)
+);
+
+ipcMain.handle('abrir-alertas-tickets', () =>
+  abrirABM('alertas.html', 'Alertas de Tickets', 1120, 760)
 );
 
 // ================= ABM MODELOS =================

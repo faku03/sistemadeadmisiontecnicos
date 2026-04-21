@@ -31,6 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function textoMovimiento(item) {
     return `
       ${item.ticket_uuid}
+      ${item.ticket_codigo || ''}
       ${item.nombre} ${item.apellido}
       ${item.celular || ''}
       ${item.tipo} ${item.marca} ${item.modelo}
@@ -49,7 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <td>${item.nombre} ${item.apellido}</td>
           <td>${item.celular || ''}</td>
           <td>${item.tipo} - ${item.marca} - ${item.modelo}</td>
-          <td>${item.ticket_uuid}</td>
+          <td>${item.ticket_codigo || item.ticket_uuid}</td>
           <td>${dinero(item.importe_total)}</td>
           <td>${dinero(item.sena)}</td>
           <td>${dinero(item.saldo)}</td>
@@ -79,7 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
       tr.innerHTML = `
         <td>${item.nombre} ${item.apellido}</td>
         <td>${item.tipo} - ${item.marca} - ${item.modelo}</td>
-        <td>${item.ticket_uuid}</td>
+        <td>${item.ticket_codigo || item.ticket_uuid}</td>
         <td>${dinero(item.saldo)}</td>
         <td>${dinero(item.devoluciones)}</td>
         <td>${item.fecha_cobro || ''}</td>

@@ -4,7 +4,8 @@ const path = require('path');
 
 function generarComprobanteX(datos, outputDir) {
   const numero = String(datos.numero).padStart(8, '0');
-  const nombreArchivo = `comprobante_x_${numero}_${datos.ticket_uuid}.pdf`;
+  const ticketCodigo = datos.ticket_codigo || datos.ticket_uuid;
+  const nombreArchivo = `comprobante_x_${numero}_${ticketCodigo}.pdf`;
   const ruta = path.join(outputDir, nombreArchivo);
 
   fs.mkdirSync(path.dirname(ruta), { recursive: true });
@@ -26,7 +27,7 @@ function generarComprobanteX(datos, outputDir) {
   doc.fontSize(12);
   doc.text(`Comprobante X Nro: ${numero}`);
   doc.text(`Fecha: ${datos.fecha_cobro || new Date().toLocaleString('es-AR')}`);
-  doc.text(`Ticket: ${datos.ticket_uuid}`);
+  doc.text(`Ticket: ${ticketCodigo}`);
   doc.moveDown();
 
   doc.text('CLIENTE', { underline: true });

@@ -71,6 +71,9 @@ CREATE TABLE IF NOT EXISTS estados_ticket (
 CREATE TABLE IF NOT EXISTS tickets (
   id SERIAL PRIMARY KEY,
   uuid TEXT NOT NULL UNIQUE,
+  codigo TEXT UNIQUE,
+  numero INTEGER,
+  tecnico_codigo TEXT,
   sucursal_origen_id INTEGER NOT NULL REFERENCES sucursales(id),
   sucursal_actual_id INTEGER NOT NULL REFERENCES sucursales(id),
   cliente_id INTEGER NOT NULL REFERENCES clientes(id),
@@ -84,10 +87,63 @@ CREATE TABLE IF NOT EXISTS tickets (
   garantia_dias INTEGER,
   valor_reparacion NUMERIC(12, 2) DEFAULT 0,
   sena NUMERIC(12, 2) DEFAULT 0,
+  reparacion_presupuestada TEXT,
   presupuesto_enviado BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ
 );
+
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS codigo TEXT;
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS numero INTEGER;
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS tecnico_codigo TEXT;
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS reparacion_presupuestada TEXT;
+
+WITH base AS (
+  SELECT
+    t.id,
+    s.id AS sucursal_id,
+    COALESCE(
+      NULLIF(regexp_replace(upper(t.tecnico_codigo), '[^A-Z0-9]+', '', 'g'), ''),
+      'MIGRADO'
+    ) AS tecnico,
+    COALESCE(
+      NULLIF(regexp_replace(upper(s.codigo), '[^A-Z0-9]+', '', 'g'), ''),
+      'SINCODIGO'
+    ) AS sucursal_codigo
+  FROM tickets t
+  JOIN sucursales s ON s.id = t.sucursal_origen_id
+  WHERE t.codigo IS NULL
+),
+maximos AS (
+  SELECT
+    COALESCE(
+      NULLIF(regexp_replace(upper(t.tecnico_codigo), '[^A-Z0-9]+', '', 'g'), ''),
+      'MIGRADO'
+    ) AS tecnico,
+    t.sucursal_origen_id AS sucursal_id,
+    COALESCE(MAX(t.numero), 0) AS max_numero
+  FROM tickets t
+  WHERE t.codigo IS NOT NULL
+  GROUP BY 1, 2
+),
+numerados AS (
+  SELECT
+    b.*,
+    COALESCE(m.max_numero, 0) + ROW_NUMBER() OVER (
+      PARTITION BY b.tecnico, b.sucursal_id
+      ORDER BY b.id
+    ) AS nuevo_numero
+  FROM base b
+  LEFT JOIN maximos m
+    ON m.tecnico = b.tecnico
+   AND m.sucursal_id = b.sucursal_id
+)
+UPDATE tickets t
+SET tecnico_codigo = n.tecnico,
+    numero = n.nuevo_numero,
+    codigo = n.tecnico || '-' || n.sucursal_codigo || '-' || LPAD(n.nuevo_numero::TEXT, 6, '0')
+FROM numerados n
+WHERE t.id = n.id;
 
 CREATE TABLE IF NOT EXISTS derivaciones_ticket (
   id SERIAL PRIMARY KEY,
@@ -134,6 +190,8 @@ CREATE TABLE IF NOT EXISTS comprobantes_x (
 
 CREATE INDEX IF NOT EXISTS idx_tickets_sucursal_actual ON tickets(sucursal_actual_id);
 CREATE INDEX IF NOT EXISTS idx_tickets_estado ON tickets(estado_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_tickets_codigo_unique ON tickets(codigo) WHERE codigo IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_tickets_tecnico_sucursal_numero ON tickets(tecnico_codigo, sucursal_origen_id, numero);
 CREATE INDEX IF NOT EXISTS idx_derivaciones_ticket_uuid ON derivaciones_ticket(ticket_uuid);
 CREATE INDEX IF NOT EXISTS idx_movimientos_caja_estado ON movimientos_caja(estado);
 CREATE INDEX IF NOT EXISTS idx_devoluciones_caja_fecha ON devoluciones_caja(fecha);
@@ -143,10 +201,12 @@ INSERT INTO estados_ticket (codigo, descripcion, orden)
 VALUES
   ('PENDIENTE', 'Pendiente', 1),
   ('PRESUPUESTO_ENVIADO', 'Presupuesto enviado', 2),
-  ('EN_REPARACION', 'En reparacion', 3),
-  ('LISTO', 'Listo para entregar', 4),
-  ('ENTREGADO', 'Entregado', 5),
-  ('DEVUELTO_SIN_REPARAR', 'Devuelto sin reparar', 6)
+  ('PRESUPUESTO_RECHAZADO', 'Presupuesto rechazado', 3),
+  ('EN_REPARACION', 'En reparacion', 4),
+  ('LISTO', 'Listo para entregar', 5),
+  ('ENTREGADO', 'Entregado', 6),
+  ('DEVUELTO_SIN_REPARAR', 'Devuelto sin reparar', 7),
+  ('RETIRADO_SIN_REPARAR', 'Retirado sin reparar', 8)
 ON CONFLICT (codigo) DO UPDATE
 SET descripcion = EXCLUDED.descripcion,
     orden = EXCLUDED.orden,

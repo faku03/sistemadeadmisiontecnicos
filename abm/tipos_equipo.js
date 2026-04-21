@@ -86,25 +86,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
   guardarBtn.onclick = async () => {
     if (!codigo.value.trim() || !descripcion.value.trim()) {
-      alert('Completá todos los campos');
+      alert('Completa todos los campos');
       return;
     }
 
-    if (editandoId) {
-      await window.apiTiposEquipo.actualizar({
-        id: editandoId,
-        codigo: codigo.value.trim(),
-        descripcion: descripcion.value.trim()
-      });
-    } else {
-      await window.apiTiposEquipo.crear({
-        codigo: codigo.value.trim(),
-        descripcion: descripcion.value.trim()
-      });
-    }
+    guardarBtn.disabled = true;
 
-    limpiar();
-    cargar();
+    try {
+      if (editandoId) {
+        await window.apiTiposEquipo.actualizar({
+          id: editandoId,
+          codigo: codigo.value.trim(),
+          descripcion: descripcion.value.trim()
+        });
+      } else {
+        await window.apiTiposEquipo.crear({
+          codigo: codigo.value.trim(),
+          descripcion: descripcion.value.trim()
+        });
+      }
+
+      limpiar();
+      await cargar();
+    } catch (error) {
+      alert(error.message || 'No se pudo guardar el tipo de equipo');
+    } finally {
+      guardarBtn.disabled = false;
+    }
   };
 
   cancelarBtn.onclick = limpiar;

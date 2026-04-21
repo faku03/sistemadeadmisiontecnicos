@@ -84,6 +84,63 @@ function money(value) {
   return number;
 }
 
+function ticketSegment(value) {
+  return String(value || 'SINCODIGO')
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '')
+    .slice(0, 32) || 'SINCODIGO';
+}
+
+async function generarCodigoTicket(client, { tecnicoCodigo, sucursalId }) {
+  const sucursal = await client.query(
+    `SELECT id, codigo FROM sucursales WHERE id = $1`,
+    [sucursalId]
+  );
+
+  if (sucursal.rowCount === 0) {
+    throw new Error('Sucursal no encontrada');
+  }
+
+  const tecnico = ticketSegment(tecnicoCodigo);
+  const sucursalCodigo = ticketSegment(sucursal.rows[0].codigo);
+  const prefijo = `${tecnico}-${sucursalCodigo}`;
+
+  await client.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, [prefijo]);
+
+  const siguiente = await client.query(
+    `
+    SELECT COALESCE(MAX(numero), 0) + 1 AS numero
+    FROM tickets
+    WHERE tecnico_codigo = $1
+      AND sucursal_origen_id = $2
+    `,
+    [tecnico, sucursalId]
+  );
+
+  const numero = Number(siguiente.rows[0].numero || 1);
+
+  return {
+    codigo: `${prefijo}-${String(numero).padStart(6, '0')}`,
+    numero,
+    tecnico
+  };
+}
+
+async function resolverTicketUuid(identificador, client = null) {
+  const runQuery = client ? client.query.bind(client) : query;
+  const result = await runQuery(
+    `SELECT uuid FROM tickets WHERE uuid = $1 OR codigo = $1`,
+    [identificador]
+  );
+
+  if (result.rowCount === 0) {
+    throw new Error('Ticket no encontrado');
+  }
+
+  return result.rows[0].uuid;
+}
+
 async function estadoPorCodigo(client, codigo) {
   const result = await client.query(
     `SELECT id, codigo FROM estados_ticket WHERE codigo = $1 AND is_deleted = FALSE`,
@@ -172,9 +229,14 @@ async function listarTickets(url) {
     `
     SELECT
       t.uuid,
+      COALESCE(t.codigo, t.uuid) AS codigo,
+      t.fecha_ingreso,
+      t.updated_at,
       t.valor_reparacion,
       t.sena,
+      t.reparacion_presupuestada,
       t.presupuesto_enviado,
+      t.descripcion_falla,
       t.sucursal_origen_id,
       t.sucursal_actual_id,
       et.descripcion AS estado,
@@ -205,11 +267,18 @@ async function crearTicket(data) {
   return withTransaction(async client => {
     const estado = await estadoPorCodigo(client, 'PENDIENTE');
     const uuid = randomUUID();
+    const ticketCodigo = await generarCodigoTicket(client, {
+      tecnicoCodigo: data.tecnico_codigo,
+      sucursalId: data.sucursal_id
+    });
 
     const result = await client.query(
       `
       INSERT INTO tickets (
         uuid,
+        codigo,
+        numero,
+        tecnico_codigo,
         sucursal_origen_id,
         sucursal_actual_id,
         cliente_id,
@@ -218,11 +287,14 @@ async function crearTicket(data) {
         descripcion_falla,
         estado_id
       )
-      VALUES ($1, $2, $2, $3, $4, $5, $6, $7)
-      RETURNING uuid
+      VALUES ($1, $2, $3, $4, $5, $5, $6, $7, $8, $9, $10)
+      RETURNING uuid, codigo
       `,
       [
         uuid,
+        ticketCodigo.codigo,
+        ticketCodigo.numero,
+        ticketCodigo.tecnico,
         data.sucursal_id,
         data.cliente_id,
         data.tipo_equipo_id,
@@ -276,18 +348,19 @@ async function actualizarPresupuesto(uuid, data, enviar) {
   return withTransaction(async client => {
     const valor = money(data.valor_reparacion);
     const sena = money(data.sena);
+    const reparacion = String(data.reparacion_presupuestada || '').trim();
 
     if (sena > valor) {
       throw new Error('La sena no puede superar el valor de reparacion');
     }
 
     let estadoSql = '';
-    const params = [valor, sena, uuid];
+    const params = [valor, sena, reparacion, uuid];
 
     if (enviar) {
       const estado = await estadoPorCodigo(client, 'PRESUPUESTO_ENVIADO');
       params.push(estado.id);
-      estadoSql = `, presupuesto_enviado = TRUE, estado_id = $4`;
+      estadoSql = `, presupuesto_enviado = TRUE, estado_id = $5`;
     }
 
     const result = await client.query(
@@ -295,10 +368,11 @@ async function actualizarPresupuesto(uuid, data, enviar) {
       UPDATE tickets
       SET valor_reparacion = $1,
           sena = $2,
+          reparacion_presupuestada = $3,
           updated_at = NOW()
           ${estadoSql}
-      WHERE uuid = $3
-      RETURNING uuid, valor_reparacion, sena, presupuesto_enviado
+      WHERE uuid = $4
+      RETURNING uuid, valor_reparacion, sena, reparacion_presupuestada, presupuesto_enviado
       `,
       params
     );
@@ -383,6 +457,7 @@ async function cajaPendiente() {
     SELECT
       mc.id AS movimiento_id,
       mc.ticket_uuid,
+      COALESCE(t.codigo, mc.ticket_uuid) AS ticket_codigo,
       mc.importe_total,
       mc.sena,
       mc.saldo,
@@ -412,6 +487,7 @@ async function obtenerTicketPDFData(uuid) {
     `
     SELECT
       t.*,
+      COALESCE(t.codigo, t.uuid) AS codigo,
       c.nombre AS cliente_nombre,
       c.apellido AS cliente_apellido,
       c.celular,
@@ -442,6 +518,7 @@ async function cajaCobrada(limite = 100) {
     SELECT
       mc.id AS movimiento_id,
       mc.ticket_uuid,
+      COALESCE(t.codigo, mc.ticket_uuid) AS ticket_codigo,
       mc.importe_total,
       mc.sena,
       mc.saldo,
@@ -466,7 +543,7 @@ async function cajaCobrada(limite = 100) {
     LEFT JOIN devoluciones_caja dc ON dc.movimiento_id = mc.id
     LEFT JOIN comprobantes_x cx ON cx.movimiento_id = mc.id
     WHERE mc.estado = 'COBRADO'
-    GROUP BY mc.id, c.id, te.id, ma.id, mo.id, cx.id
+    GROUP BY mc.id, t.codigo, c.id, te.id, ma.id, mo.id, cx.id
     ORDER BY mc.fecha_cobro DESC
     LIMIT $1
     `,
@@ -477,6 +554,7 @@ async function cajaCobrada(limite = 100) {
 }
 
 async function cobrarCaja(uuid) {
+  const ticketUuid = await resolverTicketUuid(uuid);
   const result = await query(
     `
     UPDATE movimientos_caja
@@ -486,7 +564,7 @@ async function cobrarCaja(uuid) {
       AND estado = 'PENDIENTE_COBRO'
     RETURNING *
     `,
-    [uuid]
+    [ticketUuid]
   );
 
   if (result.rowCount === 0) {
@@ -504,9 +582,10 @@ async function registrarDevolucion(uuid, data) {
   }
 
   return withTransaction(async client => {
+    const ticketUuid = await resolverTicketUuid(uuid, client);
     const movimiento = await client.query(
       `SELECT * FROM movimientos_caja WHERE ticket_uuid = $1`,
-      [uuid]
+      [ticketUuid]
     );
 
     if (movimiento.rowCount === 0) {
@@ -534,7 +613,7 @@ async function registrarDevolucion(uuid, data) {
       VALUES ($1, $2, $3, $4)
       RETURNING *
       `,
-      [mov.id, uuid, importe, data.motivo || '']
+      [mov.id, ticketUuid, importe, data.motivo || '']
     );
 
     return result.rows[0];
@@ -598,11 +677,13 @@ async function informeCaja(url) {
 }
 
 async function datosComprobanteX(uuid) {
+  const ticketUuid = await resolverTicketUuid(uuid);
   const result = await query(
     `
     SELECT
       mc.id AS movimiento_id,
       mc.ticket_uuid,
+      COALESCE(t.codigo, mc.ticket_uuid) AS ticket_codigo,
       mc.importe_total,
       mc.sena,
       mc.saldo,
@@ -624,7 +705,7 @@ async function datosComprobanteX(uuid) {
     JOIN marcas ma ON ma.id = mo.marca_id
     WHERE mc.ticket_uuid = $1
     `,
-    [uuid]
+    [ticketUuid]
   );
 
   if (result.rowCount === 0) {
@@ -636,9 +717,10 @@ async function datosComprobanteX(uuid) {
 
 async function comprobanteX(uuid) {
   return withTransaction(async client => {
+    const ticketUuid = await resolverTicketUuid(uuid, client);
     const movimiento = await client.query(
       `SELECT * FROM movimientos_caja WHERE ticket_uuid = $1`,
-      [uuid]
+      [ticketUuid]
     );
 
     if (movimiento.rowCount === 0) {
@@ -662,7 +744,7 @@ async function comprobanteX(uuid) {
 
     const ultimo = await client.query(`SELECT COALESCE(MAX(numero), 0) AS numero FROM comprobantes_x`);
     const numero = Number(ultimo.rows[0].numero || 0) + 1;
-    const datos = await datosComprobanteX(uuid);
+    const datos = await datosComprobanteX(ticketUuid);
     const pdfPath = pdfComprobanteX({ ...datos, numero }, config.outputPath);
 
     const result = await client.query(
@@ -671,7 +753,7 @@ async function comprobanteX(uuid) {
       VALUES ($1, $2, $3, $4, $5)
       RETURNING *
       `,
-      [mov.id, uuid, numero, mov.saldo, pdfPath]
+      [mov.id, ticketUuid, numero, mov.saldo, pdfPath]
     );
 
     return result.rows[0];
@@ -685,8 +767,18 @@ function incluyeEliminados(url) {
 }
 
 async function buscarClientePorDni(dni) {
-  const result = await query(`SELECT * FROM clientes WHERE dni = $1`, [dni]);
+  const result = await query(`SELECT * FROM clientes WHERE dni = $1 AND is_deleted = FALSE`, [dni]);
   return result.rows[0] || null;
+}
+
+async function listarClientes(includeDeleted) {
+  const result = await query(`
+    SELECT *
+    FROM clientes
+    ${includeDeleted ? '' : 'WHERE is_deleted = FALSE'}
+    ORDER BY apellido, nombre, dni
+  `);
+  return result.rows;
 }
 
 async function crearCliente(data) {
@@ -699,6 +791,24 @@ async function crearCliente(data) {
     [data.dni, data.nombre, data.apellido, data.celular || '', data.email || '']
   );
 
+  return result.rows[0];
+}
+
+async function actualizarCliente(id, data) {
+  const result = await query(
+    `
+    UPDATE clientes
+    SET dni = $1,
+        nombre = $2,
+        apellido = $3,
+        celular = $4,
+        email = $5,
+        updated_at = NOW()
+    WHERE id = $6
+    RETURNING *
+    `,
+    [data.dni, data.nombre, data.apellido, data.celular || '', data.email || '', id]
+  );
   return result.rows[0];
 }
 
@@ -989,8 +1099,30 @@ async function handle(req, res) {
       return;
     }
 
+    if (method === 'GET' && path === '/clientes') {
+      sendJson(res, 200, await listarClientes(incluyeEliminados(url)));
+      return;
+    }
+
     if (method === 'POST' && path === '/clientes') {
       sendJson(res, 201, await crearCliente(await readJson(req)));
+      return;
+    }
+
+    const clienteMatch = path.match(/^\/clientes\/(\d+)(?:\/([^/]+))?$/);
+
+    if (clienteMatch && method === 'PUT' && !clienteMatch[2]) {
+      sendJson(res, 200, await actualizarCliente(clienteMatch[1], await readJson(req)));
+      return;
+    }
+
+    if (clienteMatch && method === 'DELETE' && !clienteMatch[2]) {
+      sendJson(res, 200, await softDelete('clientes', clienteMatch[1]));
+      return;
+    }
+
+    if (clienteMatch && method === 'POST' && clienteMatch[2] === 'reactivar') {
+      sendJson(res, 200, await reactivar('clientes', clienteMatch[1]));
       return;
     }
 

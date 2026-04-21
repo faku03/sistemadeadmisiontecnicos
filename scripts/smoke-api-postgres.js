@@ -13,6 +13,14 @@ function findBy(rows, key, value) {
   return rows.find(row => String(row[key]) === String(value));
 }
 
+function ticketSegment(value) {
+  return String(value || '')
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '')
+    .slice(0, 32);
+}
+
 async function main() {
   const health = await api.health();
   assert(health.ok, 'API no responde health OK');
@@ -54,6 +62,7 @@ async function main() {
   assert(cliente.id, 'No se creo cliente');
 
   const ticket = await api.crearTicket({
+    tecnico_codigo: `TEC_SMOKE_${runId}`,
     sucursal_id: sucursal.id,
     cliente_id: cliente.id,
     tipo_equipo_id: tipo.id,
@@ -61,6 +70,11 @@ async function main() {
     descripcion_falla: 'No enciende'
   });
   assert(ticket.uuid, 'No se creo ticket');
+  assert(ticket.codigo, 'No se genero codigo visible de ticket');
+  assert(
+    ticket.codigo.startsWith(`${ticketSegment(`TEC_SMOKE_${runId}`)}-${ticketSegment(sucursal.codigo)}-`),
+    'Codigo visible de ticket incorrecto'
+  );
 
   await api.guardarPresupuesto(ticket.uuid, {
     valor_reparacion: 12000,
@@ -116,6 +130,7 @@ async function main() {
 
   console.log('API POSTGRES CIRCUITO OK');
   console.log(`Ticket: ${ticket.uuid}`);
+  console.log(`Codigo: ${ticket.codigo}`);
   console.log(`Sucursal: ${sucursal.codigo}`);
 }
 

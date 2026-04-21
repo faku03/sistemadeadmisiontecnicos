@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Todos los Tickets</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="app tickets-full">
+    <section class="panel tickets">
+      <div class="tickets-header">
+        <div>
+          <h2>Todos los tickets</h2>
+          <p class="muted">Seleccione un ticket y use las acciones disponibles.</p>
+        </div>
+        <div class="filtros-tickets">
+          <input type="text" id="buscadorTicketsFull" placeholder="Buscar por fecha, ticket, cliente, equipo, falla o codigo...">
+          <select id="filtroEstadoFull">
+            <option value="">Todos los estados</option>
+          </select>
+          <button id="btnActualizarTicketsFull" type="button">Actualizar</button>
+        </div>
+      </div>
+
+      <div class="ticket-actions-bar">
+        <div id="ticketSeleccionadoFullInfo" class="ticket-selected-text">Seleccione un ticket para operar.</div>
+        <div class="ticket-actions">
+          <button id="btnPdfTicketFull" type="button" disabled>PDF ingreso</button>
+          <button id="btnPresupuestoTicketFull" type="button" disabled>Presupuesto</button>
+          <button id="btnEnviarPresupuestoTicketFull" type="button" disabled>Enviar presupuesto</button>
+          <button id="btnAceptarPresupuestoTicketFull" type="button" disabled>Aceptar presupuesto</button>
+          <button id="btnRechazarPresupuestoTicketFull" type="button" disabled>Rechazar presupuesto</button>
+          <button id="btnRetiradoSinRepararTicketFull" type="button" disabled>Retirado sin reparar</button>
+          <button id="btnEntregarTicketFull" type="button" disabled>Entregar</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="tabla-tickets">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Ticket</th>
+              <th>Cliente</th>
+              <th>Celular</th>
+              <th>Equipo</th>
+              <th>Falla</th>
+              <th>Estado</th>
+              <th>Presupuesto</th>
+            </tr>
+          </thead>
+          <tbody id="listaTicketsFull"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div id="modalEntrega" class="modal hidden">
+    <div class="modal-content">
+      <h3>Entregar equipo</h3>
+
+      <input id="trabajoEntrega" placeholder="Trabajo realizado">
+      <input id="garantiaEntrega" type="number" placeholder="Dias de garantia">
+
+      <div class="modal-actions">
+        <button id="confirmarEntrega">Confirmar</button>
+        <button id="cancelarEntrega">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalPresupuesto" class="modal hidden">
+    <div class="modal-content presupuesto-modal-content">
+      <h3>Presupuesto</h3>
+
+      <div id="presupuestoTicketInfo" class="ticket-context"></div>
+
+      <label class="field-label">
+        Valor de reparacion
+        <input id="valorPresupuesto" type="number" min="0" step="0.01" placeholder="Ingrese el valor total">
+      </label>
+
+      <label class="field-label">
+        Sena
+        <input id="senaPresupuesto" type="number" min="0" step="0.01" placeholder="Ingrese la sena recibida">
+      </label>
+
+      <label class="field-label">
+        Reparacion a realizar
+        <textarea id="reparacionPresupuesto" placeholder="Detalle la reparacion propuesta para el equipo"></textarea>
+      </label>
+
+      <div class="modal-actions">
+        <button id="btnGuardarPresupuesto">Guardar</button>
+        <button id="btnEnviarPresupuesto">Guardar y enviar</button>
+        <button id="btnCancelarPresupuesto">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app-dialog.js"></script>
+  <script src="tickets.js"></script>
+</body>
+</html>

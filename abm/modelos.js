@@ -86,24 +86,32 @@ async function cargar() {
 
 guardar.onclick = async () => {
   if (!tipoEquipo.value || !marca.value || !nombre.value.trim()) {
-    alert('Completá tipo, marca y modelo');
+    alert('Completa tipo, marca y modelo');
     return;
   }
 
-  const data = {
-    tipo_equipo_id: tipoEquipo.value,
-    marca_id: marca.value,
-    nombre: nombre.value.trim()
-  };
+  guardar.disabled = true;
 
-  if (editandoId) {
-    await window.apiModelos.actualizar({ ...data, id: editandoId });
-  } else {
-    await window.apiModelos.crear(data);
+  try {
+    const data = {
+      tipo_equipo_id: tipoEquipo.value,
+      marca_id: marca.value,
+      nombre: nombre.value.trim()
+    };
+
+    if (editandoId) {
+      await window.apiModelos.actualizar({ ...data, id: editandoId });
+    } else {
+      await window.apiModelos.crear(data);
+    }
+
+    limpiar();
+    await cargar();
+  } catch (error) {
+    alert(error.message || 'No se pudo guardar el modelo');
+  } finally {
+    guardar.disabled = false;
   }
-
-  limpiar();
-  cargar();
 };
 
 function editar(id, tipoId, marcaId, modelo) {
@@ -126,7 +134,7 @@ function limpiar() {
 /* ================== ACCIONES ================== */
 
 async function eliminar(id) {
-  if (confirm('¿Eliminar modelo?')) {
+  if (confirm('Eliminar modelo?')) {
     await window.apiModelos.eliminar(id);
     cargar();
   }

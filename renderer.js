@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const apellido = document.getElementById('apellido');
   const celular = document.getElementById('celular');
   const email = document.getElementById('email');
+  const clienteAviso = document.getElementById('clienteAviso');
 
   const tipoEquipo = document.getElementById('tipoEquipo');
   const marca = document.getElementById('marca');
@@ -34,16 +35,43 @@ document.addEventListener('DOMContentLoaded', () => {
   const menuTipos = document.getElementById('menuTipos');
   const menuMarcas = document.getElementById('menuMarcas');
   const menuModelos = document.getElementById('menuModelos');
+  const menuClientes = document.getElementById('menuClientes');
   const menuSucursales = document.getElementById('menuSucursales');
   const sucursalActual = document.getElementById('sucursalActual');
   const filtroEstado = document.getElementById('filtroEstado');
   const buscadorTickets = document.getElementById('buscadorTickets');
+  const btnVerTodosTickets = document.getElementById('btnVerTodosTickets');
+  const ticketSeleccionadoInfo = document.getElementById('ticketSeleccionadoInfo');
+  const btnPdfTicket = document.getElementById('btnPdfTicket');
+  const btnPresupuestoTicket = document.getElementById('btnPresupuestoTicket');
+  const btnEnviarPresupuestoTicket = document.getElementById('btnEnviarPresupuestoTicket');
+  const btnAceptarPresupuestoTicket = document.getElementById('btnAceptarPresupuestoTicket');
+  const btnRechazarPresupuestoTicket = document.getElementById('btnRechazarPresupuestoTicket');
+  const btnRetiradoSinRepararTicket = document.getElementById('btnRetiradoSinRepararTicket');
+  const btnEntregarTicket = document.getElementById('btnEntregarTicket');
+  const btnVerAlertasTickets = document.getElementById('btnVerAlertasTickets');
+  const alertasResumen = document.getElementById('alertasResumen');
 
   let ticketPresupuestoActual = null;
+  let ticketsActuales = [];
+  let estadosActuales = [];
+  let tiposActuales = [];
+  let estadosPromise = null;
+  let tiposPromise = null;
+  let ticketSeleccionado = null;
+  const alertasDefaults = {
+    pendiente: 2,
+    reparacion: 5,
+    presupuesto: 3,
+    listo: 7
+  };
+  let alertasConfigActual = cargarConfigAlertas();
 
   const modalPresupuesto = document.getElementById('modalPresupuesto');
+  const presupuestoTicketInfo = document.getElementById('presupuestoTicketInfo');
   const valorPresupuesto = document.getElementById('valorPresupuesto');
   const senaPresupuesto = document.getElementById('senaPresupuesto');
+  const reparacionPresupuesto = document.getElementById('reparacionPresupuesto');
   const btnGuardarPresupuesto = document.getElementById('btnGuardarPresupuesto');
   const btnEnviarPresupuesto = document.getElementById('btnEnviarPresupuesto');
   const btnCancelarPresupuesto = document.getElementById('btnCancelarPresupuesto');
@@ -55,32 +83,200 @@ document.addEventListener('DOMContentLoaded', () => {
 
   modalEntrega.classList.add('hidden');
   modalPresupuesto.classList.add('hidden');
-  inicializarPantalla();
+  inicializarPantalla().catch(error => {
+    mostrarAlerta('Error al iniciar', error.message || 'No se pudo inicializar la pantalla');
+  });
+
+  function ticketCodigo(ticket) {
+    return ticket.codigo || ticket.uuid;
+  }
+
+  function dinero(valor) {
+    return `$${Number(valor || 0).toFixed(2)}`;
+  }
+
+  function fechaCorta(valor) {
+    if (!valor) return '';
+    const fecha = new Date(valor);
+    if (Number.isNaN(fecha.getTime())) return '';
+    return fecha.toLocaleDateString('es-AR');
+  }
+
+  function fechaEstado(ticket) {
+    return ticket.updated_at || ticket.fecha_ingreso;
+  }
+
+  function diasExactosDesde(valor) {
+    const fecha = new Date(valor);
+    if (Number.isNaN(fecha.getTime())) return 0;
+    return (Date.now() - fecha.getTime()) / 86400000;
+  }
+
+  function diasEnterosDesde(valor) {
+    return Math.max(0, Math.floor(diasExactosDesde(valor)));
+  }
+
+  function descripcionEquipo(ticket) {
+    return [ticket.tipo, ticket.marca, ticket.modelo].filter(Boolean).join(' - ');
+  }
+
+  function cargarConfigAlertas() {
+    try {
+      const guardada = JSON.parse(localStorage.getItem('ticketAlertThresholds') || '{}');
+      return {
+        pendiente: normalizarDias(guardada.pendiente, alertasDefaults.pendiente),
+        reparacion: normalizarDias(guardada.reparacion, alertasDefaults.reparacion),
+        presupuesto: normalizarDias(guardada.presupuesto, alertasDefaults.presupuesto),
+        listo: normalizarDias(guardada.listo, alertasDefaults.listo)
+      };
+    } catch {
+      return { ...alertasDefaults };
+    }
+  }
+
+  function normalizarDias(valor, defecto) {
+    const numero = Number(valor);
+    return Number.isFinite(numero) && numero > 0 ? Math.floor(numero) : defecto;
+  }
+
+  function guardarConfigAlertas(config) {
+    alertasConfigActual = {
+      pendiente: normalizarDias(config.pendiente, alertasDefaults.pendiente),
+      reparacion: normalizarDias(config.reparacion, alertasDefaults.reparacion),
+      presupuesto: normalizarDias(config.presupuesto, alertasDefaults.presupuesto),
+      listo: normalizarDias(config.listo, alertasDefaults.listo)
+    };
+    localStorage.setItem('ticketAlertThresholds', JSON.stringify(alertasConfigActual));
+    actualizarPanelAlertas(ticketsActuales);
+  }
+
+  function puedeEnviarPresupuesto(ticket) {
+    return Boolean(ticket) &&
+      ['PENDIENTE', 'PRESUPUESTO_ENVIADO'].includes(ticket.estado_codigo);
+  }
+
+  function puedeEntregar(ticket) {
+    return ticket?.estado_codigo === 'LISTO';
+  }
+
+  function puedeAceptarPresupuesto(ticket) {
+    return ticket?.estado_codigo === 'PRESUPUESTO_ENVIADO';
+  }
+
+  function puedeRechazarPresupuesto(ticket) {
+    return ticket?.estado_codigo === 'PRESUPUESTO_ENVIADO';
+  }
+
+  function puedeRetirarSinReparar(ticket) {
+    return ticket?.estado_codigo === 'PRESUPUESTO_RECHAZADO';
+  }
+
+  async function obtenerEstadosTicket(force = false) {
+    if (!force && estadosActuales.length) {
+      return estadosActuales;
+    }
+
+    if (!force && estadosPromise) {
+      return estadosPromise;
+    }
+
+    estadosPromise = window.api.listarEstadosTicket().then(estados => {
+      estadosActuales = estados;
+      estadosPromise = null;
+      return estados;
+    }).catch(error => {
+      estadosPromise = null;
+      throw error;
+    });
+
+    estadosActuales = await estadosPromise;
+    return estadosActuales;
+  }
+
+  async function obtenerTiposEquipo(force = false) {
+    if (!force && tiposActuales.length) {
+      return tiposActuales;
+    }
+
+    if (!force && tiposPromise) {
+      return tiposPromise;
+    }
+
+    tiposPromise = window.api.listarTipos().then(tipos => {
+      tiposActuales = tipos;
+      tiposPromise = null;
+      return tipos;
+    }).catch(error => {
+      tiposPromise = null;
+      throw error;
+    });
+
+    tiposActuales = await tiposPromise;
+    return tiposActuales;
+  }
+
+  function mostrarAvisoCliente(texto) {
+    if (!clienteAviso) return;
+    clienteAviso.textContent = texto;
+    clienteAviso.classList.remove('hidden');
+  }
+
+  function ocultarAvisoCliente() {
+    if (!clienteAviso) return;
+    clienteAviso.textContent = '';
+    clienteAviso.classList.add('hidden');
+  }
+
+  function enfocarNombreCliente() {
+    setTimeout(() => {
+      window.focus();
+      nombre.disabled = false;
+      nombre.focus();
+      nombre.select();
+    }, 80);
+  }
+
+  function mostrarAlerta(title, message, focusAfter) {
+    return window.appDialog?.alert({ title, message, focusAfter }) || Promise.resolve(alert(message));
+  }
+
+  function confirmar(title, message, confirmLabel = 'Aceptar') {
+    return window.appDialog?.confirm({ title, message, confirmLabel }) || Promise.resolve(confirm(message));
+  }
 
   // ================= CAMBIO DE ESTADO =================
-  async function cambiarEstadoTicket(ticket, nuevoEstadoId) {
+  async function cambiarEstadoTicket(ticket, nuevoEstado) {
 
     try {
       await window.api.actualizarEstadoTicket({
         uuid: ticket.uuid,
-        estado_id: nuevoEstadoId
+        estado_id: nuevoEstado.id
       });
+
+      if (nuevoEstado.codigo === 'ENTREGADO') {
+        await mostrarAlerta('Ticket enviado a Caja', 'El ticket paso a Entregado y se envio a Caja para cobrar.');
+      }
     } catch (error) {
-      alert(error.message || 'No se pudo actualizar el estado');
+      await mostrarAlerta('No se pudo actualizar', error.message || 'No se pudo actualizar el estado');
     }
 
     await cargarTickets();
   }
 
   // ================= CLIENTE =================
-  dni.addEventListener('blur', async () => {
+  async function buscarCliente(mostrarAviso) {
     const valor = dni.value.trim();
-    if (!valor) return;
+    if (!valor) {
+      limpiarClienteActual();
+      ocultarAvisoCliente();
+      return false;
+    }
 
     const cliente = await window.api.buscarClientePorDni(valor);
 
     if (cliente) {
       clienteActual = cliente;
+      ocultarAvisoCliente();
       nombre.value = cliente.nombre;
       apellido.value = cliente.apellido;
       celular.value = cliente.celular || '';
@@ -90,6 +286,8 @@ document.addEventListener('DOMContentLoaded', () => {
       apellido.disabled =
       celular.disabled =
       email.disabled = true;
+
+      return true;
     } else {
       clienteActual = null;
       nombre.value = apellido.value = celular.value = email.value = '';
@@ -97,6 +295,47 @@ document.addEventListener('DOMContentLoaded', () => {
       apellido.disabled =
       celular.disabled =
       email.disabled = false;
+
+      if (mostrarAviso) {
+        ocultarAvisoCliente();
+        await mostrarAlerta(
+          'Cliente no encontrado',
+          'El DNI ingresado no existe.\nComplete los datos para cargar un cliente nuevo.',
+          enfocarNombreCliente
+        );
+      }
+
+      return false;
+    }
+  }
+
+  function limpiarClienteActual() {
+    clienteActual = null;
+    nombre.value = '';
+    apellido.value = '';
+    celular.value = '';
+    email.value = '';
+    nombre.disabled = false;
+    apellido.disabled = false;
+    celular.disabled = false;
+    email.disabled = false;
+  }
+
+  dni.addEventListener('input', () => {
+    if (!dni.value.trim()) {
+      limpiarClienteActual();
+      ocultarAvisoCliente();
+    }
+  });
+
+  dni.addEventListener('keydown', async event => {
+    if (event.key !== 'Enter') return;
+
+    event.preventDefault();
+    try {
+      await buscarCliente(true);
+    } catch (error) {
+      await mostrarAlerta('No se pudo buscar', error.message || 'No se pudo buscar el cliente', () => dni.focus());
     }
   });
 
@@ -105,7 +344,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!clienteActual) {
       if (!dni.value || !nombre.value || !apellido.value) {
-        alert('Completá los datos del cliente');
+        await mostrarAlerta('Faltan datos del cliente', 'Completa los datos del cliente.', () => dni.focus());
         return;
       }
 
@@ -121,11 +360,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (!tipoEquipo.value || !marca.value || !modelo.value || !falla.value.trim()) {
-      alert('Faltan datos del equipo');
+      await mostrarAlerta('Faltan datos del equipo', 'Completa tipo, marca, modelo y descripcion de la falla.');
       return;
     }
 
-    await window.api.crearTicket({
+    const ticket = await window.api.crearTicket({
       cliente_id: clienteActual.id,
       tipo_equipo_id: tipoEquipo.value,
       modelo_id: modelo.value,
@@ -139,6 +378,7 @@ document.addEventListener('DOMContentLoaded', () => {
     apellido.value = '';
     celular.value = '';
     email.value = '';
+    ocultarAvisoCliente();
 
     nombre.disabled = false;
     apellido.disabled = false;
@@ -150,6 +390,7 @@ document.addEventListener('DOMContentLoaded', () => {
     limpiarModelos();
     falla.value = '';
 
+    await mostrarAlerta('Ticket cargado', `Ticket cargado correctamente:\n${ticket.codigo || ticket.uuid}`, () => dni.focus());
     dni.focus();
 
     await cargarTickets();
@@ -159,16 +400,25 @@ document.addEventListener('DOMContentLoaded', () => {
   async function cargarTickets() {
     listaTickets.innerHTML = '';
 
-    const tickets = await window.api.listarTickets();
-    const estados = await window.api.listarEstadosTicket();
+    const [tickets, estados] = await Promise.all([
+      window.api.listarTickets(),
+      obtenerEstadosTicket()
+    ]);
+    ticketsActuales = tickets;
+    estadosActuales = estados;
 
     const textoBusqueda = buscadorTickets?.value?.toLowerCase() || '';
     const estadoFiltro = filtroEstado?.value || '';
 
     const ticketsFiltrados = tickets.filter(t => {
+      if (['ENTREGADO', 'DEVUELTO_SIN_REPARAR', 'RETIRADO_SIN_REPARAR'].includes(t.estado_codigo)) {
+        return false;
+      }
 
       const textoCompleto = `
         ${t.uuid}
+        ${t.codigo || ''}
+        ${fechaCorta(t.fecha_ingreso)}
         ${t.nombre} ${t.apellido}
         ${t.tipo} ${t.marca} ${t.modelo}
       `.toLowerCase();
@@ -183,11 +433,16 @@ document.addEventListener('DOMContentLoaded', () => {
     ticketsFiltrados.forEach(t => {
 
       const tr = document.createElement('tr');
+      if (ticketSeleccionado?.uuid === t.uuid) {
+        tr.classList.add('selected-row');
+      }
 
       tr.innerHTML = `
+        <td>${fechaCorta(t.fecha_ingreso)}</td>
+        <td>${ticketCodigo(t)}</td>
         <td>${t.nombre} ${t.apellido}</td>
         <td>${t.celular || ''}</td>
-        <td>${t.tipo} - ${t.marca} - ${t.modelo}</td>
+        <td>${descripcionEquipo(t)}</td>
         <td>
           <select class="combo-estado">
             ${estados.map(e =>
@@ -197,54 +452,133 @@ document.addEventListener('DOMContentLoaded', () => {
             ).join('')}
           </select>
         </td>
-        <td>
-          <button class="btn-pdf">PDF</button>
-        </td>
-        <td>
-          <button class="btn-presupuesto">Presupuesto</button>
-        </td>
-      <td>
-          ${
-            !['ENTREGADO', 'DEVUELTO_SIN_REPARAR'].includes(t.estado_codigo)
-              ? '<button class="btn-entregar">Entregar</button>'
-              : ''
-          }
-        </td>
       `;
 
-      tr.querySelector('.btn-pdf').onclick =
-        () => window.api.generarPDFIngreso(t.uuid);
-
-      const btnEntregar = tr.querySelector('.btn-entregar');
-      if (btnEntregar) {
-        btnEntregar.onclick = () => abrirModalEntrega(t.uuid);
-      }
-
-      tr.querySelector('.btn-presupuesto').onclick =
-        () => abrirModalPresupuesto(t);
+      tr.addEventListener('click', event => {
+        if (event.target?.classList?.contains('combo-estado')) return;
+        seleccionarTicket(t);
+      });
 
       const comboEstado = tr.querySelector('.combo-estado');
 
       comboEstado.addEventListener('change', async (e) => {
 
         const nuevoEstadoId = parseInt(e.target.value);
+        const nuevoEstado = estados.find(estado => Number(estado.id) === nuevoEstadoId);
         const estadoAnteriorId = t.estado_id;
 
-        const confirmar = confirm(
+        if (!nuevoEstado) {
+          e.target.value = estadoAnteriorId;
+          await mostrarAlerta('Estado no encontrado', 'Estado no encontrado');
+          return;
+        }
+
+        const confirmado = await confirmar(
+          'Actualizar estado',
           `Se actualiza el ticket de "${t.nombre} ${t.apellido}"\n` +
-          `para el equipo "${t.tipo} - ${t.marca} - ${t.modelo}".\n\n¿Estás seguro?`
+          `para el equipo "${t.tipo} - ${t.marca} - ${t.modelo}".\n\nEstas seguro?`,
+          'Actualizar'
         );
 
-        if (!confirmar) {
+        if (!confirmado) {
           e.target.value = estadoAnteriorId;
           return;
         }
 
-        await cambiarEstadoTicket(t, nuevoEstadoId);
+        await cambiarEstadoTicket(t, nuevoEstado);
       });
 
       listaTickets.appendChild(tr);
     });
+
+    if (ticketSeleccionado) {
+      ticketSeleccionado = ticketsFiltrados.find(t => t.uuid === ticketSeleccionado.uuid) || null;
+    }
+    actualizarPanelAlertas(tickets);
+    actualizarAccionesTicket();
+  }
+
+  function seleccionarTicket(ticket) {
+    ticketSeleccionado = ticket;
+    Array.from(listaTickets.querySelectorAll('tr')).forEach(tr => tr.classList.remove('selected-row'));
+    const fila = Array.from(listaTickets.querySelectorAll('tr')).find(tr =>
+      tr.children[1]?.textContent === ticketCodigo(ticket)
+    );
+    fila?.classList.add('selected-row');
+    actualizarAccionesTicket();
+  }
+
+  function actualizarAccionesTicket() {
+    const tieneTicket = Boolean(ticketSeleccionado);
+    btnPdfTicket.disabled = !tieneTicket;
+    btnPresupuestoTicket.disabled = !tieneTicket;
+    btnEnviarPresupuestoTicket.disabled = !tieneTicket;
+    btnAceptarPresupuestoTicket.disabled = !tieneTicket;
+    btnRechazarPresupuestoTicket.disabled = !tieneTicket;
+    btnRetiradoSinRepararTicket.disabled = !tieneTicket;
+    btnEntregarTicket.disabled = !tieneTicket;
+
+    if (!tieneTicket) {
+      ticketSeleccionadoInfo.textContent = 'Seleccione un ticket para operar.';
+      return;
+    }
+
+    ticketSeleccionadoInfo.textContent =
+      `${ticketCodigo(ticketSeleccionado)} - ${ticketSeleccionado.nombre} ${ticketSeleccionado.apellido} - ${descripcionEquipo(ticketSeleccionado)}`;
+  }
+
+  async function generarPDFIngresoSeleccionado(ticket) {
+    if (!ticket) return;
+
+    try {
+      const pdfPath = await window.api.generarPDFIngreso(ticket.uuid);
+      await mostrarAlerta('PDF generado', `El PDF de ingreso se guardo en:\n${pdfPath}`);
+    } catch (error) {
+      await mostrarAlerta('No se pudo generar el PDF', error.message || 'No se pudo generar el PDF de ingreso');
+    }
+  }
+
+  async function enviarPresupuestoGuardado(ticket) {
+    if (!ticket) return;
+
+    if (!puedeEnviarPresupuesto(ticket)) {
+      await avisarAccionNoDisponible(
+        'Accion no disponible',
+        `El presupuesto solo se puede enviar cuando el ticket esta Pendiente o Presupuesto enviado.\nEstado actual: ${estadoLegible(ticket)}.`
+      );
+      return;
+    }
+
+    if (Number(ticket.valor_reparacion || 0) <= 0) {
+      await mostrarAlerta(
+        'Falta cargar presupuesto',
+        'Primero cargue el valor y la reparacion a realizar. Se abrira la pantalla de presupuesto.'
+      );
+      abrirModalPresupuesto(ticket);
+      return;
+    }
+
+    try {
+      const presupuesto = {
+        uuid: ticket.uuid,
+        valor_reparacion: Number(ticket.valor_reparacion || 0),
+        sena: Number(ticket.sena || 0),
+        reparacion_presupuestada: ticket.reparacion_presupuestada || ''
+      };
+
+      const quiereEnviar = await confirmar(
+        'Enviar presupuesto',
+        `${ticket.presupuesto_enviado ? 'Reenviar' : 'Enviar'} presupuesto del ticket ${ticketCodigo(ticket)} por WhatsApp?`,
+        'Enviar'
+      );
+      if (!quiereEnviar) return;
+
+      await enviarPresupuestoCliente(ticket, presupuesto);
+      await cargarFiltroEstados();
+      await cargarTickets();
+    } catch (error) {
+      await mostrarAlerta('No se pudo enviar', error.message || 'No se pudo enviar el presupuesto');
+    }
   }
 
   // ================= MODAL ENTREGA =================
@@ -262,6 +596,7 @@ document.addEventListener('DOMContentLoaded', () => {
       garantia: parseInt(inputGarantia.value, 10)
     });
 
+    await mostrarAlerta('Ticket enviado a Caja', 'El ticket paso a Entregado y se envio a Caja para cobrar.');
     modalEntrega.classList.add('hidden');
     cargarTickets();
   });
@@ -278,16 +613,125 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function inicializarPantalla() {
-    await inicializarCombos();
-    await cargarFiltroEstados();
-    await cargarTickets();
+    await Promise.all([
+      inicializarCombos(),
+      cargarFiltroEstados(),
+      cargarTickets(),
+      cargarSucursalLocal()
+    ]);
+  }
+
+  function estadoLegible(ticket) {
+    return ticket?.estado || ticket?.estado_codigo || 'Sin estado';
+  }
+
+  async function avisarAccionNoDisponible(titulo, mensaje) {
+    await mostrarAlerta(titulo, mensaje);
+  }
+
+  function alertasDeTickets(tickets) {
+    const reglas = [
+      {
+        codigo: 'PENDIENTE',
+        titulo: 'Pendiente sin avanzar',
+        limite: alertasConfigActual.pendiente
+      },
+      {
+        codigo: 'EN_REPARACION',
+        titulo: 'Reparacion demorada',
+        limite: alertasConfigActual.reparacion
+      },
+      {
+        codigo: 'PRESUPUESTO_ENVIADO',
+        titulo: 'Presupuesto sin respuesta',
+        limite: alertasConfigActual.presupuesto
+      },
+      {
+        codigo: 'LISTO',
+        titulo: 'Listo sin retirar',
+        limite: alertasConfigActual.listo
+      }
+    ];
+
+    return tickets
+      .filter(ticket => !['ENTREGADO', 'DEVUELTO_SIN_REPARAR', 'RETIRADO_SIN_REPARAR'].includes(ticket.estado_codigo))
+      .flatMap(ticket => {
+        const regla = reglas.find(item => item.codigo === ticket.estado_codigo);
+        if (!regla) return [];
+
+        const fecha = fechaEstado(ticket);
+        if (diasExactosDesde(fecha) <= regla.limite) return [];
+
+        return [{
+          ticket,
+          titulo: regla.titulo,
+          limite: regla.limite,
+          dias: diasEnterosDesde(fecha)
+        }];
+      })
+      .sort((a, b) => b.dias - a.dias);
+  }
+
+  function actualizarPanelAlertas(tickets) {
+    if (!alertasResumen) return;
+
+    const alertas = alertasDeTickets(tickets);
+
+    if (alertas.length === 0) {
+      alertasResumen.textContent = 'Sin alertas';
+      alertasResumen.classList.remove('alertas-resumen');
+      return;
+    }
+
+    alertasResumen.textContent = `Hay ${alertas.length} alerta${alertas.length === 1 ? '' : 's'}`;
+    alertasResumen.classList.add('alertas-resumen');
+  }
+
+  function estadoPorCodigo(codigo) {
+    return estadosActuales.find(estado => estado.codigo === codigo);
+  }
+
+  async function cambiarEstadoPorCodigo(ticket, codigo, titulo, mensaje, etiquetaConfirmar) {
+    if (!ticket) return;
+
+    const validaciones = {
+      EN_REPARACION: {
+        permitido: puedeAceptarPresupuesto(ticket),
+        mensaje: `Solo se puede aceptar un presupuesto cuando esta en Presupuesto enviado.\nEstado actual: ${estadoLegible(ticket)}.`
+      },
+      PRESUPUESTO_RECHAZADO: {
+        permitido: puedeRechazarPresupuesto(ticket),
+        mensaje: `Solo se puede rechazar un presupuesto cuando esta en Presupuesto enviado.\nEstado actual: ${estadoLegible(ticket)}.`
+      },
+      RETIRADO_SIN_REPARAR: {
+        permitido: puedeRetirarSinReparar(ticket),
+        mensaje: `Solo se puede retirar sin reparar cuando el presupuesto esta rechazado.\nEstado actual: ${estadoLegible(ticket)}.`
+      }
+    };
+
+    const validacion = validaciones[codigo];
+    if (validacion && !validacion.permitido) {
+      await avisarAccionNoDisponible('Accion no disponible', validacion.mensaje);
+      return;
+    }
+
+    const nuevoEstado = estadoPorCodigo(codigo);
+    if (!nuevoEstado) {
+      await mostrarAlerta('Estado no encontrado', `No existe el estado ${codigo}. Revise la migracion de la base de datos.`);
+      return;
+    }
+
+    const confirmado = await confirmar(titulo, mensaje, etiquetaConfirmar);
+    if (!confirmado) return;
+
+    await cambiarEstadoTicket(ticket, nuevoEstado);
   }
 
   async function cargarFiltroEstados() {
     if (!filtroEstado) return;
 
     const valorSeleccionado = filtroEstado.value;
-    const estados = await window.api.listarEstadosTicket();
+    const estados = await obtenerEstadosTicket();
 
     filtroEstado.innerHTML = '';
     filtroEstado.appendChild(new Option('Todos los estados', ''));
@@ -303,7 +747,7 @@ document.addEventListener('DOMContentLoaded', () => {
     tipoEquipo.innerHTML = '';
     tipoEquipo.appendChild(new Option('Tipo de equipo', ''));
 
-    const tipos = await window.api.listarTipos();
+    const tipos = await obtenerTiposEquipo();
 
     tipos.filter(t => !t.is_deleted).forEach(t => {
       tipoEquipo.appendChild(
@@ -328,7 +772,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const modelos = await window.api.listarModelosPorMarca(marca.value);
     modelos.filter(m => !m.is_deleted).forEach(m => {
-      modelo.appendChild(new Option(m.nombre, m.id));
+      modelo.appendChild(new Option(m.modelo || m.nombre, m.id));
     });
   }
 
@@ -358,10 +802,52 @@ document.addEventListener('DOMContentLoaded', () => {
   menuTipos.addEventListener('click', () => window.api.abrirTiposEquipo());
   menuMarcas.addEventListener('click', () => window.api.abrirMarcas());
   menuModelos.addEventListener('click', () => window.api.abrirModelos());
+  menuClientes.addEventListener('click', () => window.api.abrirClientes());
   menuSucursales.addEventListener('click', () => window.api.abrirSucursales());
 
   buscadorTickets.addEventListener('input', cargarTickets);
   filtroEstado.addEventListener('change', cargarTickets);
+  btnVerAlertasTickets?.addEventListener('click', () => window.api.abrirAlertasTickets());
+  btnVerTodosTickets.addEventListener('click', () => window.api.abrirTickets());
+  btnPdfTicket.addEventListener('click', () => generarPDFIngresoSeleccionado(ticketSeleccionado));
+  btnPresupuestoTicket.addEventListener('click', () => {
+    if (ticketSeleccionado) abrirModalPresupuesto(ticketSeleccionado);
+  });
+  btnEnviarPresupuestoTicket.addEventListener('click', () => enviarPresupuestoGuardado(ticketSeleccionado));
+  btnAceptarPresupuestoTicket.addEventListener('click', () => cambiarEstadoPorCodigo(
+    ticketSeleccionado,
+    'EN_REPARACION',
+    'Aceptar presupuesto',
+    `El ticket ${ticketSeleccionado ? ticketCodigo(ticketSeleccionado) : ''} pasara a En reparacion.`,
+    'Aceptar'
+  ));
+  btnRechazarPresupuestoTicket.addEventListener('click', () => cambiarEstadoPorCodigo(
+    ticketSeleccionado,
+    'PRESUPUESTO_RECHAZADO',
+    'Rechazar presupuesto',
+    `El ticket ${ticketSeleccionado ? ticketCodigo(ticketSeleccionado) : ''} quedara como Presupuesto rechazado.`,
+    'Rechazar'
+  ));
+  btnRetiradoSinRepararTicket.addEventListener('click', () => cambiarEstadoPorCodigo(
+    ticketSeleccionado,
+    'RETIRADO_SIN_REPARAR',
+    'Retirado sin reparar',
+    `El ticket ${ticketSeleccionado ? ticketCodigo(ticketSeleccionado) : ''} quedara como Retirado sin reparar.`,
+    'Confirmar'
+  ));
+  btnEntregarTicket.addEventListener('click', async () => {
+    if (!ticketSeleccionado) return;
+
+    if (!puedeEntregar(ticketSeleccionado)) {
+      await avisarAccionNoDisponible(
+        'Accion no disponible',
+        `Para entregar, el ticket debe estar en Listo para entregar.\nEstado actual: ${estadoLegible(ticketSeleccionado)}.`
+      );
+      return;
+    }
+
+    abrirModalEntrega(ticketSeleccionado.uuid);
+  });
 
   async function cargarSucursalLocal() {
     try {
@@ -383,6 +869,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     valorPresupuesto.value = ticket.valor_reparacion || 0;
     senaPresupuesto.value = ticket.sena || 0;
+    reparacionPresupuesto.value = ticket.reparacion_presupuestada || '';
+    presupuestoTicketInfo.innerHTML = `
+      <div><strong>Ticket:</strong> ${ticketCodigo(ticket)}</div>
+      <div><strong>Cliente:</strong> ${ticket.nombre} ${ticket.apellido}</div>
+      <div><strong>Equipo:</strong> ${ticket.tipo} - ${ticket.marca} - ${ticket.modelo}</div>
+      <div><strong>Falla:</strong> ${ticket.descripcion_falla || 'Sin detalle en listado'}</div>
+    `;
 
     modalPresupuesto.classList.remove('hidden');
   }
@@ -392,37 +885,83 @@ document.addEventListener('DOMContentLoaded', () => {
     const sena = Number(senaPresupuesto.value || 0);
 
     if (!Number.isFinite(valor) || valor < 0) {
-      alert('El valor de reparacion no es valido');
+      mostrarAlerta('Importe invalido', 'El valor de reparacion no es valido.', () => valorPresupuesto.focus());
       return null;
     }
 
     if (!Number.isFinite(sena) || sena < 0) {
-      alert('La sena no es valida');
+      mostrarAlerta('Importe invalido', 'La sena no es valida.', () => senaPresupuesto.focus());
       return null;
     }
 
     if (sena > valor) {
-      alert('La sena no puede ser mayor al valor de reparacion');
+      mostrarAlerta('Importe invalido', 'La sena no puede ser mayor al valor de reparacion.', () => senaPresupuesto.focus());
       return null;
     }
 
     return {
       uuid: ticketPresupuestoActual.uuid,
       valor_reparacion: valor,
-      sena
+      sena,
+      reparacion_presupuestada: reparacionPresupuesto.value.trim()
     };
+  }
+
+  function textoPresupuesto(ticket, presupuesto) {
+    const saldo = Number(presupuesto.valor_reparacion || 0) - Number(presupuesto.sena || 0);
+    return [
+      `Hola ${ticket.nombre}, te enviamos el presupuesto del ticket ${ticketCodigo(ticket)}.`,
+      `Equipo: ${ticket.tipo} ${ticket.marca} ${ticket.modelo}.`,
+      presupuesto.reparacion_presupuestada
+        ? `Reparacion a realizar: ${presupuesto.reparacion_presupuestada}.`
+        : '',
+      `Valor reparacion: ${dinero(presupuesto.valor_reparacion)}.`,
+      `Sena: ${dinero(presupuesto.sena)}.`,
+      `Saldo: ${dinero(saldo)}.`
+    ].filter(Boolean).join(' ');
+  }
+
+  async function enviarPresupuestoCliente(ticket, presupuesto) {
+    const pdfPath = await window.api.enviarPresupuesto(presupuesto);
+    await mostrarAlerta(
+      'PDF generado',
+      `El presupuesto se guardo en:\n${pdfPath}\n\nAhora se abrira WhatsApp para enviarlo.`
+    );
+    await window.api.enviarWhatsAppPresupuesto({
+      telefono: ticket.celular,
+      texto: textoPresupuesto(ticket, presupuesto)
+    });
+    return pdfPath;
   }
 
   btnGuardarPresupuesto.addEventListener('click', async () => {
     const presupuesto = leerPresupuesto();
     if (!presupuesto) return;
 
+    const confirmado = await confirmar(
+      'Guardar presupuesto',
+      `Guardar presupuesto del ticket ${ticketCodigo(ticketPresupuestoActual)}?`,
+      'Guardar'
+    );
+    if (!confirmado) return;
+
     try {
       await window.api.actualizarPresupuesto(presupuesto);
       modalPresupuesto.classList.add('hidden');
+
+      const quiereEnviar = await confirmar(
+        'Presupuesto guardado',
+        'Queres enviarlo al cliente por WhatsApp ahora?',
+        'Enviar'
+      );
+      if (quiereEnviar) {
+        await enviarPresupuestoCliente(ticketPresupuestoActual, presupuesto);
+        await cargarFiltroEstados();
+      }
+
       await cargarTickets();
     } catch (error) {
-      alert(error.message || 'No se pudo guardar el presupuesto');
+      await mostrarAlerta('No se pudo guardar', error.message || 'No se pudo guardar el presupuesto');
     }
   });
 
@@ -430,13 +969,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const presupuesto = leerPresupuesto();
     if (!presupuesto) return;
 
+    const confirmado = await confirmar(
+      'Guardar y enviar',
+      `Guardar y enviar presupuesto del ticket ${ticketCodigo(ticketPresupuestoActual)}?`,
+      'Guardar y enviar'
+    );
+    if (!confirmado) return;
+
     try {
-      await window.api.enviarPresupuesto(presupuesto);
+      await enviarPresupuestoCliente(ticketPresupuestoActual, presupuesto);
       modalPresupuesto.classList.add('hidden');
       await cargarFiltroEstados();
       await cargarTickets();
     } catch (error) {
-      alert(error.message || 'No se pudo enviar el presupuesto');
+      await mostrarAlerta('No se pudo enviar', error.message || 'No se pudo enviar el presupuesto');
     }
   });
 
@@ -445,9 +991,12 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   window.eventos.onRefrescarCombos(() => {
+    tiposActuales = [];
+    estadosActuales = [];
+    tiposPromise = null;
+    estadosPromise = null;
     inicializarCombos();
     cargarFiltroEstados();
   });
-
-  cargarSucursalLocal();
+  setTimeout(() => dni.focus(), 0);
 });

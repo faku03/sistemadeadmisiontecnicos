@@ -1,4 +1,5 @@
 let editandoId = null;
+let sucursalesCache = [];
 
 const tabla = document.getElementById('tabla');
 const buscar = document.getElementById('buscar');
@@ -16,6 +17,7 @@ const tituloForm = document.getElementById('tituloForm');
 
 async function cargar() {
   const datos = await window.apiSucursales.listar(verEliminados.checked);
+  sucursalesCache = datos;
   tabla.innerHTML = '';
 
   datos
@@ -35,7 +37,7 @@ async function cargar() {
       tr.innerHTML = `
         <td>${s.codigo}</td>
         <td>${s.nombre}</td>
-        <td>${s.sucursal_local ? '✔️' : ''}</td>
+        <td>${s.sucursal_local ? 'Si' : ''}</td>
         <td>${s.is_deleted ? 'ELIMINADA' : 'ACTIVA'}</td>
         <td>
           ${
@@ -55,39 +57,46 @@ async function cargar() {
 
 guardarBtn.onclick = async () => {
   if (!codigo.value || !nombre.value) {
-    alert('Completá código y nombre');
+    alert('Completa codigo y nombre');
     return;
   }
 
-  const data = {
-    codigo: codigo.value.trim(),
-    nombre: nombre.value.trim(),
-    direccion: direccion.value.trim(),
-    telefono: telefono.value.trim(),
-    sucursal_local: sucursalLocal.checked
-  };
+  guardarBtn.disabled = true;
 
-  if (editandoId) {
-    await window.apiSucursales.actualizar({ ...data, id: editandoId });
-  } else {
-    await window.apiSucursales.crear(data);
+  try {
+    const data = {
+      codigo: codigo.value.trim(),
+      nombre: nombre.value.trim(),
+      direccion: direccion.value.trim(),
+      telefono: telefono.value.trim(),
+      sucursal_local: sucursalLocal.checked
+    };
+
+    if (editandoId) {
+      await window.apiSucursales.actualizar({ ...data, id: editandoId });
+    } else {
+      await window.apiSucursales.crear(data);
+    }
+
+    limpiar();
+    await cargar();
+  } catch (error) {
+    alert(error.message || 'No se pudo guardar la sucursal');
+  } finally {
+    guardarBtn.disabled = false;
   }
-
-  limpiar();
-  cargar();
 };
 
 function editar(id) {
-  const fila = [...tabla.children].find(tr =>
-    tr.querySelector('button')?.getAttribute('onclick')?.includes(`(${id})`)
-  );
-
-  const datos = fila.children;
+  const datos = sucursalesCache.find(s => Number(s.id) === Number(id));
+  if (!datos) return;
 
   editandoId = id;
-  codigo.value = datos[0].textContent;
-  nombre.value = datos[1].textContent;
-  sucursalLocal.checked = datos[2].textContent.includes('✔');
+  codigo.value = datos.codigo || '';
+  nombre.value = datos.nombre || '';
+  direccion.value = datos.direccion || '';
+  telefono.value = datos.telefono || '';
+  sucursalLocal.checked = Boolean(datos.sucursal_local);
 
   tituloForm.textContent = 'Editar Sucursal';
   cancelarBtn.style.display = 'inline';
@@ -105,7 +114,7 @@ function limpiar() {
 }
 
 async function eliminar(id) {
-  if (confirm('¿Eliminar sucursal?')) {
+  if (confirm('Eliminar sucursal?')) {
     await window.apiSucursales.eliminar(id);
     cargar();
   }

@@ -1,10 +1,20 @@
 const appConfig = require('../config/app.config');
 const { ApiClient } = require('../api/client');
+const { readLicenseCache } = require('../license/license-cache');
 
 const api = new ApiClient(process.env.SISTEMA_TICKETS_API_URL || appConfig.apiUrl);
 
 function normalizarCrearCliente(cliente) {
   return cliente?.id || cliente;
+}
+
+function codigoTecnicoLicencia() {
+  const licencia = readLicenseCache();
+  return licencia?.licenseKey ||
+    appConfig.licenseKey ||
+    appConfig.licenseUnitId ||
+    process.env.SISTEMA_TICKETS_LICENSE_KEY ||
+    'SINLICENCIA';
 }
 
 module.exports = {
@@ -14,8 +24,23 @@ module.exports = {
   crearCliente: data =>
     api.crearCliente(data).then(normalizarCrearCliente),
 
+  listarClientes: includeDeleted =>
+    api.listarClientes(includeDeleted),
+
+  actualizarCliente: data =>
+    api.actualizarCliente(data.id, data),
+
+  eliminarCliente: id =>
+    api.eliminarCliente(id),
+
+  reactivarCliente: id =>
+    api.reactivarCliente(id),
+
   crearTicket: data =>
-    api.crearTicket(data),
+    api.crearTicket({
+      ...data,
+      tecnico_codigo: codigoTecnicoLicencia()
+    }),
 
   listarTickets: () =>
     api.listarTickets(appConfig.apiSucursalId),
@@ -26,11 +51,11 @@ module.exports = {
   entregarTicket: (uuid, trabajo, garantia) =>
     api.entregarTicket(uuid, { trabajo, garantia }),
 
-  actualizarPresupuesto: (uuid, valor_reparacion, sena) =>
-    api.guardarPresupuesto(uuid, { valor_reparacion, sena }),
+  actualizarPresupuesto: (uuid, valor_reparacion, sena, reparacion_presupuestada) =>
+    api.guardarPresupuesto(uuid, { valor_reparacion, sena, reparacion_presupuestada }),
 
-  enviarPresupuesto: (uuid, valor_reparacion, sena) =>
-    api.enviarPresupuesto(uuid, { valor_reparacion, sena }),
+  enviarPresupuesto: (uuid, valor_reparacion, sena, reparacion_presupuestada) =>
+    api.enviarPresupuesto(uuid, { valor_reparacion, sena, reparacion_presupuestada }),
 
   listarTipos: () =>
     api.listarTiposEquipo(false),

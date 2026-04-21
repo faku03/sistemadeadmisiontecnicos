@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Alertas de Tickets</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="app alerts-app">
+    <section class="ticket-alerts-panel alerts-window-panel">
+      <div class="ticket-alerts-head">
+        <div>
+          <h2>Alertas de tickets</h2>
+          <span id="alertasResumen">Cargando alertas...</span>
+        </div>
+        <div class="alerts-head-actions">
+          <button id="btnConfigAlertas" type="button">Configurar</button>
+          <button id="btnActualizarAlertas" type="button">Actualizar</button>
+        </div>
+      </div>
+
+      <div id="alertasConfig" class="alerts-config hidden">
+        <label>
+          Pendiente
+          <input id="alertaDiasPendiente" type="number" min="1" step="1">
+        </label>
+        <label>
+          En reparacion
+          <input id="alertaDiasReparacion" type="number" min="1" step="1">
+        </label>
+        <label>
+          Presupuesto enviado
+          <input id="alertaDiasPresupuesto" type="number" min="1" step="1">
+        </label>
+        <label>
+          Listo para entregar
+          <input id="alertaDiasListo" type="number" min="1" step="1">
+        </label>
+        <button id="btnGuardarAlertas" type="button">Guardar</button>
+        <button id="btnRestaurarAlertas" type="button">Valores por defecto</button>
+      </div>
+
+      <div class="alerts-toolbar">
+        <select id="filtroEstadoAlerta">
+          <option value="">Todos los estados</option>
+        </select>
+      </div>
+
+      <div class="alerts-grid-layout">
+        <div class="table-wrap alerts-table-wrap">
+          <table class="tabla-tickets">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Estado</th>
+                <th>Alerta</th>
+                <th>Ticket</th>
+                <th>Cliente</th>
+                <th>Equipo</th>
+                <th>Dias</th>
+              </tr>
+            </thead>
+            <tbody id="alertasTickets"></tbody>
+          </table>
+        </div>
+
+        <aside class="alert-detail" id="alertaDetalle">
+          <h3>Detalle del ticket</h3>
+          <div class="alert-detail-body" id="alertaDetalleBody">
+            <div class="alert-detail-empty">Seleccione una alerta para ver el detalle.</div>
+          </div>
+          <div class="alert-detail-actions hidden" id="alertaAcciones">
+            <button id="btnPdfTicket" type="button" disabled>PDF ingreso</button>
+            <button id="btnPresupuestoTicket" type="button" disabled>Presupuesto</button>
+            <button id="btnEnviarPresupuestoTicket" type="button" disabled>Enviar presupuesto</button>
+            <button id="btnAceptarPresupuestoTicket" type="button" disabled>Aceptar presupuesto</button>
+            <button id="btnRechazarPresupuestoTicket" type="button" disabled>Rechazar presupuesto</button>
+            <button id="btnRetiradoSinRepararTicket" type="button" disabled>Retirado sin reparar</button>
+            <button id="btnEntregarTicket" type="button" disabled>Entregar</button>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <div id="modalEntrega" class="modal hidden">
+    <div class="modal-content">
+      <h3>Entregar equipo</h3>
+
+      <input id="trabajoEntrega" placeholder="Trabajo realizado">
+      <input id="garantiaEntrega" type="number" placeholder="Dias de garantia">
+
+      <div class="modal-actions">
+        <button id="confirmarEntrega">Confirmar</button>
+        <button id="cancelarEntrega">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalPresupuesto" class="modal hidden">
+    <div class="modal-content presupuesto-modal-content">
+      <h3>Presupuesto</h3>
+
+      <div id="presupuestoTicketInfo" class="ticket-context"></div>
+
+      <label class="field-label">
+        Valor de reparacion
+        <input id="valorPresupuesto" type="number" min="0" step="0.01" placeholder="Ingrese el valor total">
+      </label>
+
+      <label class="field-label">
+        Sena
+        <input id="senaPresupuesto" type="number" min="0" step="0.01" placeholder="Ingrese la sena recibida">
+      </label>
+
+      <label class="field-label">
+        Reparacion a realizar
+        <textarea id="reparacionPresupuesto" placeholder="Detalle la reparacion propuesta para el equipo"></textarea>
+      </label>
+
+      <div class="modal-actions">
+        <button id="btnGuardarPresupuesto">Guardar</button>
+        <button id="btnEnviarPresupuesto">Guardar y enviar</button>
+        <button id="btnCancelarPresupuesto">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app-dialog.js"></script>
+  <script src="alertas.js"></script>
+</body>
+</html>

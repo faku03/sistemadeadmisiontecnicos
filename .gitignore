@@ -4,6 +4,7 @@ dist-caja/
 dist-instalador/
 
 pdfs/*.pdf
+pdf_presupuesto/*.pdf
 *.log
 *.zip
 app.config.json

@@ -10,13 +10,18 @@
     <div class="sucursal-actual" id="sucursalActual">
       SUCURSAL: --
     </div>
-    <div class="menu">
-      <button id="btnMenuDatos">Cargar Datos</button>
-      <div id="menuDatos" class="menu-dropdown hidden">
-        <button id="menuSucursales">Sucursales</button>
-        <button id="menuTipos">Tipos de Equipo</button>
-        <button id="menuMarcas">Marcas</button>
-        <button id="menuModelos">Modelos</button>
+    <div class="topbar-actions">
+      <button id="btnVerAlertasTickets" type="button">Ver alertas de tickets</button>
+      <span id="alertasResumen">Sin alertas</span>
+      <div class="menu">
+        <button id="btnMenuDatos">Cargar Datos</button>
+        <div id="menuDatos" class="menu-dropdown hidden">
+          <button id="menuSucursales">Sucursales</button>
+          <button id="menuTipos">Tipos de Equipo</button>
+          <button id="menuMarcas">Marcas</button>
+          <button id="menuModelos">Modelos</button>
+          <button id="menuClientes">Clientes</button>
+        </div>
       </div>
     </div>
   </header>
@@ -24,6 +29,7 @@
   <main class="app app-main">
     <section class="panel form-panel">
       <h2>Cliente</h2>
+      <div id="clienteAviso" class="inline-notice hidden"></div>
       <div class="form-grid cliente-grid">
         <input id="dni" placeholder="DNI">
         <input id="nombre" placeholder="Nombre" disabled>
@@ -62,6 +68,20 @@
           <select id="filtroEstado">
             <option value="">Todos los estados</option>
           </select>
+          <button id="btnVerTodosTickets" type="button">Ver todos los tickets</button>
+        </div>
+      </div>
+
+      <div class="ticket-actions-bar">
+        <div id="ticketSeleccionadoInfo" class="ticket-selected-text">Seleccione un ticket para operar.</div>
+        <div class="ticket-actions">
+          <button id="btnPdfTicket" type="button" disabled>PDF ingreso</button>
+          <button id="btnPresupuestoTicket" type="button" disabled>Presupuesto</button>
+          <button id="btnEnviarPresupuestoTicket" type="button" disabled>Enviar presupuesto</button>
+          <button id="btnAceptarPresupuestoTicket" type="button" disabled>Aceptar presupuesto</button>
+          <button id="btnRechazarPresupuestoTicket" type="button" disabled>Rechazar presupuesto</button>
+          <button id="btnRetiradoSinRepararTicket" type="button" disabled>Retirado sin reparar</button>
+          <button id="btnEntregarTicket" type="button" disabled>Entregar</button>
         </div>
       </div>
 
@@ -69,13 +89,12 @@
         <table class="tabla-tickets">
           <thead>
             <tr>
+              <th>Fecha</th>
+              <th>Ticket</th>
               <th>Cliente</th>
               <th>Celular</th>
               <th>Equipo</th>
               <th>Estado</th>
-              <th>PDF</th>
-              <th>Presupuesto</th>
-              <th>Entrega</th>
             </tr>
           </thead>
           <tbody id="listaTickets"></tbody>
@@ -99,21 +118,36 @@
   </div>
 
   <div id="modalPresupuesto" class="modal hidden">
-    <div class="modal-content">
+    <div class="modal-content presupuesto-modal-content">
       <h3>Presupuesto</h3>
 
-      <input id="valorPresupuesto" type="number" placeholder="Valor reparacion">
-      <input id="senaPresupuesto" type="number" placeholder="Sena">
+      <div id="presupuestoTicketInfo" class="ticket-context"></div>
+
+      <label class="field-label">
+        Valor de reparacion
+        <input id="valorPresupuesto" type="number" min="0" step="0.01" placeholder="Ingrese el valor total">
+      </label>
+
+      <label class="field-label">
+        Sena
+        <input id="senaPresupuesto" type="number" min="0" step="0.01" placeholder="Ingrese la sena recibida">
+      </label>
+
+      <label class="field-label">
+        Reparacion a realizar
+        <textarea id="reparacionPresupuesto" placeholder="Detalle la reparacion propuesta para el equipo"></textarea>
+      </label>
 
       <div class="modal-actions">
         <button id="btnGuardarPresupuesto">Guardar</button>
-        <button id="btnEnviarPresupuesto">Enviar Presupuesto</button>
+        <button id="btnEnviarPresupuesto">Guardar y enviar</button>
         <button id="btnCancelarPresupuesto">Cancelar</button>
       </div>
     </div>
   </div>
 
   <script src="license-ui.js"></script>
+  <script src="app-dialog.js"></script>
   <script src="renderer.js"></script>
 </body>
 </html>

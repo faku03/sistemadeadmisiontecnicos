@@ -11,6 +11,7 @@ module.exports = (ticket) => {
   const doc = new PDFDocument();
   doc.pipe(fs.createWriteStream(filePath));
 
+  doc.text(`Ticket: ${ticket.codigo || ticket.uuid}`);
   doc.text(`Cliente: ${ticket.cliente_nombre} ${ticket.cliente_apellido}`);
   doc.text(`Equipo: ${ticket.tipo_equipo}`);
   doc.text(`Modelo: ${ticket.marca} ${ticket.modelo}`);

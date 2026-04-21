@@ -15,7 +15,7 @@ function generarPDFEntrega(ticket) {
   doc.moveDown();
 
   doc.fontSize(12);
-  doc.text(`Ticket N°: ${ticket.uuid}`);
+  doc.text(`Ticket Nro: ${ticket.codigo || ticket.uuid}`);
   doc.text(`Fecha de entrega: ${ticket.fecha_entrega}`);
   doc.moveDown();
 

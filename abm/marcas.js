@@ -65,23 +65,31 @@ async function cargar() {
 
 guardarBtn.onclick = async () => {
   if (!nombre.value.trim()) {
-    alert('Ingresá el nombre');
+    alert('Ingresa el nombre');
     return;
   }
 
-  if (editandoId) {
-    await window.apiMarcas.actualizar({
-      id: editandoId,
-      nombre: nombre.value.trim()
-    });
-  } else {
-    await window.apiMarcas.crear({
-      nombre: nombre.value.trim()
-    });
-  }
+  guardarBtn.disabled = true;
 
-  limpiar();
-  cargar();
+  try {
+    if (editandoId) {
+      await window.apiMarcas.actualizar({
+        id: editandoId,
+        nombre: nombre.value.trim()
+      });
+    } else {
+      await window.apiMarcas.crear({
+        nombre: nombre.value.trim()
+      });
+    }
+
+    limpiar();
+    await cargar();
+  } catch (error) {
+    alert(error.message || 'No se pudo guardar la marca');
+  } finally {
+    guardarBtn.disabled = false;
+  }
 };
 
 function editar(m) {
