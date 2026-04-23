@@ -18,6 +18,7 @@
 
       <div class="config-tabs">
         <button class="config-tab is-active" type="button" data-tab="general">Datos del negocio</button>
+        <button class="config-tab" type="button" data-tab="sistema">Configuracion de sistema</button>
         <button class="config-tab" type="button" data-tab="pdf">Configuracion de PDF</button>
         <button class="config-tab" type="button" data-tab="alertas">Configuracion de alertas</button>
         <button class="config-tab" type="button" data-tab="licencia">Servidor y licencia</button>
@@ -45,6 +46,35 @@
           </label>
           <label class="field-label">Email
             <input id="cfgPdfBusinessEmail" type="text" placeholder="correo@negocio.com">
+          </label>
+        </div>
+      </div>
+
+      <div class="panel config-panel hidden" data-panel="sistema">
+        <div class="config-grid">
+          <label class="field-label">Formato de fecha
+            <select id="cfgDateFormat">
+              <option value="system">Automatico (segun sistema)</option>
+              <option value="dd/MM/yyyy">dd/MM/yyyy</option>
+              <option value="MM/dd/yyyy">MM/dd/yyyy</option>
+              <option value="yyyy-MM-dd">yyyy-MM-dd</option>
+            </select>
+          </label>
+          <label class="field-label">Moneda
+            <select id="cfgCurrencyCode">
+              <option value="ARS">Peso argentino (ARS)</option>
+              <option value="USD">Dolar estadounidense (USD)</option>
+              <option value="EUR">Euro (EUR)</option>
+              <option value="BRL">Real brasileño (BRL)</option>
+            </select>
+          </label>
+          <label class="field-label">Formato de moneda
+            <select id="cfgCurrencyFormat">
+              <option value="system">Automatico (segun sistema)</option>
+              <option value="es-AR">Español 1.234,56</option>
+              <option value="en-US">Ingles 1,234.56</option>
+              <option value="code">Mostrar codigo de moneda</option>
+            </select>
           </label>
         </div>
       </div>

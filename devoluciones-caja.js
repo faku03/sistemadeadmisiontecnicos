@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let cobrados = [];
   let seleccionado = null;
+  let dateFormat = 'system';
 
   function dinero(valor) {
     return formatoMoneda.format(Number(valor || 0));
@@ -26,6 +27,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function descripcionEquipo(item) {
     return [item.tipo, item.marca, item.modelo].filter(Boolean).join(' - ');
+  }
+
+  function fechaHora(valor) {
+    return window.dateFormatUtils.formatDateTime(valor, dateFormat);
   }
 
   function textoMovimiento(item) {
@@ -84,12 +89,12 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       tr.innerHTML = `
+        <td>${fechaHora(item.fecha_cobro)}</td>
         <td>${item.nombre} ${item.apellido}</td>
         <td>${descripcionEquipo(item)}</td>
         <td>${ticketCodigo(item)}</td>
         <td>${dinero(item.saldo)}</td>
         <td>${dinero(item.devoluciones)}</td>
-        <td>${item.fecha_cobro || ''}</td>
       `;
 
       tr.addEventListener('click', () => {
@@ -104,6 +109,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function cargar() {
+    const config = await window.apiCaja.obtenerConfiguracion();
+    dateFormat = config?.dateFormat || 'system';
     cobrados = await window.apiCaja.listarCobrados(200);
     seleccionado = cobrados.find(item => item.ticket_uuid === seleccionado?.ticket_uuid) || null;
     actualizarSeleccion(seleccionado);

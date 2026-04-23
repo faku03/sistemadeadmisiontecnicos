@@ -50,6 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let ticketPresupuestoActual = null;
   let historialCache = new Map();
   let alertasConfigActual = { ...alertasDefaults };
+  let dateFormatActual = 'system';
 
   function mostrarAlerta(title, message) {
     return window.appDialog?.alert({ title, message }) || Promise.resolve(alert(message));
@@ -68,10 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function fechaCorta(valor) {
-    if (!valor) return '';
-    const fecha = new Date(valor);
-    if (Number.isNaN(fecha.getTime())) return '';
-    return fecha.toLocaleDateString('es-AR');
+    return window.dateFormatUtils.formatDate(valor, dateFormatActual);
   }
 
   function diasExactosDesde(valor) {
@@ -158,10 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function fechaHoraLarga(valor) {
-    if (!valor) return '';
-    const fecha = new Date(valor);
-    if (Number.isNaN(fecha.getTime())) return '';
-    return fecha.toLocaleString('es-AR');
+    return window.dateFormatUtils.formatDateTime(valor, dateFormatActual);
   }
 
   function buscarPasoHistorial(historial, estadoCodigo) {
@@ -259,6 +254,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function cargarConfigAlertasSistema() {
     const config = await window.api.obtenerConfiguracion();
+    dateFormatActual = config.dateFormat || 'system';
     return aplicarConfigAlertas({
       pendiente: config.alertPendingDays,
       reparacion: config.alertRepairDays,
@@ -765,6 +761,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   window.eventos.onConfiguracionActualizada(async (config) => {
+    dateFormatActual = config.dateFormat || 'system';
     aplicarConfigAlertas({
       pendiente: config.alertPendingDays,
       reparacion: config.alertRepairDays,

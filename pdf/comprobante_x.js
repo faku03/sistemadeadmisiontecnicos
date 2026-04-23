@@ -2,6 +2,8 @@ const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
 const { drawHeader, drawDocumentTitle, sectionTitle, infoLine, money, signatureLine } = require('./common');
+const appConfig = require('../config/app.config');
+const { formatDateTime } = require('../date-format');
 
 function generarComprobanteX(datos, outputDir) {
   const numero = String(datos.numero).padStart(8, '0');
@@ -26,7 +28,7 @@ function generarComprobanteX(datos, outputDir) {
 
   sectionTitle(doc, 'Comprobante');
   infoLine(doc, 'Comprobante X Nro', numero);
-  infoLine(doc, 'Fecha', datos.fecha_cobro || new Date().toLocaleString('es-AR'));
+  infoLine(doc, 'Fecha', formatDateTime(datos.fecha_cobro || new Date(), appConfig.dateFormat));
   infoLine(doc, 'Ticket', ticketCodigo);
 
   sectionTitle(doc, 'Cliente');

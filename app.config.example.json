@@ -9,6 +9,9 @@
   "pdfBusinessAddress": "Direccion visible en PDF",
   "pdfBusinessPhone": "Telefono visible en PDF",
   "pdfBusinessEmail": "Email visible en PDF",
+  "dateFormat": "system",
+  "currencyCode": "ARS",
+  "currencyFormat": "system",
   "licenseMode": "server",
   "licenseServerUrl": "http://SERVIDOR-GATEWAY:3000",
   "licenseGraceDays": 7

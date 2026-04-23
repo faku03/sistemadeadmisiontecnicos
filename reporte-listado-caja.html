@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Reporte de Caja</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body class="reporte-caja-body">
+  <main class="reporte-caja-page">
+    <section class="reporte-caja-toolbar no-print">
+      <div class="ticket-actions caja-ticket-actions reporte-caja-toolbar-actions">
+        <button id="btnImprimirReporte" type="button">Imprimir</button>
+        <button id="btnCerrarReporte" type="button">Cerrar</button>
+      </div>
+    </section>
+
+    <section class="reporte-caja-sheet">
+      <header class="reporte-caja-header">
+        <div class="reporte-caja-logo-box" id="reporteLogoBox">
+          <img id="reporteLogoImagen" class="reporte-caja-logo-image hidden" alt="Logo del negocio">
+          <span id="reporteLogoTexto">CAJA</span>
+        </div>
+        <div class="reporte-caja-business">
+          <h1 id="reporteNegocioNombre">Sistema de Caja</h1>
+          <p id="reporteNegocioDireccion"></p>
+          <p id="reporteNegocioTelefono"></p>
+          <p id="reporteNegocioEmail"></p>
+        </div>
+      </header>
+
+      <section class="reporte-caja-documento">
+        <div class="reporte-caja-title-block">
+          <h2>Reporte de caja</h2>
+          <p id="reportePeriodo">Periodo completo</p>
+        </div>
+
+        <section class="reporte-caja-tabla-section">
+          <table class="reporte-caja-tabla">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Tipo</th>
+                <th>Cliente</th>
+                <th>Equipo</th>
+                <th>Ticket</th>
+                <th>Cobrado</th>
+                <th>Devuelto</th>
+                <th>Motivo</th>
+              </tr>
+            </thead>
+            <tbody id="reporteTablaMovimientos"></tbody>
+          </table>
+        </section>
+
+        <section class="reporte-caja-totales">
+          <article class="reporte-caja-total">
+            <span>Cobrado</span>
+            <strong id="reporteTotalCobrado">$0,00</strong>
+          </article>
+          <article class="reporte-caja-total">
+            <span>Devuelto</span>
+            <strong id="reporteTotalDevuelto">$0,00</strong>
+          </article>
+          <article class="reporte-caja-total reporte-caja-total-primary">
+            <span>Neto</span>
+            <strong id="reporteTotalNeto">$0,00</strong>
+          </article>
+          <article class="reporte-caja-total">
+            <span>Movimientos</span>
+            <strong id="reporteCantidad">0</strong>
+          </article>
+        </section>
+      </section>
+
+      <footer class="reporte-caja-footer">
+        <span id="reporteFooterPeriodo">Periodo completo</span>
+        <span class="reporte-caja-page-number">Pagina <span class="page-number-value"></span> de <span class="page-count-value"></span></span>
+      </footer>
+    </section>
+  </main>
+
+  <script src="date-format.js"></script>
+  <script src="app-dialog.js"></script>
+  <script src="reporte-listado-caja.js"></script>
+</body>
+</html>

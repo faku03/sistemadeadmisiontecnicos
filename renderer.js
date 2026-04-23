@@ -1,6 +1,7 @@
 // ================= ESTADO GLOBAL =================
 let clienteActual = null;
 let ticketEntregaActual = null;
+let dateFormatActual = 'system';
 
 document.addEventListener('DOMContentLoaded', () => {
   const inicioPantalla = performance.now();
@@ -106,10 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function fechaCorta(valor) {
-    if (!valor) return '';
-    const fecha = new Date(valor);
-    if (Number.isNaN(fecha.getTime())) return '';
-    return fecha.toLocaleDateString('es-AR');
+    return window.dateFormatUtils.formatDate(valor, dateFormatActual);
   }
 
   function fechaEstado(ticket) {
@@ -147,6 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function cargarConfiguracionSistema() {
     const config = await window.api.obtenerConfiguracion();
+    dateFormatActual = config.dateFormat || 'system';
     aplicarConfigAlertas({
       pendiente: config.alertPendingDays,
       reparacion: config.alertRepairDays,
@@ -1021,6 +1020,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   window.eventos.onConfiguracionActualizada((config) => {
+    dateFormatActual = config.dateFormat || 'system';
     aplicarConfigAlertas({
       pendiente: config.alertPendingDays,
       reparacion: config.alertRepairDays,

@@ -4,6 +4,9 @@ contextBridge.exposeInMainWorld('apiCaja', {
   obtenerEstadoLicencia: () =>
     ipcRenderer.invoke('licencia:estado'),
 
+  obtenerConfiguracion: () =>
+    ipcRenderer.invoke('configuracion-obtener'),
+
   marcarAvisoLicencia: () =>
     ipcRenderer.invoke('licencia:marcar-aviso'),
 
@@ -25,6 +28,9 @@ contextBridge.exposeInMainWorld('apiCaja', {
   informe: filtros =>
     ipcRenderer.invoke('caja:informe', filtros),
 
+  listado: filtros =>
+    ipcRenderer.invoke('caja:listado', filtros),
+
   rutaDB: () =>
     ipcRenderer.invoke('caja:ruta-db'),
 
@@ -38,5 +44,17 @@ contextBridge.exposeInMainWorld('apiCaja', {
     ipcRenderer.invoke('caja:whatsapp', data),
 
   abrirDevoluciones: () =>
-    ipcRenderer.invoke('caja:abrir-devoluciones')
+    ipcRenderer.invoke('caja:abrir-devoluciones'),
+
+  abrirListado: () =>
+    ipcRenderer.invoke('caja:abrir-listado'),
+
+  abrirReporteListado: data =>
+    ipcRenderer.invoke('caja:abrir-reporte-listado', data),
+
+  obtenerReporteListado: () =>
+    ipcRenderer.invoke('caja:reporte-listado-data'),
+
+  generarReporteListadoPdf: data =>
+    ipcRenderer.invoke('caja:generar-reporte-listado-pdf', data)
 });

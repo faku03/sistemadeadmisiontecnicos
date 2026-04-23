@@ -29,9 +29,17 @@ document.addEventListener('DOMContentLoaded', () => {
   let cobrados = [];
   let pendienteSeleccionado = null;
   let cobradoSeleccionado = null;
+  let dateFormat = 'system';
 
   function dinero(valor) {
     return formatoMoneda.format(Number(valor || 0));
+  }
+
+  function fechaVisible(valor, withTime = false) {
+    if (!valor) return '';
+    return withTime
+      ? window.dateFormatUtils.formatDateTime(valor, dateFormat)
+      : window.dateFormatUtils.formatDate(valor, dateFormat);
   }
 
   function activarTab(tab) {
@@ -136,7 +144,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       tr.innerHTML = `
-        <td>${item.fecha_cobro || ''}</td>
+        <td>${fechaVisible(item.fecha_cobro, true)}</td>
         <td>${item.nombre} ${item.apellido}</td>
         <td>${descripcionEquipo(item)}</td>
         <td>${ticketCodigo(item)}</td>
@@ -163,6 +171,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function cargarTodo() {
+    const config = await window.apiCaja.obtenerConfiguracion();
+    dateFormat = config?.dateFormat || 'system';
     pendientes = await window.apiCaja.listarPendientes();
     cobrados = await window.apiCaja.listarCobrados(100);
 
@@ -255,9 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
   buscarCobrados.addEventListener('input', renderCobrados);
   tabs.forEach(tab => tab.addEventListener('click', () => activarTab(tab.dataset.tab)));
   btnAbrirDevoluciones.addEventListener('click', () => window.apiCaja.abrirDevoluciones());
-  btnListadoCaja.addEventListener('click', async () => {
-    await mostrarAlerta('Listado de caja', 'Esta pantalla la agregamos en el siguiente paso.');
-  });
+  btnListadoCaja.addEventListener('click', () => window.apiCaja.abrirListado());
 
   window.apiCaja.rutaDB().then(ruta => {
     rutaDB.textContent = `Gateway: ${ruta}`;

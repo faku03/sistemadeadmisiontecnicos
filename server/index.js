@@ -851,6 +851,118 @@ async function informeCaja(url) {
   };
 }
 
+async function listadoCaja(url) {
+  const params = [];
+  const whereCobros = [];
+  const whereDevoluciones = [];
+
+  if (url.searchParams.get('desde')) {
+    params.push(url.searchParams.get('desde'));
+    whereCobros.push(`date(mc.fecha_cobro) >= date($${params.length})`);
+    whereDevoluciones.push(`date(dc.fecha) >= date($${params.length})`);
+  }
+
+  if (url.searchParams.get('hasta')) {
+    params.push(url.searchParams.get('hasta'));
+    whereCobros.push(`date(mc.fecha_cobro) <= date($${params.length})`);
+    whereDevoluciones.push(`date(dc.fecha) <= date($${params.length})`);
+  }
+
+  if (url.searchParams.get('ticket')) {
+    params.push(`%${url.searchParams.get('ticket')}%`);
+    whereCobros.push(`(mc.ticket_uuid ILIKE $${params.length} OR COALESCE(t.codigo, mc.ticket_uuid) ILIKE $${params.length})`);
+    whereDevoluciones.push(`(dc.ticket_uuid ILIKE $${params.length} OR COALESCE(t.codigo, dc.ticket_uuid) ILIKE $${params.length})`);
+  }
+
+  if (url.searchParams.get('cliente')) {
+    params.push(`%${url.searchParams.get('cliente')}%`);
+    whereCobros.push(`((c.nombre || ' ' || c.apellido) ILIKE $${params.length})`);
+    whereDevoluciones.push(`((c.nombre || ' ' || c.apellido) ILIKE $${params.length})`);
+  }
+
+  const whereCobrosSql = whereCobros.length ? `WHERE ${whereCobros.join(' AND ')}` : '';
+  const whereDevolucionesSql = whereDevoluciones.length ? `WHERE ${whereDevoluciones.join(' AND ')}` : '';
+
+  const detalle = await query(
+    `
+    SELECT *
+    FROM (
+      SELECT
+        'COBRO' AS tipo,
+        mc.fecha_cobro AS fecha,
+        mc.ticket_uuid,
+        COALESCE(t.codigo, mc.ticket_uuid) AS ticket_codigo,
+        c.nombre,
+        c.apellido,
+        c.celular,
+        te.descripcion AS tipo_equipo,
+        ma.nombre AS marca,
+        mo.nombre AS modelo,
+        mc.importe_total,
+        mc.sena,
+        mc.saldo AS importe_cobrado,
+        0::numeric AS importe_devuelto,
+        ''::text AS motivo
+      FROM movimientos_caja mc
+      JOIN tickets t ON t.uuid = mc.ticket_uuid
+      JOIN clientes c ON c.id = mc.cliente_id
+      JOIN tipos_equipo te ON te.id = t.tipo_equipo_id
+      JOIN modelos mo ON mo.id = t.modelo_id
+      JOIN marcas ma ON ma.id = mo.marca_id
+      ${whereCobrosSql}
+        ${whereCobrosSql ? 'AND' : 'WHERE'} mc.estado = 'COBRADO'
+
+      UNION ALL
+
+      SELECT
+        'DEVOLUCION' AS tipo,
+        dc.fecha AS fecha,
+        dc.ticket_uuid,
+        COALESCE(t.codigo, dc.ticket_uuid) AS ticket_codigo,
+        c.nombre,
+        c.apellido,
+        c.celular,
+        te.descripcion AS tipo_equipo,
+        ma.nombre AS marca,
+        mo.nombre AS modelo,
+        mc.importe_total,
+        mc.sena,
+        0::numeric AS importe_cobrado,
+        dc.importe AS importe_devuelto,
+        COALESCE(dc.motivo, '') AS motivo
+      FROM devoluciones_caja dc
+      JOIN movimientos_caja mc ON mc.id = dc.movimiento_id
+      JOIN tickets t ON t.uuid = dc.ticket_uuid
+      JOIN clientes c ON c.id = mc.cliente_id
+      JOIN tipos_equipo te ON te.id = t.tipo_equipo_id
+      JOIN modelos mo ON mo.id = t.modelo_id
+      JOIN marcas ma ON ma.id = mo.marca_id
+      ${whereDevolucionesSql}
+    ) movimientos
+    ORDER BY fecha DESC
+    `
+    ,
+    params
+  );
+
+  const totalCobrado = detalle.rows
+    .filter(item => item.tipo === 'COBRO')
+    .reduce((acc, item) => acc + Number(item.importe_cobrado || 0), 0);
+  const totalDevuelto = detalle.rows
+    .filter(item => item.tipo === 'DEVOLUCION')
+    .reduce((acc, item) => acc + Number(item.importe_devuelto || 0), 0);
+
+  return {
+    totales: {
+      cobrado: totalCobrado,
+      devuelto: totalDevuelto,
+      neto: totalCobrado - totalDevuelto,
+      movimientos: detalle.rows.length
+    },
+    items: detalle.rows
+  };
+}
+
 async function datosComprobanteX(uuid) {
   const ticketUuid = await resolverTicketUuid(uuid);
   const result = await query(
@@ -1445,6 +1557,11 @@ async function handle(req, res) {
 
     if (method === 'GET' && path === '/caja/informe') {
       sendJson(res, 200, await informeCaja(url));
+      return;
+    }
+
+    if (method === 'GET' && path === '/caja/listado') {
+      sendJson(res, 200, await listadoCaja(url));
       return;
     }
 

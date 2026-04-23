@@ -2,6 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const PDFDocument = require('pdfkit');
 const { outputDir, drawHeader, drawDocumentTitle, sectionTitle, infoLine, signatureLine } = require('./common');
+const appConfig = require('../config/app.config');
+const { formatDateTime } = require('../date-format');
 
 module.exports = ticket => {
   const filePath = path.join(outputDir('pdfs'), `ingreso_${ticket.uuid}.pdf`);
@@ -14,7 +16,7 @@ module.exports = ticket => {
 
   sectionTitle(doc, 'Datos del ticket');
   infoLine(doc, 'Ticket', ticket.codigo || ticket.uuid);
-  infoLine(doc, 'Fecha de ingreso', ticket.fecha_ingreso || new Date().toLocaleString('es-AR'));
+  infoLine(doc, 'Fecha de ingreso', formatDateTime(ticket.fecha_ingreso || new Date(), appConfig.dateFormat));
 
   sectionTitle(doc, 'Cliente');
   infoLine(doc, 'Nombre', `${ticket.cliente_nombre} ${ticket.cliente_apellido}`);

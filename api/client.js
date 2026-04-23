@@ -277,6 +277,17 @@ class ApiClient {
     return this.request(`/caja/informe?${params.toString()}`);
   }
 
+  obtenerListadoCaja({ desde, hasta, ticket, cliente } = {}) {
+    const params = new URLSearchParams();
+
+    if (desde) params.set('desde', desde);
+    if (hasta) params.set('hasta', hasta);
+    if (ticket) params.set('ticket', ticket);
+    if (cliente) params.set('cliente', cliente);
+
+    return this.request(`/caja/listado?${params.toString()}`);
+  }
+
   obtenerComprobanteX(uuid) {
     return this.request(`/caja/${uuid}/comprobante-x`, {
       method: 'POST'

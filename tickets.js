@@ -4,6 +4,7 @@ let ticketSeleccionado = null;
 let ticketEntregaActual = null;
 let ticketPresupuestoActual = null;
 let historialCache = new Map();
+let dateFormatActual = 'system';
 
 document.addEventListener('DOMContentLoaded', () => {
   const listaTickets = document.getElementById('listaTicketsFull');
@@ -63,10 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function fechaCorta(valor) {
-    if (!valor) return '';
-    const fecha = new Date(valor);
-    if (Number.isNaN(fecha.getTime())) return '';
-    return fecha.toLocaleDateString('es-AR');
+    return window.dateFormatUtils.formatDate(valor, dateFormatActual);
   }
 
   function descripcionEquipo(ticket) {
@@ -135,10 +133,12 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function fechaHoraLarga(valor) {
-    if (!valor) return '';
-    const fecha = new Date(valor);
-    if (Number.isNaN(fecha.getTime())) return '';
-    return fecha.toLocaleString('es-AR');
+    return window.dateFormatUtils.formatDateTime(valor, dateFormatActual);
+  }
+
+  async function cargarConfiguracionSistema() {
+    const config = await window.api.obtenerConfiguracion();
+    dateFormatActual = config?.dateFormat || 'system';
   }
 
   function buscarPasoHistorial(historial, estadoCodigo) {
@@ -711,7 +711,8 @@ document.addEventListener('DOMContentLoaded', () => {
   modalEntrega.classList.add('hidden');
   modalPresupuesto.classList.add('hidden');
 
-  cargarFiltroEstados()
+  cargarConfiguracionSistema()
+    .then(cargarFiltroEstados)
     .then(cargarTickets)
     .catch(error => mostrarAlerta('No se pudo cargar', error.message || 'No se pudieron cargar los tickets'));
 });

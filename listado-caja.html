@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Listado de Caja</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="app listado-caja-app">
+    <section class="panel listado-caja-filtros">
+      <div class="tickets-header">
+        <h2>Listado de caja</h2>
+      </div>
+
+      <div class="listado-caja-toolbar-row">
+        <div class="config-grid listado-caja-fechas">
+          <label class="field-label">Desde
+            <input id="listadoDesde" type="date">
+          </label>
+          <label class="field-label">Hasta
+            <input id="listadoHasta" type="date">
+          </label>
+        </div>
+
+        <div class="ticket-actions caja-ticket-actions listado-caja-toolbar-actions">
+          <button id="btnPeriodoCompletoListado" type="button">Periodo completo</button>
+          <button id="btnMesActualListado" type="button">Mes actual</button>
+          <button id="btnMesAnteriorListado" type="button">Mes anterior</button>
+          <button id="btnActualizarListado" type="button">Actualizar</button>
+          <button id="btnLimpiarListado" type="button">Limpiar</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel listado-caja-resumen">
+      <div class="summary-card">
+        <span>Cobrado</span>
+        <strong id="listadoTotalCobrado">$0.00</strong>
+      </div>
+      <div class="summary-card">
+        <span>Devuelto</span>
+        <strong id="listadoTotalDevuelto">$0.00</strong>
+      </div>
+      <div class="summary-card primary">
+        <span>Neto</span>
+        <strong id="listadoTotalNeto">$0.00</strong>
+      </div>
+      <div class="summary-card">
+        <span>Movimientos</span>
+        <strong id="listadoCantidad">0</strong>
+      </div>
+    </section>
+
+    <section class="panel listado-caja-contenido">
+      <div class="table-wrap caja-full-table listado-caja-table-wrap">
+        <table class="tabla tabla-caja tabla-listado-caja">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Tipo</th>
+              <th>Cliente</th>
+              <th>Equipo</th>
+              <th>Ticket</th>
+              <th>Cobrado</th>
+              <th>Devuelto</th>
+              <th>Motivo</th>
+            </tr>
+          </thead>
+          <tbody id="tablaListadoCaja"></tbody>
+        </table>
+      </div>
+
+      <aside class="panel listado-caja-acciones">
+        <h2>Acciones</h2>
+        <div class="caja-side-actions">
+          <button id="btnImprimirListado" type="button">Imprimir</button>
+          <button id="btnExportarCsv" type="button">Exportar CSV</button>
+          <button id="btnExportarPdf" type="button">Exportar PDF</button>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <script src="date-format.js"></script>
+  <script src="app-dialog.js"></script>
+  <script src="listado-caja.js"></script>
+</body>
+</html>

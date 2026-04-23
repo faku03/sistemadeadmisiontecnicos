@@ -1,7 +1,10 @@
 const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const fs = require('fs');
 const path = require('path');
+const { pathToFileURL } = require('url');
 const db = require('./services/data-source');
+const configStore = require('./config/store');
+const pdfReporteCaja = require('./pdf/reporte_caja');
 const license = require('./license/license-service');
 
 const appDataBase = path.join(process.env.APPDATA || app.getPath('appData'), 'SistemaTicketsCaja');
@@ -51,6 +54,60 @@ function abrirVentana(ruta, titulo, width = 1060, height = 720) {
   win.loadFile(ruta);
 }
 
+let ultimoReporteCaja = {
+  filtros: {},
+  resultado: {
+    items: [],
+    totales: {
+      cobrado: 0,
+      devuelto: 0,
+      neto: 0,
+      movimientos: 0
+    }
+  }
+};
+
+function datosNegocioReporte() {
+  const config = configStore.getConfig();
+  const street = String(config.pdfBusinessStreet || '').trim();
+  const locality = String(config.pdfBusinessLocality || '').trim();
+  const province = String(config.pdfBusinessProvince || '').trim();
+  const direccion = [
+    street,
+    [locality, province].filter(Boolean).join(', ')
+  ].filter(Boolean).join(' - ');
+
+  return {
+    nombre: config.pdfBusinessName || config.sucursalNombre || 'Sistema de Caja',
+    direccion: direccion || config.pdfBusinessAddress || '',
+    telefono: config.pdfBusinessPhone || '',
+    email: config.pdfBusinessEmail || '',
+    logoUrl: obtenerLogoReporte()
+  };
+}
+
+function obtenerLogoReporte() {
+  const config = configStore.getConfig();
+  const configured = String(config.pdfLogoPath || '').trim();
+  const candidates = [
+    configured,
+    path.join(process.cwd(), 'images', 'logopdf.png'),
+    path.join(process.cwd(), 'images', 'logo.png')
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    const resolved = path.isAbsolute(candidate)
+      ? candidate
+      : path.join(process.cwd(), candidate);
+
+    if (fs.existsSync(resolved)) {
+      return pathToFileURL(resolved).href;
+    }
+  }
+
+  return '';
+}
+
 ipcMain.handle('caja:listar-pendientes', () =>
   db.listarCajaPendiente()
 );
@@ -83,6 +140,10 @@ ipcMain.handle('caja:informe', (_, filtros) =>
   db.obtenerInformeCaja(filtros)
 );
 
+ipcMain.handle('caja:listado', (_, filtros) =>
+  db.obtenerListadoCaja(filtros)
+);
+
 ipcMain.handle('caja:ruta-db', () =>
   db.obtenerRutaDB()
 );
@@ -109,5 +170,58 @@ ipcMain.handle('caja:whatsapp', (_, data) => {
 ipcMain.handle('caja:abrir-devoluciones', () =>
   abrirVentana('devoluciones-caja.html', 'Devoluciones de Caja', 1120, 720)
 );
+
+ipcMain.handle('caja:abrir-listado', () =>
+  abrirVentana('listado-caja.html', 'Listado de Caja', 1220, 760)
+);
+
+ipcMain.handle('configuracion-obtener', () =>
+  configStore.getConfig()
+);
+
+ipcMain.handle('caja:abrir-reporte-listado', (_, payload = {}) => {
+  ultimoReporteCaja = {
+    filtros: payload.filtros || {},
+    resultado: payload.resultado || {
+      items: [],
+      totales: {
+        cobrado: 0,
+        devuelto: 0,
+        neto: 0,
+        movimientos: 0
+      }
+    }
+  };
+
+  abrirVentana('reporte-listado-caja.html', 'Reporte de Caja', 1120, 760);
+  return true;
+});
+
+ipcMain.handle('caja:reporte-listado-data', () => ({
+  negocio: datosNegocioReporte(),
+  filtros: ultimoReporteCaja.filtros || {},
+  dateFormat: configStore.getConfig().dateFormat || 'system',
+  resultado: ultimoReporteCaja.resultado || {
+    items: [],
+    totales: {
+      cobrado: 0,
+      devuelto: 0,
+      neto: 0,
+      movimientos: 0
+    }
+  }
+}));
+
+ipcMain.handle('caja:generar-reporte-listado-pdf', (_, payload = {}) => {
+  const config = configStore.getConfig();
+  const reportPayload = {
+    negocio: payload.negocio || datosNegocioReporte(),
+    filtros: payload.filtros || ultimoReporteCaja.filtros || {},
+    resultado: payload.resultado || ultimoReporteCaja.resultado || { items: [], totales: {} },
+    dateFormat: config.dateFormat || 'system'
+  };
+
+  return pdfReporteCaja(reportPayload);
+});
 
 app.whenReady().then(createWindow);

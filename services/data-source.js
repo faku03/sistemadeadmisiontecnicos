@@ -169,6 +169,9 @@ module.exports = {
   obtenerInformeCaja: filtros =>
     api.obtenerInformeCaja(filtros),
 
+  obtenerListadoCaja: filtros =>
+    api.obtenerListadoCaja(filtros),
+
   obtenerRutaDB: () =>
     appConfig.apiUrl || process.env.SISTEMA_TICKETS_API_URL || 'http://localhost:3000',
 

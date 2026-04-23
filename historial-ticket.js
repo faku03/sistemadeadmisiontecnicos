@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const ticketUuid = params.get('uuid');
   let historialActual = [];
   let movimientoSeleccionado = null;
+  let dateFormatActual = 'system';
 
   function escapeHtml(value) {
     return String(value ?? '')
@@ -20,10 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function fechaHora(valor) {
-    if (!valor) return '';
-    const fecha = new Date(valor);
-    if (Number.isNaN(fecha.getTime())) return '';
-    return fecha.toLocaleString('es-AR');
+    return window.dateFormatUtils.formatDateTime(valor, dateFormatActual);
   }
 
   function texto(value, fallback = 'Sin dato') {
@@ -95,6 +93,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     resumen.textContent = 'Cargando movimientos...';
+    const config = await window.api.obtenerConfiguracion();
+    dateFormatActual = config?.dateFormat || 'system';
     historialActual = await window.api.obtenerHistorialTicket(ticketUuid);
     if (movimientoSeleccionado) {
       movimientoSeleccionado = historialActual.find(item => item.id === movimientoSeleccionado.id) || historialActual[0] || null;
