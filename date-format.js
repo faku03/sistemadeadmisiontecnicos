@@ -6,6 +6,8 @@
   }
 })(typeof globalThis !== 'undefined' ? globalThis : this, function() {
   const DATE_FORMATS = ['system', 'dd/MM/yyyy', 'MM/dd/yyyy', 'yyyy-MM-dd'];
+  const CURRENCY_FORMATS = ['system', 'es-AR', 'en-US', 'code'];
+  const CURRENCY_CODES = ['ARS', 'USD', 'EUR', 'BRL'];
 
   function pad(value) {
     return String(value).padStart(2, '0');
@@ -13,6 +15,14 @@
 
   function normalizeFormat(format) {
     return DATE_FORMATS.includes(format) ? format : 'system';
+  }
+
+  function normalizeCurrencyFormat(format) {
+    return CURRENCY_FORMATS.includes(format) ? format : 'system';
+  }
+
+  function normalizeCurrencyCode(code) {
+    return CURRENCY_CODES.includes(code) ? code : 'ARS';
   }
 
   function toDate(value) {
@@ -66,11 +76,32 @@
     return 'Periodo no valido';
   }
 
+  function formatCurrency(value, currencyCode = 'ARS', currencyFormat = 'system') {
+    const amount = Number(value || 0);
+    const code = normalizeCurrencyCode(currencyCode);
+    const format = normalizeCurrencyFormat(currencyFormat);
+    const locale = format === 'system' || format === 'code' ? undefined : format;
+    const currencyDisplay = format === 'code' ? 'code' : 'symbol';
+
+    return new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency: code,
+      currencyDisplay,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(amount);
+  }
+
   return {
     DATE_FORMATS,
+    CURRENCY_FORMATS,
+    CURRENCY_CODES,
     normalizeFormat,
+    normalizeCurrencyFormat,
+    normalizeCurrencyCode,
     formatDate,
     formatDateTime,
-    formatRange
+    formatRange,
+    formatCurrency
   };
 });

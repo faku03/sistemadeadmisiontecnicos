@@ -1,6 +1,6 @@
 {
   "appId": "com.sistematecnicocaja.app",
-  "productName": "sistemadetickets",
+  "productName": "SistemaServidor",
   "directories": {
     "output": "dist-instalador"
   },
@@ -9,7 +9,9 @@
     "!dist/**",
     "!dist-caja/**",
     "!dist-instalador/**",
+    "!dist-terminal/**",
     "!pdfs/**",
+    "!installer/**",
     "!*.zip",
     "!*.log",
     "!app.config.json",
@@ -23,12 +25,60 @@
       "to": "server/start-gateway.ps1"
     },
     {
+      "from": "server/start-postgresql.ps1",
+      "to": "server/start-postgresql.ps1"
+    },
+    {
       "from": "server/install-gateway-task.ps1",
       "to": "server/install-gateway-task.ps1"
     },
     {
+      "from": "server/install-postgresql-task.ps1",
+      "to": "server/install-postgresql-task.ps1"
+    },
+    {
       "from": "server/uninstall-gateway-task.ps1",
       "to": "server/uninstall-gateway-task.ps1"
+    },
+    {
+      "from": "server/uninstall-postgresql-task.ps1",
+      "to": "server/uninstall-postgresql-task.ps1"
+    },
+    {
+      "from": "server/install-postgresql-unattended.ps1",
+      "to": "server/install-postgresql-unattended.ps1"
+    },
+    {
+      "from": "server/install-postgresql-worker.ps1",
+      "to": "server/install-postgresql-worker.ps1"
+    },
+    {
+      "from": "server/bootstrap-server.ps1",
+      "to": "server/bootstrap-server.ps1"
+    },
+    {
+      "from": "server/setup-database.cmd",
+      "to": "server/setup-database.cmd"
+    },
+    {
+      "from": "server/register-startup-tasks.cmd",
+      "to": "server/register-startup-tasks.cmd"
+    },
+    {
+      "from": "server/bootstrap-server.cmd",
+      "to": "server/bootstrap-server.cmd"
+    },
+    {
+      "from": "server/configure-postgresql-instance.ps1",
+      "to": "server/configure-postgresql-instance.ps1"
+    },
+    {
+      "from": "server/schema.sql",
+      "to": "server/schema.sql"
+    },
+    {
+      "from": "server/base-inicial.sql",
+      "to": "server/base-inicial.sql"
     },
     {
       "from": "server.config.example.json",
@@ -37,6 +87,14 @@
     {
       "from": "app.config.example.json",
       "to": "app.config.example.json"
+    },
+    {
+      "from": "installer/postgresql/runtime",
+      "to": "postgresql/runtime"
+    },
+    {
+      "from": "installer/terminal",
+      "to": "terminal"
     }
   ],
   "extraMetadata": {
@@ -44,13 +102,13 @@
   },
   "win": {
     "target": "nsis",
-    "artifactName": "SistemaTecnicoCaja-Setup-${version}.${ext}"
+    "artifactName": "SistemaServidor-Setup-${version}.${ext}"
   },
   "nsis": {
     "oneClick": false,
     "perMachine": true,
     "allowToChangeInstallationDirectory": true,
-    "include": "installer/installer-components.nsh",
-    "shortcutName": "Sistema Tecnico y Caja"
+    "include": "installer/server-installer.nsh",
+    "shortcutName": "Sistema Servidor"
   }
 }

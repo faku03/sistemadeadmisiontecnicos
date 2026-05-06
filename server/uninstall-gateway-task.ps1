@@ -4,7 +4,9 @@ param(
 
 $ErrorActionPreference = "SilentlyContinue"
 
-Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false | Out-Null
+$startupDir = [Environment]::GetFolderPath("Startup")
+$launcherPath = Join-Path $startupDir "MardelTech-Gateway.cmd"
+Remove-Item -Path $launcherPath -ErrorAction SilentlyContinue
 
 Get-Process | Where-Object {
   $_.Path -and (

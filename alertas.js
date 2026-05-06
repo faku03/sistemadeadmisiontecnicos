@@ -51,6 +51,8 @@ document.addEventListener('DOMContentLoaded', () => {
   let historialCache = new Map();
   let alertasConfigActual = { ...alertasDefaults };
   let dateFormatActual = 'system';
+  let currencyCodeActual = 'ARS';
+  let currencyFormatActual = 'system';
 
   function mostrarAlerta(title, message) {
     return window.appDialog?.alert({ title, message }) || Promise.resolve(alert(message));
@@ -87,7 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function dinero(valor) {
-    return `$${Number(valor || 0).toFixed(2)}`;
+    return window.dateFormatUtils.formatCurrency(valor, currencyCodeActual, currencyFormatActual);
   }
 
   function escapeHtml(value) {
@@ -255,6 +257,8 @@ document.addEventListener('DOMContentLoaded', () => {
   async function cargarConfigAlertasSistema() {
     const config = await window.api.obtenerConfiguracion();
     dateFormatActual = config.dateFormat || 'system';
+    currencyCodeActual = config.currencyCode || 'ARS';
+    currencyFormatActual = config.currencyFormat || 'system';
     return aplicarConfigAlertas({
       pendiente: config.alertPendingDays,
       reparacion: config.alertRepairDays,
@@ -331,8 +335,8 @@ document.addEventListener('DOMContentLoaded', () => {
         <div><strong>Equipo:</strong> ${descripcionEquipo(ticket)}</div>
         <div><strong>Falla:</strong> ${ticket.descripcion_falla || '-'}</div>
         <div><strong>Reparacion:</strong> ${ticket.reparacion_presupuestada || '-'}</div>
-        <div><strong>Presupuesto:</strong> $${Number(ticket.valor_reparacion || 0).toFixed(2)}</div>
-        <div><strong>Sena:</strong> $${Number(ticket.sena || 0).toFixed(2)}</div>
+        <div><strong>Presupuesto:</strong> ${dinero(ticket.valor_reparacion || 0)}</div>
+        <div><strong>Sena:</strong> ${dinero(ticket.sena || 0)}</div>
       </div>
     `;
     conectarEstadoVisual(ticket);
@@ -762,6 +766,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.eventos.onConfiguracionActualizada(async (config) => {
     dateFormatActual = config.dateFormat || 'system';
+    currencyCodeActual = config.currencyCode || 'ARS';
+    currencyFormatActual = config.currencyFormat || 'system';
     aplicarConfigAlertas({
       pendiente: config.alertPendingDays,
       reparacion: config.alertRepairDays,

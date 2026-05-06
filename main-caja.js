@@ -18,6 +18,13 @@ app.setPath('sessionData', electronSessionDir);
 app.commandLine.appendSwitch('disk-cache-dir', electronCacheDir);
 app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
 
+function requireLicense(handler) {
+  return async (event, ...args) => {
+    await license.requireUsableLicense();
+    return handler(event, ...args);
+  };
+}
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1120,
@@ -128,13 +135,13 @@ ipcMain.handle('caja:listar-cobrados', (_, limite) =>
   db.listarCajaCobrada(limite)
 );
 
-ipcMain.handle('caja:cobrar', (_, uuid) =>
+ipcMain.handle('caja:cobrar', requireLicense((_, uuid) =>
   db.cobrarCaja(uuid)
-);
+));
 
-ipcMain.handle('caja:devolver', (_, data) =>
+ipcMain.handle('caja:devolver', requireLicense((_, data) =>
   db.registrarDevolucionCaja(data)
-);
+));
 
 ipcMain.handle('caja:informe', (_, filtros) =>
   db.obtenerInformeCaja(filtros)
@@ -201,6 +208,8 @@ ipcMain.handle('caja:reporte-listado-data', () => ({
   negocio: datosNegocioReporte(),
   filtros: ultimoReporteCaja.filtros || {},
   dateFormat: configStore.getConfig().dateFormat || 'system',
+  currencyCode: configStore.getConfig().currencyCode || 'ARS',
+  currencyFormat: configStore.getConfig().currencyFormat || 'system',
   resultado: ultimoReporteCaja.resultado || {
     items: [],
     totales: {

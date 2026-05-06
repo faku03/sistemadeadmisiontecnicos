@@ -17,6 +17,20 @@ function codigoTecnicoLicencia() {
     'SINLICENCIA';
 }
 
+async function obtenerSucursalParaTicket() {
+  const sucursales = await api.listarSucursales(false);
+  const sucursal = sucursales.find(s => appConfig.sucursalId && s.codigo === appConfig.sucursalId) ||
+    sucursales.find(s => s.sucursal_local) ||
+    sucursales[0] ||
+    null;
+
+  if (!sucursal) {
+    throw new Error('No hay sucursal local configurada');
+  }
+
+  return sucursal;
+}
+
 module.exports = {
   buscarClientePorDni: dni =>
     api.buscarClientePorDni(dni),
@@ -36,11 +50,15 @@ module.exports = {
   reactivarCliente: id =>
     api.reactivarCliente(id),
 
-  crearTicket: data =>
-    api.crearTicket({
+  crearTicket: async data => {
+    const sucursal = await obtenerSucursalParaTicket();
+
+    return api.crearTicket({
       ...data,
+      sucursal_id: sucursal.id,
       tecnico_codigo: codigoTecnicoLicencia()
-    }),
+    });
+  },
 
   listarTickets: () =>
     api.listarTickets(appConfig.apiSucursalId),
@@ -69,13 +87,7 @@ module.exports = {
   listarModelosPorMarca: marcaId =>
     api.listarModelos({ marcaId, includeDeleted: false }),
 
-  obtenerSucursalLocal: async () => {
-    const sucursales = await api.listarSucursales(false);
-    return sucursales.find(s => appConfig.sucursalId && s.codigo === appConfig.sucursalId) ||
-      sucursales.find(s => s.sucursal_local) ||
-      sucursales[0] ||
-      null;
-  },
+  obtenerSucursalLocal: obtenerSucursalParaTicket,
 
   listarTiposEquipo: includeDeleted =>
     api.listarTiposEquipo(includeDeleted),

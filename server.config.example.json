@@ -1,9 +1,9 @@
 {
-  "PGHOST": "localhost",
-  "PGPORT": "5432",
+  "PGHOST": "127.0.0.1",
+  "PGPORT": "3585",
   "PGDATABASE": "sistema_tickets",
-  "PGUSER": "postgres",
-  "PGPASSWORD": "CAMBIAR_PASSWORD",
+  "PGUSER": "mardeltech_app",
+  "PGPASSWORD": "mardeltech_app",
   "SISTEMA_TICKETS_API_PORT": "3000",
   "SISTEMA_TICKETS_ADMIN_TOKEN": "CAMBIAR_TOKEN_ADMIN"
 }

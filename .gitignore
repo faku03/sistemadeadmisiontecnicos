@@ -2,8 +2,12 @@ node_modules/
 dist/
 dist-caja/
 dist-instalador/
+dist-terminal/
+dist-terminal-fresh/
+dist-terminal-next/
+backups/
 
-pdfs/*.pdf
+pdfs/**
 pdf_presupuesto/*.pdf
 *.log
 *.zip
@@ -12,3 +16,11 @@ server.config.json
 
 .env
 .env.*
+.tmp-license-test*/
+
+installer/terminal/*.exe
+installer/postgresql/*.exe
+installer/postgresql/*-binaries.zip
+installer/postgresql/extract-15/
+installer/postgresql/runtime-15-extract/
+installer/postgresql/runtime-15-zip/

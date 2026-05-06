@@ -1,8 +1,3 @@
-const formatoMoneda = new Intl.NumberFormat('es-AR', {
-  style: 'currency',
-  currency: 'ARS'
-});
-
 document.addEventListener('DOMContentLoaded', () => {
   const reporteNegocioNombre = document.getElementById('reporteNegocioNombre');
   const reporteNegocioDireccion = document.getElementById('reporteNegocioDireccion');
@@ -20,9 +15,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnImprimirReporte = document.getElementById('btnImprimirReporte');
   const btnCerrarReporte = document.getElementById('btnCerrarReporte');
   let dateFormat = 'system';
+  let currencyCode = 'ARS';
+  let currencyFormat = 'system';
 
   function dinero(valor) {
-    return formatoMoneda.format(Number(valor || 0));
+    return window.dateFormatUtils.formatCurrency(valor, currencyCode, currencyFormat);
   }
 
   function fechaHora(valor) {
@@ -98,6 +95,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const resultado = payload.resultado || { items: [], totales: {} };
     const totales = resultado.totales || {};
     dateFormat = payload.dateFormat || 'system';
+    currencyCode = payload.currencyCode || 'ARS';
+    currencyFormat = payload.currencyFormat || 'system';
 
     renderNegocio(negocio);
     const periodo = armarPeriodo(filtros);

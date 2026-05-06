@@ -1,8 +1,3 @@
-const formatoMoneda = new Intl.NumberFormat('es-AR', {
-  style: 'currency',
-  currency: 'ARS'
-});
-
 document.addEventListener('DOMContentLoaded', () => {
   const listadoDesde = document.getElementById('listadoDesde');
   const listadoHasta = document.getElementById('listadoHasta');
@@ -21,6 +16,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const tablaListadoCaja = document.getElementById('tablaListadoCaja');
   let ultimoResultado = { items: [], totales: { cobrado: 0, devuelto: 0, neto: 0, movimientos: 0 } };
   let dateFormat = 'system';
+  let currencyCode = 'ARS';
+  let currencyFormat = 'system';
 
   function hoyIso() {
     const ahora = new Date();
@@ -61,7 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function dinero(valor) {
-    return formatoMoneda.format(Number(valor || 0));
+    return window.dateFormatUtils.formatCurrency(valor, currencyCode, currencyFormat);
   }
 
   function mostrarAlerta(title, message) {
@@ -164,6 +161,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const config = await window.apiCaja.obtenerConfiguracion();
+    currencyCode = config?.currencyCode || 'ARS';
+    currencyFormat = config?.currencyFormat || 'system';
     const ruta = await window.apiCaja.generarReporteListadoPdf({
       negocio: null,
       filtros: filtros(),
@@ -189,6 +188,8 @@ document.addEventListener('DOMContentLoaded', () => {
   async function cargar() {
     const config = await window.apiCaja.obtenerConfiguracion();
     dateFormat = config?.dateFormat || 'system';
+    currencyCode = config?.currencyCode || 'ARS';
+    currencyFormat = config?.currencyFormat || 'system';
     validarFechas();
     const data = await window.apiCaja.listado(filtros());
     ultimoResultado = data;

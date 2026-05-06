@@ -61,11 +61,15 @@ function licenseServerUrl() {
 }
 
 function licenseMode() {
-  return String(process.env.SISTEMA_TICKETS_LICENSE_MODE || appConfig.licenseMode || 'mock').toLowerCase();
+  return String(process.env.SISTEMA_TICKETS_LICENSE_MODE || appConfig.licenseMode || 'server').toLowerCase();
 }
 
 function shouldUseLicenseServer() {
   return Boolean(process.env.SISTEMA_TICKETS_LICENSE_SERVER_URL) || licenseMode() === 'server';
+}
+
+function shouldUseMockValidation() {
+  return licenseMode() === 'mock';
 }
 
 async function requestLicenseServer(path, data) {
@@ -80,7 +84,9 @@ async function requestLicenseServer(path, data) {
   const body = await response.json().catch(() => null);
 
   if (!response.ok) {
-    throw new Error(body?.error || `Error HTTP ${response.status}`);
+    const error = new Error(body?.error || `Error HTTP ${response.status}`);
+    error.licenseRejected = true;
+    throw error;
   }
 
   return body;
@@ -229,17 +235,32 @@ async function validateLicense({ forceOffline = false } = {}) {
             '/licenses/validate',
             activationPayload(previous?.licenseKey || appConfig.licenseKey, machineId)
           )
-        : simulatedValidation(machineId);
+        : shouldUseMockValidation()
+          ? simulatedValidation(machineId)
+          : null;
 
-      writeLicenseCache(validated);
-      return {
-        ...evaluateCache(validated, { online: true }),
-        online: true,
-        machineId,
-        cachePath: getLicensePath()
-      };
-    } catch (_) {
-      // Falls back to cached grace period.
+      if (validated) {
+        writeLicenseCache(validated);
+        return {
+          ...evaluateCache(validated, { online: true }),
+          online: true,
+          machineId,
+          cachePath: getLicensePath()
+        };
+      }
+    } catch (error) {
+      if (error.licenseRejected) {
+        return {
+          status: 'BLOCKED',
+          canUse: false,
+          reason: error.message || 'Licencia rechazada por el servidor',
+          daysRemaining: 0,
+          online: true,
+          machineId,
+          cachePath: getLicensePath()
+        };
+      }
+      // Network/server availability errors fall back to cached grace period.
     }
   }
 
@@ -249,6 +270,16 @@ async function validateLicense({ forceOffline = false } = {}) {
     machineId,
     cachePath: getLicensePath()
   };
+}
+
+async function requireUsableLicense() {
+  const status = await validateLicense();
+
+  if (!status.canUse) {
+    throw new Error(status.reason || 'Licencia bloqueada');
+  }
+
+  return status;
 }
 
 function markWarningShown() {
@@ -274,6 +305,7 @@ function shouldShowDailyWarning(status) {
 
 module.exports = {
   activateLicense,
+  requireUsableLicense,
   validateLicense,
   markWarningShown,
   shouldShowDailyWarning

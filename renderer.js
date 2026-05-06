@@ -2,6 +2,8 @@
 let clienteActual = null;
 let ticketEntregaActual = null;
 let dateFormatActual = 'system';
+let currencyCodeActual = 'ARS';
+let currencyFormatActual = 'system';
 
 document.addEventListener('DOMContentLoaded', () => {
   const inicioPantalla = performance.now();
@@ -103,7 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function dinero(valor) {
-    return `$${Number(valor || 0).toFixed(2)}`;
+    return window.dateFormatUtils.formatCurrency(valor, currencyCodeActual, currencyFormatActual);
   }
 
   function fechaCorta(valor) {
@@ -146,6 +148,8 @@ document.addEventListener('DOMContentLoaded', () => {
   async function cargarConfiguracionSistema() {
     const config = await window.api.obtenerConfiguracion();
     dateFormatActual = config.dateFormat || 'system';
+    currencyCodeActual = config.currencyCode || 'ARS';
+    currencyFormatActual = config.currencyFormat || 'system';
     aplicarConfigAlertas({
       pendiente: config.alertPendingDays,
       reparacion: config.alertRepairDays,
@@ -346,59 +350,66 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ================= GUARDAR TICKET =================
   btnGuardar.addEventListener('click', async () => {
+    try {
+      btnGuardar.disabled = true;
 
-    if (!clienteActual) {
-      if (!dni.value || !nombre.value || !apellido.value) {
-        await mostrarAlerta('Faltan datos del cliente', 'Completa los datos del cliente.', () => dni.focus());
+      if (!clienteActual) {
+        if (!dni.value || !nombre.value || !apellido.value) {
+          await mostrarAlerta('Faltan datos del cliente', 'Completa los datos del cliente.', () => dni.focus());
+          return;
+        }
+
+        const id = await window.api.crearCliente({
+          dni: dni.value,
+          nombre: nombre.value,
+          apellido: apellido.value,
+          celular: celular.value,
+          email: email.value
+        });
+
+        clienteActual = { id };
+      }
+
+      if (!tipoEquipo.value || !marca.value || !modelo.value || !falla.value.trim()) {
+        await mostrarAlerta('Faltan datos del equipo', 'Completa tipo, marca, modelo y descripcion de la falla.');
         return;
       }
 
-      const id = await window.api.crearCliente({
-        dni: dni.value,
-        nombre: nombre.value,
-        apellido: apellido.value,
-        celular: celular.value,
-        email: email.value
+      const ticket = await window.api.crearTicket({
+        cliente_id: clienteActual.id,
+        tipo_equipo_id: tipoEquipo.value,
+        modelo_id: modelo.value,
+        descripcion_falla: falla.value.trim()
       });
 
-      clienteActual = { id };
+      clienteActual = null;
+
+      dni.value = '';
+      nombre.value = '';
+      apellido.value = '';
+      celular.value = '';
+      email.value = '';
+      ocultarAvisoCliente();
+
+      nombre.disabled = false;
+      apellido.disabled = false;
+      celular.disabled = false;
+      email.disabled = false;
+
+      tipoEquipo.value = '';
+      limpiarMarcas();
+      limpiarModelos();
+      falla.value = '';
+
+      await mostrarAlerta('Ticket cargado', `Ticket cargado correctamente:\n${ticket.codigo || ticket.uuid}`, () => dni.focus());
+      dni.focus();
+
+      await cargarTickets();
+    } catch (error) {
+      await mostrarAlerta('No se pudo guardar', error.message || 'No se pudo guardar el ticket', () => dni.focus());
+    } finally {
+      btnGuardar.disabled = false;
     }
-
-    if (!tipoEquipo.value || !marca.value || !modelo.value || !falla.value.trim()) {
-      await mostrarAlerta('Faltan datos del equipo', 'Completa tipo, marca, modelo y descripcion de la falla.');
-      return;
-    }
-
-    const ticket = await window.api.crearTicket({
-      cliente_id: clienteActual.id,
-      tipo_equipo_id: tipoEquipo.value,
-      modelo_id: modelo.value,
-      descripcion_falla: falla.value.trim()
-    });
-
-    clienteActual = null;
-
-    dni.value = '';
-    nombre.value = '';
-    apellido.value = '';
-    celular.value = '';
-    email.value = '';
-    ocultarAvisoCliente();
-
-    nombre.disabled = false;
-    apellido.disabled = false;
-    celular.disabled = false;
-    email.disabled = false;
-
-    tipoEquipo.value = '';
-    limpiarMarcas();
-    limpiarModelos();
-    falla.value = '';
-
-    await mostrarAlerta('Ticket cargado', `Ticket cargado correctamente:\n${ticket.codigo || ticket.uuid}`, () => dni.focus());
-    dni.focus();
-
-    await cargarTickets();
   });
 
   // ================= TICKETS =================
@@ -1021,6 +1032,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.eventos.onConfiguracionActualizada((config) => {
     dateFormatActual = config.dateFormat || 'system';
+    currencyCodeActual = config.currencyCode || 'ARS';
+    currencyFormatActual = config.currencyFormat || 'system';
     aplicarConfigAlertas({
       pendiente: config.alertPendingDays,
       reparacion: config.alertRepairDays,

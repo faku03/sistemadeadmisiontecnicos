@@ -5,6 +5,8 @@ let ticketEntregaActual = null;
 let ticketPresupuestoActual = null;
 let historialCache = new Map();
 let dateFormatActual = 'system';
+let currencyCodeActual = 'ARS';
+let currencyFormatActual = 'system';
 
 document.addEventListener('DOMContentLoaded', () => {
   const listaTickets = document.getElementById('listaTicketsFull');
@@ -60,7 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function dinero(valor) {
-    return `$${Number(valor || 0).toFixed(2)}`;
+    return window.dateFormatUtils.formatCurrency(valor, currencyCodeActual, currencyFormatActual);
   }
 
   function fechaCorta(valor) {
@@ -139,6 +141,8 @@ document.addEventListener('DOMContentLoaded', () => {
   async function cargarConfiguracionSistema() {
     const config = await window.api.obtenerConfiguracion();
     dateFormatActual = config?.dateFormat || 'system';
+    currencyCodeActual = config?.currencyCode || 'ARS';
+    currencyFormatActual = config?.currencyFormat || 'system';
   }
 
   function buscarPasoHistorial(historial, estadoCodigo) {

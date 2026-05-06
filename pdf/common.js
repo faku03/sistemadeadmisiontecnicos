@@ -203,7 +203,11 @@ function infoLine(doc, label, value) {
 }
 
 function money(value) {
-  return `$${Number(value || 0).toFixed(2)}`;
+  return require('../date-format').formatCurrency(
+    value,
+    appConfig.currencyCode,
+    appConfig.currencyFormat
+  );
 }
 
 function signatureLine(doc, label = 'Firma del cliente') {

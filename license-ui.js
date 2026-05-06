@@ -92,12 +92,24 @@
     };
   }
 
+  function enableWrites() {
+    document.body.classList.remove('license-blocked');
+
+    document.querySelectorAll('[data-license-disabled="true"]').forEach(element => {
+      element.disabled = false;
+      delete element.dataset.licenseDisabled;
+    });
+  }
+
   function disableWrites() {
     document.body.classList.add('license-blocked');
 
     writeSelectors.forEach(selector => {
       document.querySelectorAll(selector).forEach(element => {
-        element.disabled = true;
+        if (!element.disabled) {
+          element.dataset.licenseDisabled = 'true';
+          element.disabled = true;
+        }
       });
     });
   }
@@ -107,6 +119,7 @@
     banner.classList.remove('hidden', 'warning', 'blocked', 'active');
 
     if (status.canUse && status.status === 'ACTIVE') {
+      enableWrites();
       banner.classList.add('active');
       banner.innerHTML = `
         <span>Licencia activa - ${status.unitType || ''} ${status.unitId || ''}</span>
@@ -117,6 +130,7 @@
     }
 
     if (status.canUse && status.status === 'GRACE') {
+      enableWrites();
       banner.classList.add('warning');
       banner.innerHTML = `
         <span>No se pudo validar la licencia online. Quedan ${status.daysRemaining} dias de gracia.</span>

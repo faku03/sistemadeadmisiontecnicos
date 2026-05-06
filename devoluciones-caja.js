@@ -1,8 +1,3 @@
-const formatoMoneda = new Intl.NumberFormat('es-AR', {
-  style: 'currency',
-  currency: 'ARS'
-});
-
 document.addEventListener('DOMContentLoaded', () => {
   const buscar = document.getElementById('buscarCobradosDevolucion');
   const tabla = document.getElementById('tablaCobradosDevolucion');
@@ -16,9 +11,11 @@ document.addEventListener('DOMContentLoaded', () => {
   let cobrados = [];
   let seleccionado = null;
   let dateFormat = 'system';
+  let currencyCode = 'ARS';
+  let currencyFormat = 'system';
 
   function dinero(valor) {
-    return formatoMoneda.format(Number(valor || 0));
+    return window.dateFormatUtils.formatCurrency(valor, currencyCode, currencyFormat);
   }
 
   function ticketCodigo(item) {
@@ -111,6 +108,8 @@ document.addEventListener('DOMContentLoaded', () => {
   async function cargar() {
     const config = await window.apiCaja.obtenerConfiguracion();
     dateFormat = config?.dateFormat || 'system';
+    currencyCode = config?.currencyCode || 'ARS';
+    currencyFormat = config?.currencyFormat || 'system';
     cobrados = await window.apiCaja.listarCobrados(200);
     seleccionado = cobrados.find(item => item.ticket_uuid === seleccionado?.ticket_uuid) || null;
     actualizarSeleccion(seleccionado);

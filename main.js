@@ -20,6 +20,13 @@ app.setPath('sessionData', electronSessionDir);
 app.commandLine.appendSwitch('disk-cache-dir', electronCacheDir);
 app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
 
+function requireLicense(handler) {
+  return async (event, ...args) => {
+    await license.requireUsableLicense();
+    return handler(event, ...args);
+  };
+}
+
 function createWindow() {
   const createdAt = Date.now();
   const win = new BrowserWindow({
@@ -62,32 +69,32 @@ ipcMain.handle('buscar-cliente-dni', (_, dni) =>
   db.buscarClientePorDni(dni)
 );
 
-ipcMain.handle('crear-cliente', (_, data) =>
+ipcMain.handle('crear-cliente', requireLicense((_, data) =>
   db.crearCliente(data)
-);
+));
 
 ipcMain.handle('clientes-listar', (_, includeDeleted) =>
   db.listarClientes(includeDeleted)
 );
 
-ipcMain.handle('clientes-crear', (_, data) =>
+ipcMain.handle('clientes-crear', requireLicense((_, data) =>
   db.crearCliente(data)
-);
+));
 
-ipcMain.handle('clientes-actualizar', (_, data) =>
+ipcMain.handle('clientes-actualizar', requireLicense((_, data) =>
   db.actualizarCliente(data)
-);
+));
 
-ipcMain.handle('clientes-eliminar', (_, id) =>
+ipcMain.handle('clientes-eliminar', requireLicense((_, id) =>
   db.eliminarCliente(id)
-);
+));
 
-ipcMain.handle('clientes-reactivar', (_, id) =>
+ipcMain.handle('clientes-reactivar', requireLicense((_, id) =>
   db.reactivarCliente(id)
-);
+));
 
 /* ================= TICKETS ================= */
-ipcMain.handle('crear-ticket', async (_, data) => {
+ipcMain.handle('crear-ticket', requireLicense(async (_, data) => {
   const sucursal = await db.obtenerSucursalLocal();
 
   if (!sucursal) {
@@ -98,7 +105,7 @@ ipcMain.handle('crear-ticket', async (_, data) => {
     ...data,
     sucursal_id: sucursal.id
   });
-});
+}));
 
 
 ipcMain.handle('listar-tickets', () =>
@@ -115,21 +122,21 @@ ipcMain.handle('pdf-ingreso', async (_, uuid) => {
   return filePath;
 });
 
-ipcMain.handle('entregar-ticket', async (_, data) => {
+ipcMain.handle('entregar-ticket', requireLicense(async (_, data) => {
   await db.entregarTicket(data.uuid, data.trabajo, data.garantia);
   const ticket = await db.obtenerTicketParaPDF(data.uuid);
   return pdfEntrega(ticket, data.garantia, data.trabajo);
-});
+}));
 
-ipcMain.handle('actualizar-presupuesto', (_, data) =>
+ipcMain.handle('actualizar-presupuesto', requireLicense((_, data) =>
   db.actualizarPresupuesto(data.uuid, data.valor_reparacion, data.sena, data.reparacion_presupuestada)
-);
+));
 
-ipcMain.handle('enviar-presupuesto', async (_, data) => {
+ipcMain.handle('enviar-presupuesto', requireLicense(async (_, data) => {
   await db.enviarPresupuesto(data.uuid, data.valor_reparacion, data.sena, data.reparacion_presupuestada);
   const ticket = await db.obtenerTicketParaPDF(data.uuid);
   return pdfPresupuesto(ticket);
-});
+}));
 
 ipcMain.handle('whatsapp-presupuesto', (_, data) => {
   const telefono = String(data.telefono || '').replace(/\D/g, '');
@@ -207,50 +214,50 @@ ipcMain.handle('tipos-equipo-listar', (_, includeDeleted) =>
   db.listarTiposEquipo(includeDeleted)
 );
 
-ipcMain.handle('tipos-equipo-crear', (_, data) =>
+ipcMain.handle('tipos-equipo-crear', requireLicense((_, data) =>
   db.crearTipoEquipo(data)
-);
+));
 
-ipcMain.handle('tipos-equipo-actualizar', (_, data) =>
+ipcMain.handle('tipos-equipo-actualizar', requireLicense((_, data) =>
   db.actualizarTipoEquipo(data)
-);
+));
 
-ipcMain.handle('tipos-equipo-eliminar', (_, id) =>
+ipcMain.handle('tipos-equipo-eliminar', requireLicense((_, id) =>
   db.eliminarTipoEquipo(id)
-);
+));
 
-ipcMain.handle('tipos-equipo-reactivar', (_, id) =>
+ipcMain.handle('tipos-equipo-reactivar', requireLicense((_, id) =>
   db.reactivarTipoEquipo(id)
-);
+));
 
 /* ================= ABM MARCAS ================= */
 ipcMain.handle('marcas-listar', (_, includeDeleted) =>
   db.listarMarcasEquipo(includeDeleted)
 );
 
-ipcMain.handle('marcas-crear', (_, data) =>
+ipcMain.handle('marcas-crear', requireLicense((_, data) =>
   db.crearMarca(data)
-);
+));
 
-ipcMain.handle('marcas-actualizar', (_, data) =>
+ipcMain.handle('marcas-actualizar', requireLicense((_, data) =>
   db.actualizarMarca(data)
-);
+));
 
-ipcMain.handle('marcas-eliminar', (_, id) =>
+ipcMain.handle('marcas-eliminar', requireLicense((_, id) =>
   db.eliminarMarca(id)
-);
+));
 
-ipcMain.handle('marcas-reactivar', (_, id) =>
+ipcMain.handle('marcas-reactivar', requireLicense((_, id) =>
   db.reactivarMarca(id)
-);
+));
 
 ipcMain.handle('listar-estados-ticket', () =>
   db.listarEstadosTicket()
 );
 
-ipcMain.handle('actualizar-estado-ticket', (_, data) =>
+ipcMain.handle('actualizar-estado-ticket', requireLicense((_, data) =>
   db.actualizarEstadoTicket(data.uuid, data.estado_id)
-);
+));
 
 
 /* ================= ABRIR ABMs ================= */
@@ -366,50 +373,50 @@ ipcMain.handle('modelos-listar', (_, { marcaId, includeDeleted }) =>
   db.listarModelosABM(marcaId, includeDeleted)
 );
 
-ipcMain.handle('modelos-crear', (_, data) =>
+ipcMain.handle('modelos-crear', requireLicense((_, data) =>
   db.crearModelo(data)
-);
+));
 
-ipcMain.handle('modelos-actualizar', (_, data) =>
+ipcMain.handle('modelos-actualizar', requireLicense((_, data) =>
   db.actualizarModelo(data)
-);
+));
 
-ipcMain.handle('modelos-eliminar', (_, id) =>
+ipcMain.handle('modelos-eliminar', requireLicense((_, id) =>
   db.eliminarModelo(id)
-);
+));
 
-ipcMain.handle('modelos-reactivar', (_, id) =>
+ipcMain.handle('modelos-reactivar', requireLicense((_, id) =>
   db.reactivarModelo(id)
-);
+));
 
 /* ================= ABM SUCURSALES ================= */
 ipcMain.handle('sucursales-listar', (_, includeDeleted) =>
   db.listarSucursales(includeDeleted)
 );
 
-ipcMain.handle('sucursales-crear', (_, data) =>
+ipcMain.handle('sucursales-crear', requireLicense((_, data) =>
   db.crearSucursal(data)
-);
+));
 
-ipcMain.handle('sucursales-actualizar', (_, data) =>
+ipcMain.handle('sucursales-actualizar', requireLicense((_, data) =>
   db.actualizarSucursal(data)
-);
+));
 
-ipcMain.handle('sucursales-eliminar', (_, id) =>
+ipcMain.handle('sucursales-eliminar', requireLicense((_, id) =>
   db.eliminarSucursal(id)
-);
+));
 
-ipcMain.handle('sucursales-reactivar', (_, id) =>
+ipcMain.handle('sucursales-reactivar', requireLicense((_, id) =>
   db.reactivarSucursal(id)
-);
+));
 
-ipcMain.handle('caja-generar-movimiento', (_, uuid) =>
+ipcMain.handle('caja-generar-movimiento', requireLicense((_, uuid) =>
   db.generarMovimientoCaja(uuid)
-);
+));
 
-ipcMain.handle('caja-cobrar-movimiento', (_, uuid) =>
+ipcMain.handle('caja-cobrar-movimiento', requireLicense((_, uuid) =>
   db.cerrarMovimientoCaja(uuid)
-);
+));
 
 
 app.whenReady().then(createWindow);

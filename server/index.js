@@ -127,6 +127,37 @@ async function generarCodigoTicket(client, { tecnicoCodigo, sucursalId }) {
   };
 }
 
+async function resolverSucursalTicket(client, sucursalId) {
+  if (sucursalId) {
+    const sucursal = await client.query(
+      `SELECT id FROM sucursales WHERE id = $1 AND is_deleted = FALSE`,
+      [sucursalId]
+    );
+
+    if (sucursal.rowCount === 0) {
+      throw new Error('Sucursal no encontrada');
+    }
+
+    return sucursal.rows[0].id;
+  }
+
+  const fallback = await client.query(
+    `
+    SELECT id
+    FROM sucursales
+    WHERE is_deleted = FALSE
+    ORDER BY sucursal_local DESC, id
+    LIMIT 1
+    `
+  );
+
+  if (fallback.rowCount === 0) {
+    throw new Error('No hay sucursal local configurada');
+  }
+
+  return fallback.rows[0].id;
+}
+
 async function resolverTicketUuid(identificador, client = null) {
   const runQuery = client ? client.query.bind(client) : query;
   const result = await runQuery(
@@ -293,9 +324,10 @@ async function crearTicket(data) {
   return withTransaction(async client => {
     const estado = await estadoPorCodigo(client, 'PENDIENTE');
     const uuid = randomUUID();
+    const sucursalId = await resolverSucursalTicket(client, data.sucursal_id);
     const ticketCodigo = await generarCodigoTicket(client, {
       tecnicoCodigo: data.tecnico_codigo,
-      sucursalId: data.sucursal_id
+      sucursalId
     });
 
     const result = await client.query(
@@ -321,7 +353,7 @@ async function crearTicket(data) {
         ticketCodigo.codigo,
         ticketCodigo.numero,
         ticketCodigo.tecnico,
-        data.sucursal_id,
+        sucursalId,
         data.cliente_id,
         data.tipo_equipo_id,
         data.modelo_id,

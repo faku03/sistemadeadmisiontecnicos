@@ -1,8 +1,3 @@
-const formatoMoneda = new Intl.NumberFormat('es-AR', {
-  style: 'currency',
-  currency: 'ARS'
-});
-
 document.addEventListener('DOMContentLoaded', () => {
   window.licenseUI?.init();
 
@@ -30,9 +25,11 @@ document.addEventListener('DOMContentLoaded', () => {
   let pendienteSeleccionado = null;
   let cobradoSeleccionado = null;
   let dateFormat = 'system';
+  let currencyCode = 'ARS';
+  let currencyFormat = 'system';
 
   function dinero(valor) {
-    return formatoMoneda.format(Number(valor || 0));
+    return window.dateFormatUtils.formatCurrency(valor, currencyCode, currencyFormat);
   }
 
   function fechaVisible(valor, withTime = false) {
@@ -173,6 +170,8 @@ document.addEventListener('DOMContentLoaded', () => {
   async function cargarTodo() {
     const config = await window.apiCaja.obtenerConfiguracion();
     dateFormat = config?.dateFormat || 'system';
+    currencyCode = config?.currencyCode || 'ARS';
+    currencyFormat = config?.currencyFormat || 'system';
     pendientes = await window.apiCaja.listarPendientes();
     cobrados = await window.apiCaja.listarCobrados(100);
 

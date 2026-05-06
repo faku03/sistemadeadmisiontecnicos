@@ -6,6 +6,7 @@ Var InstallTickets
 Var InstallCaja
 Var TicketsCheckbox
 Var CajaCheckbox
+Var SetupExitCode
 
 !macro customInit
   StrCpy $INSTDIR "C:\mardeltech\sistemadetickets"
@@ -69,7 +70,19 @@ FunctionEnd
     CreateShortCut "$DESKTOP\Sistema de Caja.lnk" "$INSTDIR\Sistema de Caja.exe" "--modulo=caja" "$INSTDIR\Sistema de Caja.exe" 0 "" "" "Sistema de Caja"
   ${EndIf}
 
+  nsExec::ExecToLog 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\resources\server\install-postgresql-unattended.ps1" -InstallDir "$INSTDIR"'
+  Pop $SetupExitCode
+  ${If} $SetupExitCode != 0
+    MessageBox MB_ICONSTOP "No se pudo instalar PostgreSQL en modo desatendido. Revise el log del instalador y vuelva a intentar."
+    Abort
+  ${EndIf}
+
   nsExec::ExecToLog 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\resources\server\install-gateway-task.ps1" -InstallDir "$INSTDIR"'
+  Pop $SetupExitCode
+  ${If} $SetupExitCode != 0
+    MessageBox MB_ICONSTOP "PostgreSQL se instalo, pero no se pudo registrar el gateway al inicio. Revise el log del instalador."
+    Abort
+  ${EndIf}
 !macroend
 
 !macro customUnInstall

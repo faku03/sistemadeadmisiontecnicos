@@ -1,6 +1,10 @@
 $ErrorActionPreference = "Stop"
 
-$installDir = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+$installDir = $env:SISTEMA_TICKETS_INSTALL_DIR
+if (-not $installDir) {
+  $installDir = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+}
+$postgresPrefix = Join-Path $installDir "resources\postgresql\runtime"
 $logDir = Join-Path $env:ProgramData "MardelTech\SistemaTickets\logs"
 $configPath = Join-Path $installDir "server.config.json"
 
@@ -26,12 +30,29 @@ if (Test-Path $configPath) {
   if ($config.SISTEMA_TICKETS_ADMIN_TOKEN) { $env:SISTEMA_TICKETS_ADMIN_TOKEN = [string]$config.SISTEMA_TICKETS_ADMIN_TOKEN }
 }
 
+$pgIsReadyPath = Join-Path $postgresPrefix "bin\pg_isready.exe"
+if ((Test-Path $pgIsReadyPath) -and $env:PGHOST -and $env:PGPORT -and (($env:PGHOST -eq "127.0.0.1") -or ($env:PGHOST -eq "localhost"))) {
+  $pgProbeUser = "postgres"
+  if ($env:PGUSER) {
+    $pgProbeUser = $env:PGUSER
+  }
+  $deadline = (Get-Date).AddSeconds(60)
+  while ((Get-Date) -lt $deadline) {
+    $null = & $pgIsReadyPath -h $env:PGHOST -p $env:PGPORT -U $pgProbeUser 2>$null
+    if ($LASTEXITCODE -eq 0) {
+      break
+    }
+    Start-Sleep -Seconds 2
+  }
+}
+
 $env:SISTEMA_TICKETS_OUTPUT_PATH = Join-Path $env:ProgramData "MardelTech\SistemaTickets\pdfs"
 New-Item -ItemType Directory -Force -Path $env:SISTEMA_TICKETS_OUTPUT_PATH | Out-Null
 
 $stdout = Join-Path $logDir "gateway.out.log"
 $stderr = Join-Path $logDir "gateway.err.log"
 $gatewayExe = @(
+  (Join-Path $installDir "SistemaServidor.exe"),
   (Join-Path $installDir "sistemadetickets.exe"),
   (Join-Path $installDir "Sistema Tecnico y Caja.exe"),
   (Join-Path $installDir "Sistema de Tickets.exe")
