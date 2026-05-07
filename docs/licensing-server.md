@@ -79,7 +79,7 @@ Clientes Tickets/Caja:
 
 ```powershell
 $env:SISTEMA_TICKETS_LICENSE_MODE="server"
-$env:SISTEMA_TICKETS_LICENSE_SERVER_URL="http://SERVIDOR:3000"
+$env:SISTEMA_TICKETS_LICENSE_SERVER_URL="https://sistematickets.licences.mardeltech.com"
 ```
 
 Para instaladores conviene usar `app.config.json`. La guia de clientes esta en `docs/configuracion-clientes.md`.
@@ -131,7 +131,7 @@ npm.cmd run server:start
 
 ```powershell
 $env:SISTEMA_TICKETS_LICENSE_MODE="server"
-$env:SISTEMA_TICKETS_LICENSE_SERVER_URL="http://localhost:3000"
+$env:SISTEMA_TICKETS_LICENSE_SERVER_URL="https://sistematickets.licences.mardeltech.com"
 npm.cmd start
 ```
 
@@ -139,16 +139,18 @@ Para Caja:
 
 ```powershell
 $env:SISTEMA_TICKETS_LICENSE_MODE="server"
-$env:SISTEMA_TICKETS_LICENSE_SERVER_URL="http://localhost:3000"
+$env:SISTEMA_TICKETS_LICENSE_SERVER_URL="https://sistematickets.licences.mardeltech.com"
 npm.cmd run start:caja
 ```
 
 ## Endpoints del gateway
 
 ```text
-POST /licenses/activate
-POST /licenses/validate
-GET  /licenses
+GET  https://sistematickets.licences.mardeltech.com/health
+GET  https://sistematickets.licences.mardeltech.com/admin-panel
+GET  https://sistematickets.licences.mardeltech.com/licenses
+POST https://sistematickets.licences.mardeltech.com/licenses/activate
+POST https://sistematickets.licences.mardeltech.com/licenses/validate
 ```
 
 `GET /licenses` es administrativo. Si `SISTEMA_TICKETS_ADMIN_TOKEN` esta configurado, requiere:
@@ -164,7 +166,7 @@ El backend administrativo queda dentro del mismo gateway, separado por rutas `/a
 La interfaz web se sirve desde el mismo gateway:
 
 ```text
-http://SERVIDOR:3000/admin-panel
+https://sistematickets.licences.mardeltech.com/admin-panel
 ```
 
 En desarrollo local:

@@ -119,7 +119,7 @@ Ejemplo misma PC:
   "sucursalId": "CENTRAL",
   "sucursalNombre": "Casa Central",
   "licenseMode": "server",
-  "licenseServerUrl": "http://localhost:3000",
+  "licenseServerUrl": "https://sistematickets.licences.mardeltech.com",
   "licenseGraceDays": 7
 }
 ```
@@ -154,18 +154,18 @@ Para quitar la tarea:
 powershell.exe -ExecutionPolicy Bypass -File "C:\mardeltech\sistemadetickets\resources\server\uninstall-gateway-task.ps1"
 ```
 
-## Panel administrativo
+## Panel administrativo de licencias
 
-Con el Gateway iniciado:
+Servidor de licencias:
 
 ```text
-http://localhost:3000/admin-panel
+https://sistematickets.licences.mardeltech.com/admin-panel
 ```
 
-Desde otra PC de la red:
+Health check del servidor de licencias:
 
 ```text
-http://IP-DEL-SERVIDOR:3000/admin-panel
+https://sistematickets.licences.mardeltech.com/health
 ```
 
 ## Logs

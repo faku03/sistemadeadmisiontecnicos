@@ -30,7 +30,7 @@ Copiar `app.config.example.json` como `app.config.json` y ajustar:
   "sucursalId": "CODIGO-SUCURSAL-O-TECNICO",
   "sucursalNombre": "Nombre visible de la sucursal o tecnico",
   "licenseMode": "server",
-  "licenseServerUrl": "http://SERVIDOR-GATEWAY:3000",
+  "licenseServerUrl": "https://sistematickets.licences.mardeltech.com",
   "licenseGraceDays": 7
 }
 ```
@@ -45,7 +45,7 @@ Si PostgreSQL, Gateway, Tickets y Caja estan en la misma PC:
   "sucursalId": "CENTRAL",
   "sucursalNombre": "Casa Central",
   "licenseMode": "server",
-  "licenseServerUrl": "http://localhost:3000",
+  "licenseServerUrl": "https://sistematickets.licences.mardeltech.com",
   "licenseGraceDays": 7
 }
 ```
@@ -60,7 +60,7 @@ Si PostgreSQL y Gateway estan en una PC servidor de la red:
   "sucursalId": "CENTRAL",
   "sucursalNombre": "Casa Central",
   "licenseMode": "server",
-  "licenseServerUrl": "http://192.168.1.50:3000",
+  "licenseServerUrl": "https://sistematickets.licences.mardeltech.com",
   "licenseGraceDays": 7
 }
 ```
@@ -82,7 +82,7 @@ Codigo estable de la sucursal o tecnico. Debe coincidir con el codigo cargado en
 
 `licenseServerUrl`
 
-URL del gateway que expone `/licenses/activate` y `/licenses/validate`.
+URL del servidor de licencias que expone `/licenses/activate` y `/licenses/validate`.
 
 `licenseGraceDays`
 
@@ -94,14 +94,15 @@ Dias de gracia offline. Valor esperado: `7`.
 $env:SISTEMA_TICKETS_API_URL="http://SERVIDOR-GATEWAY:3000"
 $env:SISTEMA_TICKETS_SUCURSAL_ID="CODIGO-SUCURSAL-O-TECNICO"
 $env:SISTEMA_TICKETS_LICENSE_MODE="server"
-$env:SISTEMA_TICKETS_LICENSE_SERVER_URL="http://SERVIDOR-GATEWAY:3000"
+$env:SISTEMA_TICKETS_LICENSE_SERVER_URL="https://sistematickets.licences.mardeltech.com"
 ```
 
 ## Nota para instaladores
 
 El instalador no debe incluir credenciales de PostgreSQL ni tokens administrativos. Los clientes solo necesitan:
 
-- URL del gateway.
+- URL del gateway/API de tickets.
+- URL del servidor de licencias.
 - Codigo estable de sucursal o tecnico.
 - Clave de licencia ingresada desde la pantalla de activacion.
 

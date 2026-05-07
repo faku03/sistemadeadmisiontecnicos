@@ -8,7 +8,7 @@ const {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_GRACE_DAYS = 7;
-const DEFAULT_LICENSE_SERVER_URL = 'http://localhost:3000';
+const DEFAULT_LICENSE_SERVER_URL = 'https://sistematickets.licences.mardeltech.com';
 
 function addDays(date, days) {
   return new Date(date.getTime() + (days * DAY_MS));

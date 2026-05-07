@@ -94,7 +94,7 @@ FunctionEnd
   FileWrite $0 "{$\r$\n"
   FileWrite $0 "  $\"apiUrl$\": $\"http://$ServerHost:3000$\",$\r$\n"
   FileWrite $0 "  $\"licenseMode$\": $\"server$\",$\r$\n"
-  FileWrite $0 "  $\"licenseServerUrl$\": $\"http://$ServerHost:3000$\"$\r$\n"
+  FileWrite $0 "  $\"licenseServerUrl$\": $\"https://sistematickets.licences.mardeltech.com$\"$\r$\n"
   FileWrite $0 "}$\r$\n"
   FileClose $0
 

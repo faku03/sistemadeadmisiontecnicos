@@ -144,7 +144,7 @@ La documentacion especifica de licencias esta en `docs/licensing-server.md`.
 La interfaz administrativa se abre desde:
 
 ```text
-http://SERVIDOR:3000/admin-panel
+https://sistematickets.licences.mardeltech.com/admin-panel
 ```
 
 ## Derivacion de tickets
@@ -171,7 +171,7 @@ Misma PC:
   "apiUrl": "http://localhost:3000",
   "sucursalId": "CENTRAL",
   "licenseMode": "server",
-  "licenseServerUrl": "http://localhost:3000",
+  "licenseServerUrl": "https://sistematickets.licences.mardeltech.com",
   "licenseGraceDays": 7
 }
 ```
@@ -183,7 +183,7 @@ Servidor de red local:
   "apiUrl": "http://192.168.1.50:3000",
   "sucursalId": "CENTRAL",
   "licenseMode": "server",
-  "licenseServerUrl": "http://192.168.1.50:3000",
+  "licenseServerUrl": "https://sistematickets.licences.mardeltech.com",
   "licenseGraceDays": 7
 }
 ```

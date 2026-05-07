@@ -18,7 +18,7 @@ const defaults = {
   currencyFormat: 'system',
   apiUrl: 'http://localhost:3000',
   apiSucursalId: null,
-  licenseServerUrl: 'http://localhost:3000',
+  licenseServerUrl: 'https://sistematickets.licences.mardeltech.com',
   licenseMode: 'server',
   licenseKey: '',
   licenseGroupId: '',

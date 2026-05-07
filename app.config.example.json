@@ -13,6 +13,6 @@
   "currencyCode": "ARS",
   "currencyFormat": "system",
   "licenseMode": "server",
-  "licenseServerUrl": "http://SERVIDOR-GATEWAY:3000",
+  "licenseServerUrl": "https://sistematickets.licences.mardeltech.com",
   "licenseGraceDays": 7
 }
