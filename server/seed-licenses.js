@@ -40,6 +40,7 @@ async function main() {
       INSERT INTO licenses (
         group_id,
         unit_id,
+        license_key,
         license_key_hash,
         license_key_label,
         status,
@@ -47,16 +48,23 @@ async function main() {
         grace_days,
         expires_at
       )
-      VALUES ($1, $2, $3, $4, 'ACTIVE', 'STANDARD', 7, NOW() + INTERVAL '30 days')
+      VALUES ($1, $2, $3, $4, $5, 'ACTIVE', 'STANDARD', 7, NOW() + INTERVAL '30 days')
       ON CONFLICT (license_key_hash) DO UPDATE
-      SET license_key_label = EXCLUDED.license_key_label,
+      SET license_key = EXCLUDED.license_key,
+          license_key_label = EXCLUDED.license_key_label,
           status = 'ACTIVE',
           expires_at = GREATEST(licenses.expires_at, NOW() + INTERVAL '30 days'),
           machine_id = NULL,
           activated_at = NULL,
           updated_at = NOW()
       `,
-      [group.rows[0].id, unit.rows[0].id, hashLicenseKey(devLicenseKey), maskLicenseKey(devLicenseKey)]
+      [
+        group.rows[0].id,
+        unit.rows[0].id,
+        devLicenseKey,
+        hashLicenseKey(devLicenseKey),
+        maskLicenseKey(devLicenseKey)
+      ]
     );
 
     await client.query('COMMIT');

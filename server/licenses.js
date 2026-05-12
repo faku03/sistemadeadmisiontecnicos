@@ -215,6 +215,7 @@ async function listLicenses() {
   const result = await query(`
     SELECT
       l.id,
+      l.license_key,
       l.license_key_label,
       l.status,
       l.plan,
@@ -278,5 +279,6 @@ module.exports = {
   hashLicenseKey,
   hasAdminAccess,
   maskLicenseKey,
+  validateLicenseKeyFormat,
   validateLicense
 };

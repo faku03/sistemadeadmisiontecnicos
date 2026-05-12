@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS licenses (
   id SERIAL PRIMARY KEY,
   group_id INTEGER NOT NULL REFERENCES license_groups(id),
   unit_id INTEGER NOT NULL REFERENCES license_units(id),
+  license_key TEXT,
   license_key_hash TEXT NOT NULL UNIQUE,
   license_key_label TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'ACTIVE',
@@ -36,6 +37,9 @@ CREATE TABLE IF NOT EXISTS licenses (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ
 );
+
+ALTER TABLE licenses
+  ADD COLUMN IF NOT EXISTS license_key TEXT;
 
 CREATE TABLE IF NOT EXISTS license_validations (
   id SERIAL PRIMARY KEY,

@@ -69,6 +69,38 @@ function includesText(item, fields, searchText) {
   return fields.some(field => String(item[field] || '').toLowerCase().includes(needle));
 }
 
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+async function copyText(text) {
+  const value = String(text || '').trim();
+
+  if (!value) {
+    throw new Error('No hay clave de licencia para copiar');
+  }
+
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(value);
+    return;
+  }
+
+  const input = document.createElement('textarea');
+  input.value = value;
+  input.setAttribute('readonly', '');
+  input.style.position = 'fixed';
+  input.style.left = '-9999px';
+  document.body.appendChild(input);
+  input.select();
+  document.execCommand('copy');
+  input.remove();
+}
+
 function renderSelects() {
   const groupOptions = state.groups
     .map(group => `<option value="${group.id}">${group.codigo} - ${group.nombre}</option>`)
@@ -124,13 +156,14 @@ function renderLicenses() {
   const body = $('#licensesBody');
 
   if (!state.licenses.length) {
-    body.innerHTML = '<tr><td colspan="8">Sin licencias cargadas.</td></tr>';
+    body.innerHTML = '<tr><td colspan="9">Sin licencias cargadas.</td></tr>';
     return;
   }
 
   body.innerHTML = state.licenses.map(license => {
     const status = statusInfo(license);
     const dateId = `renew-${license.id}`;
+    const licenseKey = license.license_key || '';
     const activeAction = license.status === 'ACTIVE'
       ? `<button class="btn btn-danger" data-action="suspend" data-id="${license.id}">Suspender</button>`
       : `<button class="btn btn-secondary" data-action="activate" data-id="${license.id}">Activar</button>`;
@@ -140,6 +173,14 @@ function renderLicenses() {
         <td>${license.group_code}</td>
         <td><strong>${license.unit_code}</strong></td>
         <td>${license.unit_name}</td>
+        <td>
+          <div class="license-key-box">
+            <code>${escapeHtml(licenseKey || license.license_key_label || 'Sin clave')}</code>
+            ${licenseKey
+              ? `<button class="btn btn-secondary btn-copy" data-copy-license="${escapeHtml(licenseKey)}">Copiar</button>`
+              : ''}
+          </div>
+        </td>
         <td><span class="status-pill ${status.className}">${status.text}</span></td>
         <td>${toDateInput(license.expires_at)}</td>
         <td>
@@ -407,7 +448,8 @@ async function createLicense(data) {
     })
   });
 
-  return `Licencia creada. Clave: ${created.license_key}`;
+  await copyText(created.license_key);
+  return `Licencia creada y copiada. Clave: ${created.license_key}`;
 }
 
 function licenseById(id) {
@@ -483,6 +525,15 @@ function wireEvents() {
   });
 
   $('#licensesBody').addEventListener('click', event => {
+    const copyButton = event.target.closest('button[data-copy-license]');
+
+    if (copyButton) {
+      copyText(copyButton.dataset.copyLicense)
+        .then(() => showMessage('Clave de licencia copiada.'))
+        .catch(error => showMessage(error.message, true));
+      return;
+    }
+
     const button = event.target.closest('button[data-action]');
 
     if (!button) return;

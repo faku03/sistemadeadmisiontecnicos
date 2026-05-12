@@ -377,6 +377,29 @@ td.actions {
   gap: 6px;
 }
 
+.license-key-box {
+  display: grid;
+  grid-template-columns: minmax(130px, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.license-key-box code {
+  padding: 5px 7px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-soft);
+  color: var(--title);
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.btn-copy {
+  min-height: 28px;
+  padding: 4px 8px;
+}
+
 .status-pill {
   display: inline-flex;
   align-items: center;

@@ -1,6 +1,11 @@
 const { randomBytes } = require('crypto');
 const { query, withTransaction } = require('./db');
-const { hashLicenseKey, hasAdminAccess, maskLicenseKey } = require('./licenses');
+const {
+  hashLicenseKey,
+  hasAdminAccess,
+  maskLicenseKey,
+  validateLicenseKeyFormat
+} = require('./licenses');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -189,6 +194,7 @@ async function listLicenses() {
   const result = await query(`
     SELECT
       l.id,
+      l.license_key,
       l.license_key_label,
       l.status,
       l.plan,
@@ -217,6 +223,8 @@ async function listLicenses() {
 
 async function createLicense(data) {
   const licenseKey = normalizeCode(data.license_key || generateLicenseKey());
+  validateLicenseKeyFormat(licenseKey);
+
   const expiresAt = data.expires_at
     ? new Date(data.expires_at)
     : addDays(data.valid_days || 30);
@@ -246,6 +254,7 @@ async function createLicense(data) {
       INSERT INTO licenses (
         group_id,
         unit_id,
+        license_key,
         license_key_hash,
         license_key_label,
         status,
@@ -254,12 +263,13 @@ async function createLicense(data) {
         expires_at,
         features
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb)
       RETURNING *
       `,
       [
         groupId,
         data.unit_id,
+        licenseKey,
         hashLicenseKey(licenseKey),
         maskLicenseKey(licenseKey),
         normalizeCode(data.status || 'ACTIVE'),
