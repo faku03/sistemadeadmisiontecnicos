@@ -23,6 +23,11 @@ function required(value, fieldName) {
   return text;
 }
 
+function optionalText(value) {
+  const text = String(value || '').trim();
+  return text || null;
+}
+
 function boolFromData(value, fallback = true) {
   return value === undefined ? fallback : Boolean(value);
 }
@@ -53,11 +58,33 @@ async function createGroup(data) {
 
   const result = await query(
     `
-    INSERT INTO license_groups (codigo, nombre, is_active)
-    VALUES ($1, $2, $3)
+    INSERT INTO license_groups (
+      codigo,
+      nombre,
+      tax_id,
+      contact_name,
+      contact_email,
+      contact_phone,
+      address,
+      locality,
+      province,
+      is_active
+    )
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
     RETURNING *
     `,
-    [codigo, nombre, boolFromData(data.is_active)]
+    [
+      codigo,
+      nombre,
+      optionalText(data.tax_id),
+      optionalText(data.contact_name),
+      optionalText(data.contact_email),
+      optionalText(data.contact_phone),
+      optionalText(data.address),
+      optionalText(data.locality),
+      optionalText(data.province),
+      boolFromData(data.is_active)
+    ]
   );
 
   return result.rows[0];
@@ -69,14 +96,28 @@ async function updateGroup(id, data) {
     UPDATE license_groups
     SET codigo = $1,
         nombre = $2,
-        is_active = $3,
+        tax_id = $3,
+        contact_name = $4,
+        contact_email = $5,
+        contact_phone = $6,
+        address = $7,
+        locality = $8,
+        province = $9,
+        is_active = $10,
         updated_at = NOW()
-    WHERE id = $4
+    WHERE id = $11
     RETURNING *
     `,
     [
       normalizeCode(required(data.codigo, 'codigo')),
       required(data.nombre, 'nombre'),
+      optionalText(data.tax_id),
+      optionalText(data.contact_name),
+      optionalText(data.contact_email),
+      optionalText(data.contact_phone),
+      optionalText(data.address),
+      optionalText(data.locality),
+      optionalText(data.province),
       boolFromData(data.is_active),
       id
     ]

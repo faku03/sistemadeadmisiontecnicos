@@ -290,6 +290,26 @@ select:focus {
   grid-template-rows: auto auto 1fr;
 }
 
+.detail-panel {
+  grid-template-rows: auto auto auto 1fr;
+}
+
+.group-contact {
+  min-height: 28px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+  color: var(--muted);
+}
+
+.group-contact span {
+  padding: 5px 7px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-soft);
+}
+
 .grid-search {
   margin-bottom: 8px;
 }

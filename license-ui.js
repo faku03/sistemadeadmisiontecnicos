@@ -93,14 +93,44 @@
 
   function buildRequestText(status) {
     const cfg = currentConfig || {};
+    const businessName = cfg.pdfBusinessName || cfg.sucursalNombre || status?.unitName || '-';
+    const contactPhone = cfg.businessMobile || cfg.pdfBusinessPhone || '-';
+    const contactEmail = cfg.pdfBusinessEmail || '-';
+    const location = [
+      cfg.pdfBusinessLocality || '',
+      cfg.pdfBusinessProvince || ''
+    ].filter(Boolean).join(', ') || '-';
     const lines = [
-      'Solicitud de licencia MardelTech',
-      `Sucursal: ${cfg.sucursalNombre || status?.unitName || '-'}`,
+      'Solicitud de licencia - Sistema de Tickets MardelTech',
+      '',
+      'Datos comerciales',
+      `Nombre / razon social: ${businessName}`,
+      `CUIT/CUIL: ${cfg.businessTaxId || '-'}`,
+      `Contacto responsable: ${cfg.businessContactName || '-'}`,
+      `Email de contacto: ${contactEmail}`,
+      `Celular: ${contactPhone}`,
+      `Direccion: ${cfg.pdfBusinessAddress || cfg.pdfBusinessStreet || '-'}`,
+      `Localidad / provincia: ${location}`,
+      '',
+      'Datos tecnicos',
+      `Sucursal o local: ${cfg.sucursalNombre || status?.unitName || '-'}`,
       `Codigo unidad: ${cfg.licenseUnitId || status?.unitCode || status?.unitId || '-'}`,
       `Codigo grupo: ${cfg.licenseGroupId || status?.groupCode || status?.groupId || '-'}`,
       `Tipo unidad: ${cfg.licenseUnitType || status?.unitType || '-'}`,
       `Machine ID: ${status?.machineId || '-'}`,
-      `Clave actual: ${status?.licenseKey || cfg.licenseKey || '-'}`
+      `Clave actual: ${status?.licenseKey || cfg.licenseKey || '-'}`,
+      '',
+      'Plan solicitado',
+      'Alta / instalacion inicial: $75.000',
+      'Licencia mensual por local o sucursal: $30.000',
+      'Terminal adicional o caja adicional: $10.000',
+      'Pago anual: $300.000, con alta bonificada',
+      '',
+      'Condiciones',
+      '7 dias de prueba',
+      'Sin permanencia mensual',
+      'Soporte por WhatsApp en horario comercial',
+      'Instalacion remota incluida en el alta'
     ];
 
     return lines.join('\n');
@@ -119,17 +149,17 @@
       }
     }
 
-    const phone = String(cfg.licenseSupportWhatsApp || '').replace(/\D/g, '');
     const email = String(cfg.licenseSupportEmail || '').trim();
+    const phone = String(cfg.licenseSupportWhatsApp || '').replace(/\D/g, '');
 
-    if (phone && api?.abrirUrlExterna) {
-      await api.abrirUrlExterna(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`);
+    if (email && api?.abrirUrlExterna) {
+      const subject = encodeURIComponent('Solicitud de licencia - Sistema de Tickets MardelTech');
+      await api.abrirUrlExterna(`mailto:${email}?subject=${subject}&body=${encodeURIComponent(text)}`);
       return;
     }
 
-    if (email && api?.abrirUrlExterna) {
-      const subject = encodeURIComponent('Solicitud de licencia MardelTech');
-      await api.abrirUrlExterna(`mailto:${email}?subject=${subject}&body=${encodeURIComponent(text)}`);
+    if (phone && api?.abrirUrlExterna) {
+      await api.abrirUrlExterna(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`);
       return;
     }
 

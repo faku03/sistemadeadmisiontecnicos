@@ -82,6 +82,13 @@
           <form id="groupForm" class="stack">
             <input name="codigo" placeholder="Codigo de grupo" required>
             <input name="nombre" placeholder="Nombre comercial" required>
+            <input name="tax_id" placeholder="CUIT/CUIL">
+            <input name="contact_name" placeholder="Contacto responsable">
+            <input name="contact_email" type="email" placeholder="Email">
+            <input name="contact_phone" placeholder="Celular">
+            <input name="address" placeholder="Direccion">
+            <input name="locality" placeholder="Localidad">
+            <input name="province" placeholder="Provincia">
             <button class="btn btn-primary" type="submit">Crear grupo</button>
           </form>
         </section>
@@ -143,6 +150,7 @@
                 <tr>
                   <th>Codigo</th>
                   <th>Nombre</th>
+                  <th>Contacto</th>
                   <th>Unidades</th>
                   <th>Estado</th>
                 </tr>
@@ -159,6 +167,7 @@
               <p id="selectedGroupSubtitle">El codigo de cada unidad se mantiene estable.</p>
             </div>
           </div>
+          <div class="group-contact" id="selectedGroupContact"></div>
           <input id="unitSearch" class="grid-search" placeholder="Buscar sucursal/tecnico por codigo o nombre">
           <div class="table-wrap">
             <table>

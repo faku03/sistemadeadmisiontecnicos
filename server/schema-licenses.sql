@@ -2,10 +2,26 @@ CREATE TABLE IF NOT EXISTS license_groups (
   id SERIAL PRIMARY KEY,
   codigo TEXT NOT NULL UNIQUE,
   nombre TEXT NOT NULL,
+  tax_id TEXT,
+  contact_name TEXT,
+  contact_email TEXT,
+  contact_phone TEXT,
+  address TEXT,
+  locality TEXT,
+  province TEXT,
   is_active BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ
 );
+
+ALTER TABLE license_groups
+  ADD COLUMN IF NOT EXISTS tax_id TEXT,
+  ADD COLUMN IF NOT EXISTS contact_name TEXT,
+  ADD COLUMN IF NOT EXISTS contact_email TEXT,
+  ADD COLUMN IF NOT EXISTS contact_phone TEXT,
+  ADD COLUMN IF NOT EXISTS address TEXT,
+  ADD COLUMN IF NOT EXISTS locality TEXT,
+  ADD COLUMN IF NOT EXISTS province TEXT;
 
 CREATE TABLE IF NOT EXISTS license_units (
   id SERIAL PRIMARY KEY,

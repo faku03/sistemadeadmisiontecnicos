@@ -78,6 +78,23 @@ function escapeHtml(value) {
     .replace(/'/g, '&#039;');
 }
 
+function formatGroupContact(group) {
+  const parts = [
+    group.contact_name,
+    group.contact_email,
+    group.contact_phone
+  ].filter(Boolean);
+
+  return parts.join(' / ') || '-';
+}
+
+function formatGroupLocation(group) {
+  return [
+    group.address,
+    [group.locality, group.province].filter(Boolean).join(', ')
+  ].filter(Boolean).join(' - ') || '-';
+}
+
 async function copyText(text) {
   const value = String(text || '').trim();
 
@@ -273,18 +290,18 @@ function licenseForUnit(unitId) {
 function renderGroupsMaster() {
   const body = $('#groupsBody');
   const visibleGroups = state.groups.filter(group =>
-    includesText(group, ['codigo', 'nombre'], state.groupSearch)
+    includesText(group, ['codigo', 'nombre', 'tax_id', 'contact_name', 'contact_email', 'contact_phone'], state.groupSearch)
   );
 
   if (!state.groups.length) {
-    body.innerHTML = '<tr><td colspan="4">Sin grupos cargados.</td></tr>';
+    body.innerHTML = '<tr><td colspan="5">Sin grupos cargados.</td></tr>';
     $('#groupUnitsBody').innerHTML = '<tr><td colspan="6">Selecciona un grupo.</td></tr>';
     return;
   }
 
   if (!visibleGroups.length) {
     state.selectedGroupId = null;
-    body.innerHTML = '<tr><td colspan="4">Sin grupos para esa busqueda.</td></tr>';
+    body.innerHTML = '<tr><td colspan="5">Sin grupos para esa busqueda.</td></tr>';
     $('#groupUnitsBody').innerHTML = '<tr><td colspan="6">Sin grupo seleccionado.</td></tr>';
     return;
   }
@@ -303,6 +320,7 @@ function renderGroupsMaster() {
       <tr${selected} data-group-id="${group.id}">
         <td><strong>${group.codigo}</strong></td>
         <td>${group.nombre}</td>
+        <td>${escapeHtml(formatGroupContact(group))}</td>
         <td>${units.length}</td>
         <td><span class="status-pill ${statusClass}">${statusText}</span></td>
       </tr>
@@ -317,6 +335,7 @@ function renderGroupDetail() {
   if (!group) {
     $('#selectedGroupTitle').textContent = 'Sucursales y tecnicos';
     $('#selectedGroupSubtitle').textContent = 'Selecciona un grupo para ver el detalle.';
+    $('#selectedGroupContact').innerHTML = '';
     body.innerHTML = '<tr><td colspan="6">Selecciona un grupo.</td></tr>';
     return;
   }
@@ -327,6 +346,11 @@ function renderGroupDetail() {
   );
   $('#selectedGroupTitle').textContent = `${group.codigo} - ${group.nombre}`;
   $('#selectedGroupSubtitle').textContent = `${visibleUnits.length} de ${units.length} sucursal(es) o tecnico(s).`;
+  $('#selectedGroupContact').innerHTML = `
+    <span><strong>CUIT/CUIL:</strong> ${escapeHtml(group.tax_id || '-')}</span>
+    <span><strong>Contacto:</strong> ${escapeHtml(formatGroupContact(group))}</span>
+    <span><strong>Direccion:</strong> ${escapeHtml(formatGroupLocation(group))}</span>
+  `;
 
   if (!units.length) {
     body.innerHTML = '<tr><td colspan="6">Este grupo todavia no tiene sucursales ni tecnicos.</td></tr>';

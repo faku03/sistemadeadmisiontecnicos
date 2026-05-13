@@ -13,7 +13,14 @@ async function main() {
   const suffix = Date.now().toString(36).toUpperCase();
   const group = await createGroup({
     codigo: `SMOKE-${suffix}`,
-    nombre: `Grupo smoke ${suffix}`
+    nombre: `Grupo smoke ${suffix}`,
+    tax_id: '20-12345678-9',
+    contact_name: 'Contacto smoke',
+    contact_email: 'smoke@mardeltech.test',
+    contact_phone: '2230000000',
+    address: 'Av. Smoke 123',
+    locality: 'Mar del Plata',
+    province: 'Buenos Aires'
   });
 
   const unit = await createUnit({
@@ -46,6 +53,11 @@ async function main() {
 
   if (activated.status !== 'ACTIVE') {
     throw new Error('La licencia administrativa no pudo activarse');
+  }
+
+  const savedGroup = groups.find(item => item.id === group.id);
+  if (savedGroup?.contact_email !== 'smoke@mardeltech.test') {
+    throw new Error('Los datos comerciales del grupo no se guardaron correctamente');
   }
 
   console.log(

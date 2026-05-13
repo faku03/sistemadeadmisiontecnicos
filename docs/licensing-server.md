@@ -27,6 +27,7 @@ Por ahora todo puede correr local en la misma PC, pero queda armado para moverlo
 ```text
 license_groups
   Grupo comercial o empresa.
+  Guarda datos comerciales y de contacto del cliente.
 
 license_units
   Sucursal o tecnico individual dentro de un grupo.
@@ -228,7 +229,14 @@ Crear grupo:
 ```json
 {
   "codigo": "GRUPO-001",
-  "nombre": "Service Centro"
+  "nombre": "Service Centro",
+  "tax_id": "20-12345678-9",
+  "contact_name": "Juan Perez",
+  "contact_email": "contacto@servicecentro.com",
+  "contact_phone": "2230000000",
+  "address": "Av. Independencia 1234",
+  "locality": "Mar del Plata",
+  "province": "Buenos Aires"
 }
 ```
 
