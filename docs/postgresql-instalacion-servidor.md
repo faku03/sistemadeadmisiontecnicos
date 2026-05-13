@@ -85,6 +85,13 @@ Importante:
 - la terminal no se conecta directo a PostgreSQL
 - la terminal se conecta al gateway del servidor
 - por eso el dato que se pide en instalacion es la maquina servidor y no la base de datos
+- `apiUrl` debe apuntar al gateway local o de red:
+  - `http://SERVIDOR:3000`
+- `licenseServerUrl` debe apuntar al servidor real de licencias:
+  - `https://sistematickets.licences.mardeltech.com`
+- en la pantalla `Servidor y licencia`, las URLs quedan bloqueadas por defecto
+- para habilitar su edicion manual se usa la clave:
+  - `mardelurl`
 
 ### Carpeta de insumos esperados
 

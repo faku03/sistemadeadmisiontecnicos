@@ -12,8 +12,19 @@
     '.combo-estado'
   ];
 
+  let currentConfig = null;
+
   function getApi() {
     return window.api || window.apiCaja;
+  }
+
+  function showAlert(title, message) {
+    if (window.appDialog?.alert) {
+      return window.appDialog.alert({ title, message });
+    }
+
+    alert(message);
+    return Promise.resolve();
   }
 
   function ensureBanner() {
@@ -43,11 +54,12 @@
       <div class="modal-content license-modal-content">
         <h3>Activar licencia</h3>
         <p class="muted" id="licenseModalText">
-          Ingresá la clave asignada a esta sucursal o técnico.
+          Ingresa la clave asignada a esta sucursal o tecnico.
         </p>
         <input id="licenseKeyInput" placeholder="XXXX-XXXX-XXXX">
         <div class="license-meta" id="licenseMeta"></div>
         <div class="modal-actions">
+          <button id="licenseRequestBtn">Solicitar licencia</button>
           <button id="licenseSaveBtn">Activar</button>
           <button id="licenseCancelBtn">Cancelar</button>
         </div>
@@ -69,6 +81,64 @@
     return modal;
   }
 
+  function describeUnit(status) {
+    const parts = [
+      status?.unitType || '',
+      status?.unitCode || status?.unitId || '',
+      status?.unitName || ''
+    ].filter(Boolean);
+
+    return parts.join(' - ');
+  }
+
+  function buildRequestText(status) {
+    const cfg = currentConfig || {};
+    const lines = [
+      'Solicitud de licencia MardelTech',
+      `Sucursal: ${cfg.sucursalNombre || status?.unitName || '-'}`,
+      `Codigo unidad: ${cfg.licenseUnitId || status?.unitCode || status?.unitId || '-'}`,
+      `Codigo grupo: ${cfg.licenseGroupId || status?.groupCode || status?.groupId || '-'}`,
+      `Tipo unidad: ${cfg.licenseUnitType || status?.unitType || '-'}`,
+      `Machine ID: ${status?.machineId || '-'}`,
+      `Clave actual: ${status?.licenseKey || cfg.licenseKey || '-'}`
+    ];
+
+    return lines.join('\n');
+  }
+
+  async function requestLicense(status) {
+    const api = getApi();
+    const cfg = currentConfig || {};
+    const text = buildRequestText(status);
+
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (_) {
+        // seguimos igual
+      }
+    }
+
+    const phone = String(cfg.licenseSupportWhatsApp || '').replace(/\D/g, '');
+    const email = String(cfg.licenseSupportEmail || '').trim();
+
+    if (phone && api?.abrirUrlExterna) {
+      await api.abrirUrlExterna(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`);
+      return;
+    }
+
+    if (email && api?.abrirUrlExterna) {
+      const subject = encodeURIComponent('Solicitud de licencia MardelTech');
+      await api.abrirUrlExterna(`mailto:${email}?subject=${subject}&body=${encodeURIComponent(text)}`);
+      return;
+    }
+
+    await showAlert(
+      'Solicitud de licencia',
+      `Se copio la solicitud al portapapeles. Envia estos datos a soporte:\n\n${text}`
+    );
+  }
+
   function openActivationModal(status) {
     const api = getApi();
     const modal = ensureModal();
@@ -76,10 +146,11 @@
     const meta = modal.querySelector('#licenseMeta');
 
     input.value = status?.licenseKey || '';
-    meta.textContent = `Equipo: ${status?.machineId || 'sin identificar'}`;
+    meta.textContent = `Equipo: ${status?.machineId || 'sin identificar'}${describeUnit(status) ? ` | ${describeUnit(status)}` : ''}`;
     modal.classList.remove('hidden');
     input.focus();
 
+    modal.querySelector('#licenseRequestBtn').onclick = () => requestLicense(status);
     modal.querySelector('#licenseSaveBtn').onclick = async () => {
       try {
         const nextStatus = await api.activarLicencia(input.value);
@@ -87,7 +158,7 @@
         document.body.classList.remove('license-blocked');
         render(nextStatus);
       } catch (error) {
-        alert(error.message || 'No se pudo activar la licencia');
+        await showAlert('No se pudo activar la licencia', error.message || 'No se pudo activar la licencia');
       }
     };
   }
@@ -122,10 +193,10 @@
       enableWrites();
       banner.classList.add('active');
       banner.innerHTML = `
-        <span>Licencia activa - ${status.unitType || ''} ${status.unitId || ''}</span>
-        <button class="license-action">Ver licencia</button>
+        <span>Licencia activa${describeUnit(status) ? ` - ${describeUnit(status)}` : ''}</span>
+        <button class="license-action license-view">Ver licencia</button>
       `;
-      banner.querySelector('.license-action').onclick = () => openActivationModal(status);
+      banner.querySelector('.license-view').onclick = () => openActivationModal(status);
       return;
     }
 
@@ -133,19 +204,27 @@
       enableWrites();
       banner.classList.add('warning');
       banner.innerHTML = `
-        <span>No se pudo validar la licencia online. Quedan ${status.daysRemaining} dias de gracia.</span>
-        <button class="license-action">Actualizar licencia</button>
+        <span>${status.reason}</span>
+        <div class="license-inline-actions">
+          <button class="license-action license-request">Solicitar licencia</button>
+          <button class="license-action license-update">Actualizar licencia</button>
+        </div>
       `;
-      banner.querySelector('.license-action').onclick = () => openActivationModal(status);
+      banner.querySelector('.license-request').onclick = () => requestLicense(status);
+      banner.querySelector('.license-update').onclick = () => openActivationModal(status);
       return;
     }
 
     banner.classList.add('blocked');
     banner.innerHTML = `
       <span>${status.reason || 'Licencia bloqueada'}. Comunicate con soporte para reactivar el sistema.</span>
-      <button class="license-action">Activar licencia</button>
+      <div class="license-inline-actions">
+        <button class="license-action license-request">Solicitar licencia</button>
+        <button class="license-action license-activate">Activar licencia</button>
+      </div>
     `;
-    banner.querySelector('.license-action').onclick = () => openActivationModal(status);
+    banner.querySelector('.license-request').onclick = () => requestLicense(status);
+    banner.querySelector('.license-activate').onclick = () => openActivationModal(status);
     disableWrites();
   }
 
@@ -154,6 +233,14 @@
 
     if (!api?.obtenerEstadoLicencia) {
       return;
+    }
+
+    if (api.obtenerConfiguracion) {
+      try {
+        currentConfig = await api.obtenerConfiguracion();
+      } catch (_) {
+        currentConfig = null;
+      }
     }
 
     try {

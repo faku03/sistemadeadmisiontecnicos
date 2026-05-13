@@ -14,5 +14,7 @@
   "currencyFormat": "system",
   "licenseMode": "server",
   "licenseServerUrl": "https://sistematickets.licences.mardeltech.com",
+  "licenseSupportWhatsApp": "",
+  "licenseSupportEmail": "",
   "licenseGraceDays": 7
 }

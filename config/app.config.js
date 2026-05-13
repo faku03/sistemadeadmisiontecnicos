@@ -25,6 +25,8 @@ const defaults = {
   licenseUnitId: '',
   licenseUnitType: 'SUCURSAL',
   licenseGraceDays: 7,
+  licenseSupportWhatsApp: '',
+  licenseSupportEmail: '',
   alertPendingDays: 2,
   alertRepairDays: 5,
   alertBudgetDays: 3,
@@ -44,18 +46,18 @@ function readJson(filePath) {
 }
 
 function configPaths() {
-  const appData = process.env.APPDATA
-    ? path.join(process.env.APPDATA, 'SistemaTickets', 'app.config.json')
-    : null;
   const exeDir = process.execPath
     ? path.join(path.dirname(process.execPath), 'app.config.json')
+    : null;
+  const appData = process.env.APPDATA
+    ? path.join(process.env.APPDATA, 'SistemaTickets', 'app.config.json')
     : null;
 
   return [
     process.env.SISTEMA_TICKETS_CONFIG,
-    path.join(process.cwd(), 'app.config.json'),
     exeDir,
     appData,
+    path.join(process.cwd(), 'app.config.json'),
     path.join(__dirname, 'app.config.json')
   ].filter(Boolean);
 }
@@ -97,6 +99,8 @@ function envConfig() {
     licenseUnitId: process.env.SISTEMA_TICKETS_LICENSE_UNIT,
     licenseUnitType: process.env.SISTEMA_TICKETS_LICENSE_UNIT_TYPE,
     licenseGraceDays: process.env.SISTEMA_TICKETS_LICENSE_GRACE_DAYS,
+    licenseSupportWhatsApp: process.env.SISTEMA_TICKETS_LICENSE_SUPPORT_WHATSAPP,
+    licenseSupportEmail: process.env.SISTEMA_TICKETS_LICENSE_SUPPORT_EMAIL,
     alertPendingDays: process.env.SISTEMA_TICKETS_ALERT_PENDING_DAYS,
     alertRepairDays: process.env.SISTEMA_TICKETS_ALERT_REPAIR_DAYS,
     alertBudgetDays: process.env.SISTEMA_TICKETS_ALERT_BUDGET_DAYS,

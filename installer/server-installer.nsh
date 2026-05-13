@@ -5,6 +5,7 @@
 !ifndef BUILD_UNINSTALLER
 Var InstallSystem
 Var SystemCheckbox
+Var SharedTerminalDir
 !macro customInit
   StrCpy $INSTDIR "C:\mardeltech\sistemadetickets"
 !macroend
@@ -45,22 +46,25 @@ FunctionEnd
   Delete "$newStartMenuLink"
   Delete "$newDesktopLink"
 
-  CreateDirectory "$INSTDIR\terminal"
-  CopyFiles /SILENT "$INSTDIR\resources\terminal\*.*" "$INSTDIR\terminal"
+  ${GetParent} "$INSTDIR" $SharedTerminalDir
+  StrCpy $SharedTerminalDir "$SharedTerminalDir\terminal"
+  CreateDirectory "$SharedTerminalDir"
+  CopyFiles /SILENT "$INSTDIR\resources\terminal\*.*" "$SharedTerminalDir"
 
   ExecWait '"$SYSDIR\cmd.exe" /C ""$INSTDIR\resources\server\bootstrap-server.cmd" "$INSTDIR""'
 
   ${If} $InstallSystem == ${BST_CHECKED}
-    FindFirst $0 $1 "$INSTDIR\terminal\*.exe"
+    FindFirst $0 $1 "$SharedTerminalDir\*.exe"
     ${If} $1 != ""
-      ExecWait '"$INSTDIR\terminal\$1"'
+      MessageBox MB_ICONINFORMATION "La instalacion del servidor termino correctamente.$\r$\n$\r$\nAhora se abrira el instalador de terminal."
+      ExecShell "" "$SharedTerminalDir\$1"
     ${Else}
-      MessageBox MB_ICONEXCLAMATION "No se encontro el instalador de terminal en $INSTDIR\terminal."
+      MessageBox MB_ICONEXCLAMATION "No se encontro el instalador de terminal en $SharedTerminalDir."
     ${EndIf}
     FindClose $0
+  ${Else}
+    MessageBox MB_ICONINFORMATION "La instalacion del servidor termino correctamente."
   ${EndIf}
-
-  MessageBox MB_ICONINFORMATION "La instalacion del servidor termino.$\r$\n$\r$\nSi eligio instalar el sistema, se abrira el instalador de terminal."
 !macroend
 
 !macro customUnInstall

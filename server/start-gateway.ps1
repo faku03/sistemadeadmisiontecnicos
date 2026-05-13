@@ -46,8 +46,15 @@ if ((Test-Path $pgIsReadyPath) -and $env:PGHOST -and $env:PGPORT -and (($env:PGH
   }
 }
 
-$env:SISTEMA_TICKETS_OUTPUT_PATH = Join-Path $env:ProgramData "MardelTech\SistemaTickets\pdfs"
-New-Item -ItemType Directory -Force -Path $env:SISTEMA_TICKETS_OUTPUT_PATH | Out-Null
+$preferredOutputPath = Join-Path $env:ProgramData "MardelTech\SistemaTickets\pdfs"
+$fallbackOutputPath = Join-Path $env:LOCALAPPDATA "MardelTech\SistemaTickets\pdfs"
+$env:SISTEMA_TICKETS_OUTPUT_PATH = $preferredOutputPath
+try {
+  New-Item -ItemType Directory -Force -Path $preferredOutputPath -ErrorAction Stop | Out-Null
+} catch {
+  $env:SISTEMA_TICKETS_OUTPUT_PATH = $fallbackOutputPath
+  New-Item -ItemType Directory -Force -Path $fallbackOutputPath | Out-Null
+}
 
 $stdout = Join-Path $logDir "gateway.out.log"
 $stderr = Join-Path $logDir "gateway.err.log"

@@ -25,6 +25,14 @@ Ese dato se guarda en `app.config.json` para completar:
 - `apiUrl`
 - `licenseServerUrl`
 
+Detalle importante:
+
+- `apiUrl` se arma con el nombre o IP del servidor local:
+  - `http://SERVIDOR:3000`
+- `licenseServerUrl` no depende del servidor local
+- `licenseServerUrl` debe quedar apuntando al servidor real:
+  - `https://sistematickets.licences.mardeltech.com`
+
 La terminal no se conecta directo a PostgreSQL. Se conecta al gateway del servidor.
 
 Al finalizar la instalacion:

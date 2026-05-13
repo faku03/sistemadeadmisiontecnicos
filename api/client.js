@@ -1,8 +1,37 @@
+const os = require('os');
+
 const DEFAULT_API_URL = 'http://localhost:3000';
+
+function esHostLocal(hostname) {
+  const normalized = String(hostname || '').toLowerCase();
+  const localNames = new Set([
+    '127.0.0.1',
+    'localhost',
+    '::1',
+    String(os.hostname() || '').toLowerCase(),
+    String(process.env.COMPUTERNAME || '').toLowerCase()
+  ].filter(Boolean));
+
+  return localNames.has(normalized);
+}
+
+function normalizarBaseUrl(rawUrl) {
+  const safeUrl = String(rawUrl || DEFAULT_API_URL).trim() || DEFAULT_API_URL;
+
+  try {
+    const parsed = new URL(safeUrl);
+    if (esHostLocal(parsed.hostname) && parsed.hostname !== '127.0.0.1') {
+      parsed.hostname = '127.0.0.1';
+    }
+    return parsed.toString().replace(/\/$/, '');
+  } catch (_) {
+    return safeUrl.replace(/\/$/, '');
+  }
+}
 
 class ApiClient {
   constructor(baseUrl = process.env.SISTEMA_TICKETS_API_URL || DEFAULT_API_URL) {
-    this.baseUrl = baseUrl.replace(/\/$/, '');
+    this.baseUrl = normalizarBaseUrl(baseUrl);
   }
 
   async request(path, options = {}) {

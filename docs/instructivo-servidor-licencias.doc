@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Instructivo - Servidor de Licencias MardelTech</title>
+  <style>
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      color: #222;
+      line-height: 1.42;
+      margin: 36px;
+    }
+    h1 {
+      font-size: 24px;
+      margin-bottom: 4px;
+    }
+    h2 {
+      font-size: 18px;
+      margin-top: 26px;
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 4px;
+    }
+    h3 {
+      font-size: 15px;
+      margin-top: 18px;
+    }
+    code, pre {
+      font-family: Consolas, "Courier New", monospace;
+    }
+    pre {
+      background: #f4f4f4;
+      border: 1px solid #ddd;
+      padding: 10px;
+      white-space: pre-wrap;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 12px 0;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 7px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: #eee;
+    }
+    .note {
+      background: #fff8df;
+      border: 1px solid #e7d48d;
+      padding: 10px;
+      margin: 12px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Instructivo de instalacion del servidor de licencias</h1>
+  <p><strong>Proyecto:</strong> Sistema Tickets / Servidor de licencias MardelTech</p>
+  <p><strong>Fecha de armado:</strong> 7 de mayo de 2026</p>
+  <p><strong>Servidor final:</strong> <a href="https://sistematickets.licences.mardeltech.com">https://sistematickets.licences.mardeltech.com</a></p>
+
+  <h2>1. Resumen final</h2>
+  <table>
+    <tr><th>Componente</th><th>Estado / valor</th></tr>
+    <tr><td>Sistema operativo</td><td>Ubuntu 25.10 questing</td></tr>
+    <tr><td>Kernel</td><td>Linux 6.17.0-22-generic x86_64</td></tr>
+    <tr><td>Usuario Linux usado para la app</td><td>mardeltech</td></tr>
+    <tr><td>Ruta del proyecto</td><td>/opt/sistema-tickets</td></tr>
+    <tr><td>Repositorio</td><td>github.com/faku03/sistemadeadmisiontecnicos.git</td></tr>
+    <tr><td>Rama usada</td><td>codex/licencias-suscripcion</td></tr>
+    <tr><td>PostgreSQL</td><td>18.3 desde repositorio oficial PGDG</td></tr>
+    <tr><td>Base de datos</td><td>sistema_tickets</td></tr>
+    <tr><td>Usuario PostgreSQL</td><td>mardeltech_app</td></tr>
+    <tr><td>Puerto app Node</td><td>3000 interno</td></tr>
+    <tr><td>Proxy publico</td><td>Nginx en puertos 80 y 443</td></tr>
+    <tr><td>DDNS</td><td>No-IP DUC apuntando a mardeltechlicence.ddns.net</td></tr>
+    <tr><td>Dominio publico</td><td>sistematickets.licences.mardeltech.com</td></tr>
+    <tr><td>Certificado SSL</td><td>Let's Encrypt via Certbot</td></tr>
+  </table>
+
+  <div class="note">
+    <strong>Importante:</strong> las contrasenas y tokens reales no deben quedar publicados en repositorios ni documentos compartidos.
+    En este instructivo se indican como valores guardados en <code>/opt/sistema-tickets/.env</code>.
+  </div>
+
+  <h2>2. Preparacion inicial del servidor</h2>
+  <p>Se verifico el sistema con:</p>
+  <pre>lsb_release -a
+uname -a
+whoami
+ip a
+curl ifconfig.me</pre>
+
+  <p>Datos detectados durante la instalacion:</p>
+  <pre>Ubuntu 25.10 questing
+Usuario inicial: root
+IP publica inicial: 201.179.136.203
+IP publica posterior detectada por No-IP: 201.179.147.108
+IP LAN final usada para port forwarding: 192.168.1.49
+MAC placa ethernet: 2c:41:38:90:e3:2f</pre>
+
+  <p>Paquetes base:</p>
+  <pre>apt update
+apt upgrade -y
+apt install -y curl ca-certificates gnupg git nginx ufw postgresql-common</pre>
+
+  <h2>3. Nginx y firewall</h2>
+  <p>Se instalo Nginx. Al iniciar aparecio un error por IPv6 deshabilitado:</p>
+  <pre>nginx: [emerg] socket() [::]:80 failed (97: Address family not supported by protocol)</pre>
+
+  <p>Solucion aplicada: editar el sitio default y comentar la linea IPv6:</p>
+  <pre>nano /etc/nginx/sites-available/default</pre>
+
+  <p>Linea comentada:</p>
+  <pre># listen [::]:80 default_server;</pre>
+
+  <p>Luego se levanto Nginx:</p>
+  <pre>nginx -t
+systemctl start nginx
+systemctl status nginx --no-pager</pre>
+
+  <p>Firewall:</p>
+  <pre>ufw allow OpenSSH
+ufw allow 'Nginx Full'
+ufw --force enable
+ufw status</pre>
+
+  <h2>4. Instalacion de PostgreSQL 18</h2>
+  <p>Como Ubuntu 25.10 no usaba PostgreSQL 18 como version default, se agrego el repositorio oficial PGDG:</p>
+  <pre>/usr/share/postgresql-common/pgdg/apt.postgresql.org.sh
+apt update
+apt install -y postgresql-18 postgresql-client-18</pre>
+
+  <p>Verificaciones:</p>
+  <pre>psql --version
+systemctl status postgresql --no-pager
+pg_lsclusters</pre>
+
+  <p>El cluster estaba creado pero apagado. Se inicio con:</p>
+  <pre>pg_ctlcluster 18 main start
+pg_lsclusters
+systemctl status postgresql@18-main --no-pager</pre>
+
+  <h2>5. Base de datos y usuario</h2>
+  <p>Se creo el usuario y la base:</p>
+  <pre>sudo -u postgres psql</pre>
+
+  <pre>CREATE USER mardeltech_app WITH PASSWORD 'PASSWORD_SEGURA';
+CREATE DATABASE sistema_tickets OWNER mardeltech_app;
+GRANT ALL PRIVILEGES ON DATABASE sistema_tickets TO mardeltech_app;
+\q</pre>
+
+  <p>Prueba de conexion:</p>
+  <pre>psql -h 127.0.0.1 -U mardeltech_app -d sistema_tickets</pre>
+
+  <p>Validacion posterior usada por la app:</p>
+  <pre>psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDATABASE" -c "SELECT current_user, current_database();"</pre>
+
+  <p>Resultado esperado:</p>
+  <pre>current_user: mardeltech_app
+current_database: sistema_tickets</pre>
+
+  <h2>6. Instalacion de Node.js</h2>
+  <p>Se instalo Node.js desde NodeSource LTS:</p>
+  <pre>curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
+apt install -y nodejs
+node -v
+npm -v</pre>
+
+  <p>Versiones detectadas:</p>
+  <pre>Node: v24.15.0
+npm: 11.12.1</pre>
+
+  <h2>7. Clonado del proyecto</h2>
+  <p>Se uso el usuario <code>mardeltech</code> para ejecutar la app, no root.</p>
+
+  <pre>mkdir -p /opt/sistema-tickets
+chown -R mardeltech:mardeltech /opt/sistema-tickets</pre>
+
+  <p>Se genero una clave SSH para GitHub como usuario <code>mardeltech</code>:</p>
+  <pre>su - mardeltech
+mkdir -p ~/.ssh
+chmod 700 ~/.ssh
+ssh-keygen -t ed25519 -C "servidor-licencias-mardeltech" -f ~/.ssh/id_ed25519
+cat ~/.ssh/id_ed25519.pub</pre>
+
+  <p>La clave publica se agrego en GitHub como Deploy Key del repositorio. La prueba correcta fue:</p>
+  <pre>ssh -T git@github.com</pre>
+
+  <p>Respuesta esperada:</p>
+  <pre>Hi faku03/sistemadeadmisiontecnicos! You've successfully authenticated, but GitHub does not provide shell access.</pre>
+
+  <p>Clonado correcto de la rama que contiene licencias:</p>
+  <pre>cd /opt/sistema-tickets
+git clone git@github.com:faku03/sistemadeadmisiontecnicos.git .
+git fetch origin
+git checkout codex/licencias-suscripcion</pre>
+
+  <p>Si la rama no existe localmente:</p>
+  <pre>git checkout -b codex/licencias-suscripcion origin/codex/licencias-suscripcion</pre>
+
+  <p>Carpetas clave esperadas:</p>
+  <pre>server/
+license/
+admin-panel/
+docs/licensing-server.md
+package.json</pre>
+
+  <h2>8. Dependencias del proyecto</h2>
+  <p>Instalacion:</p>
+  <pre>cd /opt/sistema-tickets
+npm install</pre>
+
+  <p>El proceso termino correctamente. Aparecieron advertencias de paquetes deprecated y vulnerabilidades de npm, pero no bloquearon el despliegue.</p>
+
+  <h2>9. Variables de entorno</h2>
+  <p>Archivo creado:</p>
+  <pre>/opt/sistema-tickets/.env</pre>
+
+  <p>Contenido base:</p>
+  <pre>PGHOST=127.0.0.1
+PGPORT=5432
+PGDATABASE=sistema_tickets
+PGUSER=mardeltech_app
+PGPASSWORD=PASSWORD_REAL_DE_POSTGRES
+
+SISTEMA_TICKETS_API_PORT=3000
+SISTEMA_TICKETS_ADMIN_TOKEN=TOKEN_ADMIN_REAL
+SISTEMA_TICKETS_LICENSE_MODE=server
+SISTEMA_TICKETS_LICENSE_SERVER_URL=https://sistematickets.licences.mardeltech.com
+SISTEMA_TICKETS_OUTPUT_PATH=/opt/sistema-tickets/pdfs</pre>
+
+  <p>Permisos aplicados:</p>
+  <pre>chmod 600 /opt/sistema-tickets/.env</pre>
+
+  <h2>10. Migraciones de base</h2>
+  <p>Primero se cargo el <code>.env</code>:</p>
+  <pre>cd /opt/sistema-tickets
+set -a
+source .env
+set +a</pre>
+
+  <p>Luego se ejecuto:</p>
+  <pre>npm run server:migrate</pre>
+
+  <p>Resultado correcto:</p>
+  <pre>PostgreSQL schema OK</pre>
+
+  <h2>11. Prueba manual del servidor</h2>
+  <p>Arranque manual:</p>
+  <pre>npm run server:start</pre>
+
+  <p>Pruebas:</p>
+  <pre>curl http://127.0.0.1:3000/health
+curl http://127.0.0.1:3000/licenses -H "x-admin-token: TOKEN_ADMIN_REAL"</pre>
+
+  <p>Resultados esperados:</p>
+  <pre>{"ok":true}
+[]</pre>
+
+  <h2>12. Servicio systemd de la app</h2>
+  <p>Archivo creado:</p>
+  <pre>/etc/systemd/system/sistema-licencias.service</pre>
+
+  <p>Contenido:</p>
+  <pre>[Unit]
+Description=Sistema Tickets - Servidor de Licencias
+After=network.target postgresql@18-main.service
+Wants=postgresql@18-main.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/sistema-tickets
+EnvironmentFile=/opt/sistema-tickets/.env
+ExecStart=/usr/bin/npm run server:start
+Restart=always
+RestartSec=5
+User=mardeltech
+Group=mardeltech
+
+[Install]
+WantedBy=multi-user.target</pre>
+
+  <p>Comandos:</p>
+  <pre>systemctl daemon-reload
+systemctl enable sistema-licencias
+systemctl start sistema-licencias
+systemctl status sistema-licencias --no-pager</pre>
+
+  <p>Ver logs:</p>
+  <pre>journalctl -u sistema-licencias --no-pager -n 50
+journalctl -u sistema-licencias -f</pre>
+
+  <h2>13. Configuracion de Nginx como proxy</h2>
+  <p>Archivo creado:</p>
+  <pre>/etc/nginx/sites-available/sistema-licencias</pre>
+
+  <p>Contenido inicial:</p>
+  <pre>server {
+    listen 80;
+    server_name sistematickets.licences.mardeltech.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}</pre>
+
+  <p>Activacion:</p>
+  <pre>ln -s /etc/nginx/sites-available/sistema-licencias /etc/nginx/sites-enabled/sistema-licencias
+nginx -t
+systemctl reload nginx</pre>
+
+  <p>Prueba local con header Host:</p>
+  <pre>curl -H "Host: sistematickets.licences.mardeltech.com" http://127.0.0.1/health</pre>
+
+  <h2>14. No-IP para IP dinamica</h2>
+  <p>Como la IP publica no es estatica, se instalo No-IP DUC moderno.</p>
+
+  <p>Se descarto el cliente viejo <code>noip2</code> porque no se instala con apt como paquete y ademas dio error de autenticacion con cuenta Google.</p>
+
+  <p>Instalacion del DUC nuevo:</p>
+  <pre>cd /tmp
+wget --content-disposition https://www.noip.com/download/linux/latest
+tar xf noip-duc_*.tar.gz
+cd noip-duc_*/binaries
+apt install ./noip-duc_*_amd64.deb</pre>
+
+  <p>Se uso una DDNS Key de No-IP, no el login de Google.</p>
+
+  <p>Prueba manual:</p>
+  <pre>noip-duc -u "DDNS_KEY_USERNAME" -p "DDNS_KEY_PASSWORD" -g "mardeltechlicence.ddns.net"</pre>
+
+  <p>Resultado correcto observado:</p>
+  <pre>got new ip; current=201.179.147.108, previous=0.0.0.0
+update successful; current=201.179.147.108, previous=0.0.0.0
+checking ip again in 5m</pre>
+
+  <h3>Servicio systemd de No-IP</h3>
+  <p>Archivo sugerido:</p>
+  <pre>/etc/systemd/system/noip-duc.service</pre>
+
+  <pre>[Unit]
+Description=No-IP Dynamic Update Client
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/noip-duc -u "DDNS_KEY_USERNAME" -p "DDNS_KEY_PASSWORD" -g "mardeltechlicence.ddns.net"
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target</pre>
+
+  <p>Activacion:</p>
+  <pre>systemctl daemon-reload
+systemctl enable noip-duc
+systemctl start noip-duc
+systemctl status noip-duc --no-pager</pre>
+
+  <h2>15. DNS en DonWeb</h2>
+  <p>Se configuro el subdominio:</p>
+  <pre>sistematickets.licences.mardeltech.com</pre>
+
+  <p>Como la IP publica es dinamica, el subdominio se dejo apuntando al hostname de No-IP:</p>
+  <pre>Tipo: CNAME / Redireccionar a un dominio
+Subdominio: sistematickets.licences
+Destino: mardeltechlicence.ddns.net</pre>
+
+  <p>Verificacion contra DNS publico:</p>
+  <pre>dig @8.8.8.8 sistematickets.licences.mardeltech.com</pre>
+
+  <p>Resultado correcto:</p>
+  <pre>sistematickets.licences.mardeltech.com. CNAME mardeltechlicence.ddns.net.
+mardeltechlicence.ddns.net. A 201.179.147.108</pre>
+
+  <h2>16. Router y red local</h2>
+  <p>La IP LAN final activa fue:</p>
+  <pre>192.168.1.49</pre>
+
+  <p>Se actualizo el port forwarding del router hacia esa IP:</p>
+  <pre>WAN 80  -> 192.168.1.49:80
+WAN 443 -> 192.168.1.49:443</pre>
+
+  <p>Recomendacion: reservar en el router la IP <code>192.168.1.49</code> para la MAC <code>2c:41:38:90:e3:2f</code>.</p>
+
+  <h2>17. HTTPS con Certbot</h2>
+  <p>Una vez que HTTP publico respondio, se instalo Certbot:</p>
+  <pre>apt install -y certbot python3-certbot-nginx
+certbot --nginx -d sistematickets.licences.mardeltech.com</pre>
+
+  <p>Resultado correcto:</p>
+  <pre>Successfully received certificate.
+Successfully deployed certificate for sistematickets.licences.mardeltech.com
+Congratulations! You have successfully enabled HTTPS on https://sistematickets.licences.mardeltech.com</pre>
+
+  <p>Rutas del certificado:</p>
+  <pre>/etc/letsencrypt/live/sistematickets.licences.mardeltech.com/fullchain.pem
+/etc/letsencrypt/live/sistematickets.licences.mardeltech.com/privkey.pem</pre>
+
+  <p>Vencimiento observado:</p>
+  <pre>2026-08-05</pre>
+
+  <p>Probar renovacion:</p>
+  <pre>certbot renew --dry-run</pre>
+
+  <h2>18. URLs de uso</h2>
+  <table>
+    <tr><th>Uso</th><th>URL</th></tr>
+    <tr><td>Health check</td><td>https://sistematickets.licences.mardeltech.com/health</td></tr>
+    <tr><td>Panel administrador</td><td>https://sistematickets.licences.mardeltech.com/admin-panel</td></tr>
+    <tr><td>API listado licencias</td><td>https://sistematickets.licences.mardeltech.com/licenses</td></tr>
+    <tr><td>Activar licencia</td><td>POST https://sistematickets.licences.mardeltech.com/licenses/activate</td></tr>
+    <tr><td>Validar licencia</td><td>POST https://sistematickets.licences.mardeltech.com/licenses/validate</td></tr>
+  </table>
+
+  <p>Nota: la ruta raiz <code>/</code> devuelve <code>{"error":"Ruta no encontrada"}</code>. Es normal. El panel esta en <code>/admin-panel</code>.</p>
+
+  <h2>19. Pruebas finales</h2>
+  <pre>systemctl status sistema-licencias --no-pager
+systemctl status nginx --no-pager
+systemctl status noip-duc --no-pager
+curl https://sistematickets.licences.mardeltech.com/health
+curl https://sistematickets.licences.mardeltech.com/licenses -H "x-admin-token: TOKEN_ADMIN_REAL"</pre>
+
+  <p>Resultados esperados:</p>
+  <pre>{"ok":true}
+[]</pre>
+
+  <h2>20. Problemas encontrados y soluciones</h2>
+  <table>
+    <tr><th>Problema</th><th>Causa</th><th>Solucion</th></tr>
+    <tr>
+      <td>Nginx no iniciaba</td>
+      <td>IPv6 deshabilitado y sitio default escuchando en [::]:80</td>
+      <td>Comentar <code>listen [::]:80 default_server;</code> en <code>/etc/nginx/sites-available/default</code></td>
+    </tr>
+    <tr>
+      <td>GitHub rechazaba la deploy key</td>
+      <td>Se estaba usando una clave inexistente, privada, o mal ubicada</td>
+      <td>Generar clave como usuario <code>mardeltech</code> y pegar solo <code>~/.ssh/id_ed25519.pub</code></td>
+    </tr>
+    <tr>
+      <td>No se podia clonar en /opt/sistema-tickets</td>
+      <td>Carpeta pertenecia a root</td>
+      <td><code>chown -R mardeltech:mardeltech /opt/sistema-tickets</code></td>
+    </tr>
+    <tr>
+      <td>Clonado sin servidor de licencias</td>
+      <td>Se habia clonado la rama default</td>
+      <td>Usar rama <code>codex/licencias-suscripcion</code></td>
+    </tr>
+    <tr>
+      <td>Migracion fallaba por password</td>
+      <td>La password del .env no coincidia con PostgreSQL</td>
+      <td>Ejecutar <code>ALTER USER mardeltech_app WITH PASSWORD '...';</code> y actualizar <code>.env</code></td>
+    </tr>
+    <tr>
+      <td>No-IP viejo no autenticaba</td>
+      <td>Cuenta con Google y cliente noip2 antiguo</td>
+      <td>Usar No-IP DUC moderno con DDNS Key</td>
+    </tr>
+    <tr>
+      <td>Dominio seguia resolviendo IP vieja</td>
+      <td>Cache DNS local con systemd-resolved</td>
+      <td>Probar con <code>dig @8.8.8.8</code> o limpiar cache con <code>resolvectl flush-caches</code></td>
+    </tr>
+    <tr>
+      <td>El dominio no respondia desde internet</td>
+      <td>Port forwarding apuntaba a IP LAN anterior</td>
+      <td>Cambiar router para apuntar puertos 80/443 a <code>192.168.1.49</code></td>
+    </tr>
+    <tr>
+      <td>La raiz / mostraba ruta no encontrada</td>
+      <td>La app no define pantalla en /</td>
+      <td>Entrar al panel por <code>/admin-panel</code></td>
+    </tr>
+  </table>
+
+  <h2>21. Reinstalacion rapida desde cero</h2>
+  <p>Resumen de comandos principales, suponiendo servidor limpio y DNS preparado:</p>
+  <pre>apt update
+apt upgrade -y
+apt install -y curl ca-certificates gnupg git nginx ufw postgresql-common
+/usr/share/postgresql-common/pgdg/apt.postgresql.org.sh
+apt update
+apt install -y postgresql-18 postgresql-client-18
+pg_ctlcluster 18 main start
+
+sudo -u postgres psql
+CREATE USER mardeltech_app WITH PASSWORD 'PASSWORD_SEGURA';
+CREATE DATABASE sistema_tickets OWNER mardeltech_app;
+GRANT ALL PRIVILEGES ON DATABASE sistema_tickets TO mardeltech_app;
+\q
+
+curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
+apt install -y nodejs
+
+mkdir -p /opt/sistema-tickets
+chown -R mardeltech:mardeltech /opt/sistema-tickets
+su - mardeltech
+cd /opt/sistema-tickets
+git clone git@github.com:faku03/sistemadeadmisiontecnicos.git .
+git checkout codex/licencias-suscripcion
+npm install
+nano .env
+chmod 600 .env
+set -a
+source .env
+set +a
+npm run server:migrate</pre>
+
+  <p>Luego crear los servicios <code>sistema-licencias</code>, <code>noip-duc</code>, Nginx y Certbot como se documento arriba.</p>
+
+  <h2>22. Comandos utiles de mantenimiento</h2>
+  <pre>systemctl restart sistema-licencias
+systemctl status sistema-licencias --no-pager
+journalctl -u sistema-licencias -f
+
+systemctl reload nginx
+nginx -t
+systemctl status nginx --no-pager
+
+systemctl status noip-duc --no-pager
+journalctl -u noip-duc -f
+
+pg_lsclusters
+systemctl status postgresql@18-main --no-pager
+
+dig @8.8.8.8 sistematickets.licences.mardeltech.com
+curl https://sistematickets.licences.mardeltech.com/health</pre>
+</body>
+</html>

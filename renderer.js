@@ -629,6 +629,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function inicializarPantalla() {
+    await asegurarGatewayAntesDeCargar();
     await Promise.all([
       cargarConfiguracionSistema().then(() => medirPaso('configuracion')),
       inicializarCombos().then(() => medirPaso('combos')),
@@ -642,6 +643,28 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
       window.licenseUI?.init();
     }, 250);
+  }
+
+  async function asegurarGatewayAntesDeCargar() {
+    if (!window.api?.asegurarGateway) {
+      return;
+    }
+
+    const estado = await window.api.asegurarGateway();
+    if (estado?.ok && estado?.started) {
+      await mostrarAlerta(
+        'Gateway iniciado',
+        'El gateway local no estaba corriendo. Se inicio automaticamente.'
+      );
+      return;
+    }
+
+    if (!estado?.ok && estado?.message) {
+      await mostrarAlerta(
+        'Gateway no disponible',
+        `${estado.message}\n\nURL actual: ${estado.apiUrl || 'sin definir'}`
+      );
+    }
   }
 
   function estadoLegible(ticket) {

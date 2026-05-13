@@ -26,6 +26,8 @@ const defaults = {
   licenseUnitId: '',
   licenseUnitType: 'SUCURSAL',
   licenseGraceDays: 7,
+  licenseSupportWhatsApp: '',
+  licenseSupportEmail: '',
   alertPendingDays: 2,
   alertRepairDays: 5,
   alertBudgetDays: 3,
@@ -33,6 +35,14 @@ const defaults = {
 };
 
 function configFilePath() {
+  const exeConfigPath = process.execPath
+    ? path.join(path.dirname(process.execPath), 'app.config.json')
+    : null;
+
+  if (exeConfigPath && path.basename(process.execPath).toLowerCase() !== 'electron.exe') {
+    return exeConfigPath;
+  }
+
   return path.join(process.env.APPDATA || process.cwd(), 'SistemaTickets', 'app.config.json');
 }
 

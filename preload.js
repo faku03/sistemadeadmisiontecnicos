@@ -12,6 +12,9 @@ contextBridge.exposeInMainWorld('api', {
   activarLicencia: clave =>
     ipcRenderer.invoke('licencia:activar', clave),
 
+  asegurarGateway: () =>
+    ipcRenderer.invoke('gateway:asegurar'),
+
   // ===== CLIENTES =====
   buscarClientePorDni: dni =>
     ipcRenderer.invoke('buscar-cliente-dni', dni),
@@ -105,7 +108,10 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.invoke('configuracion-seleccionar-logo'),
 
   probarPdfConfiguracion: data =>
-    ipcRenderer.invoke('configuracion-probar-pdf', data)
+    ipcRenderer.invoke('configuracion-probar-pdf', data),
+
+  abrirUrlExterna: url =>
+    ipcRenderer.invoke('abrir-url-externa', url)
 
 });
 

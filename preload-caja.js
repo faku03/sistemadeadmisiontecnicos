@@ -13,6 +13,9 @@ contextBridge.exposeInMainWorld('apiCaja', {
   activarLicencia: clave =>
     ipcRenderer.invoke('licencia:activar', clave),
 
+  asegurarGateway: () =>
+    ipcRenderer.invoke('gateway:asegurar'),
+
   listarPendientes: () =>
     ipcRenderer.invoke('caja:listar-pendientes'),
 
@@ -56,5 +59,8 @@ contextBridge.exposeInMainWorld('apiCaja', {
     ipcRenderer.invoke('caja:reporte-listado-data'),
 
   generarReporteListadoPdf: data =>
-    ipcRenderer.invoke('caja:generar-reporte-listado-pdf', data)
+    ipcRenderer.invoke('caja:generar-reporte-listado-pdf', data),
+
+  abrirUrlExterna: url =>
+    ipcRenderer.invoke('abrir-url-externa', url)
 });

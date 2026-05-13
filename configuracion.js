@@ -5,6 +5,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const btnCerrar = document.getElementById('btnCerrarConfiguracion');
   const btnSeleccionarLogoPdf = document.getElementById('btnSeleccionarLogoPdf');
   const btnProbarPdfConfiguracion = document.getElementById('btnProbarPdfConfiguracion');
+  const btnEditarUrls = document.getElementById('btnEditarUrls');
+  let urlsEditables = false;
 
   const fields = {
     sucursalId: document.getElementById('cfgSucursalId'),
@@ -27,6 +29,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     apiUrl: document.getElementById('cfgApiUrl'),
     licenseMode: document.getElementById('cfgLicenseMode'),
     licenseServerUrl: document.getElementById('cfgLicenseServerUrl'),
+    licenseSupportWhatsApp: document.getElementById('cfgLicenseSupportWhatsApp'),
+    licenseSupportEmail: document.getElementById('cfgLicenseSupportEmail'),
     licenseKey: document.getElementById('cfgLicenseKey'),
     licenseGroupId: document.getElementById('cfgLicenseGroupId'),
     licenseUnitId: document.getElementById('cfgLicenseUnitId'),
@@ -75,6 +79,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  function aplicarBloqueoUrls() {
+    fields.apiUrl.readOnly = !urlsEditables;
+    fields.licenseServerUrl.readOnly = !urlsEditables;
+    btnEditarUrls.textContent = urlsEditables ? 'Bloquear URLs' : 'Editar URLs';
+  }
+
   function leer() {
     return {
       sucursalId: fields.sucursalId.value.trim(),
@@ -101,6 +111,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       apiUrl: fields.apiUrl.value.trim(),
       licenseMode: fields.licenseMode.value,
       licenseServerUrl: fields.licenseServerUrl.value.trim(),
+      licenseSupportWhatsApp: fields.licenseSupportWhatsApp.value.trim(),
+      licenseSupportEmail: fields.licenseSupportEmail.value.trim(),
       licenseKey: fields.licenseKey.value.trim(),
       licenseGroupId: fields.licenseGroupId.value.trim(),
       licenseUnitId: fields.licenseUnitId.value.trim(),
@@ -127,6 +139,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       await mostrarAlerta('Email invalido', 'El email del negocio no tiene un formato valido.');
       activarTab('general');
       fields.pdfBusinessEmail.focus();
+      return false;
+    }
+
+    if (!emailValido(config.licenseSupportEmail)) {
+      await mostrarAlerta('Email invalido', 'El email de soporte no tiene un formato valido.');
+      activarTab('licencia');
+      fields.licenseSupportEmail.focus();
       return false;
     }
 
@@ -161,6 +180,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     await mostrarAlerta('Vista previa generada', `El PDF de prueba se genero en:\n${ruta}`);
   });
 
+  btnEditarUrls?.addEventListener('click', async () => {
+    if (urlsEditables) {
+      urlsEditables = false;
+      aplicarBloqueoUrls();
+      return;
+    }
+
+    const clave = window.prompt('Ingrese la clave para editar las URLs:', '');
+    if (clave !== 'mardelurl') {
+      await mostrarAlerta('Clave incorrecta', 'La clave para editar las URLs no es correcta.');
+      return;
+    }
+
+    urlsEditables = true;
+    aplicarBloqueoUrls();
+    fields.apiUrl.focus();
+  });
+
   cargar(await window.api.obtenerConfiguracion());
+  aplicarBloqueoUrls();
   activarTab('general');
 });

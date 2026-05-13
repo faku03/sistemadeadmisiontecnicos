@@ -1,6 +1,8 @@
 const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
+const { spawn } = require('child_process');
 const { pathToFileURL } = require('url');
 const db = require('./services/data-source');
 const configStore = require('./config/store');
@@ -17,6 +19,148 @@ fs.mkdirSync(electronCacheDir, { recursive: true });
 app.setPath('sessionData', electronSessionDir);
 app.commandLine.appendSwitch('disk-cache-dir', electronCacheDir);
 app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
+
+function gatewayUrlActual() {
+  const config = configStore.getConfig();
+  return String(process.env.SISTEMA_TICKETS_API_URL || config.apiUrl || 'http://localhost:3000').trim();
+}
+
+function esHostLocal(hostname) {
+  const normalized = String(hostname || '').toLowerCase();
+  const localNames = new Set([
+    '127.0.0.1',
+    'localhost',
+    '::1',
+    String(os.hostname() || '').toLowerCase(),
+    String(process.env.COMPUTERNAME || '').toLowerCase()
+  ].filter(Boolean));
+
+  return localNames.has(normalized);
+}
+
+function normalizarGatewayUrl(url) {
+  try {
+    const parsed = new URL(String(url || '').trim());
+    if (esHostLocal(parsed.hostname) && parsed.hostname !== '127.0.0.1') {
+      parsed.hostname = '127.0.0.1';
+    }
+    return parsed.toString().replace(/\/$/, '');
+  } catch (_) {
+    return String(url || '').trim();
+  }
+}
+
+function scriptsServidorDir() {
+  const exeDir = path.dirname(process.execPath);
+  const installedServerDir = path.join(exeDir, '..', 'SistemaServidor', 'resources', 'server');
+  const localServerDir = path.join(__dirname, 'server');
+
+  if (fs.existsSync(installedServerDir)) {
+    return installedServerDir;
+  }
+
+  return localServerDir;
+}
+
+async function healthGateway(url) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 4000);
+
+  try {
+    const response = await fetch(`${url.replace(/\/$/, '')}/health`, {
+      signal: controller.signal
+    });
+    return response.ok;
+  } catch (_) {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function ejecutarScriptPowerShell(scriptPath) {
+  if (!fs.existsSync(scriptPath)) {
+    return false;
+  }
+
+  const child = spawn('powershell.exe', [
+    '-ExecutionPolicy', 'Bypass',
+    '-File', scriptPath
+  ], {
+    detached: true,
+    stdio: 'ignore',
+    windowsHide: true
+  });
+
+  child.unref();
+  return true;
+}
+
+async function asegurarGatewayLocal() {
+  const apiUrl = gatewayUrlActual();
+  const apiUrlEfectiva = normalizarGatewayUrl(apiUrl);
+  let parsed;
+
+  try {
+    parsed = new URL(apiUrl);
+  } catch (_) {
+    return {
+      ok: false,
+      started: false,
+      local: false,
+      apiUrl,
+      message: 'La URL del gateway no es valida.'
+    };
+  }
+
+  if (await healthGateway(apiUrlEfectiva)) {
+    return {
+      ok: true,
+      started: false,
+      local: esHostLocal(parsed.hostname),
+      apiUrl
+    };
+  }
+
+  if (!esHostLocal(parsed.hostname)) {
+    return {
+      ok: false,
+      started: false,
+      local: false,
+      apiUrl,
+      message: 'No se pudo conectar con el gateway configurado.'
+    };
+  }
+
+  const serverScripts = scriptsServidorDir();
+  const postgresScript = path.join(serverScripts, 'start-postgresql.ps1');
+  const gatewayScript = path.join(serverScripts, 'start-gateway.ps1');
+
+  ejecutarScriptPowerShell(postgresScript);
+  await new Promise(resolve => setTimeout(resolve, 2500));
+  ejecutarScriptPowerShell(gatewayScript);
+
+  const deadline = Date.now() + 20000;
+  while (Date.now() < deadline) {
+    if (await healthGateway(apiUrlEfectiva)) {
+      return {
+        ok: true,
+        started: true,
+        local: true,
+        apiUrl
+      };
+    }
+    await new Promise(resolve => setTimeout(resolve, 1500));
+  }
+
+  return {
+    ok: false,
+    started: true,
+    local: true,
+    apiUrl,
+    message: 'Se intento iniciar el gateway local, pero no respondio a tiempo.'
+  };
+}
 
 function requireLicense(handler) {
   return async (event, ...args) => {
@@ -129,6 +273,14 @@ ipcMain.handle('licencia:marcar-aviso', () =>
 
 ipcMain.handle('licencia:activar', (_, clave) =>
   license.activateLicense(clave)
+);
+
+ipcMain.handle('abrir-url-externa', (_, url) =>
+  shell.openExternal(url)
+);
+
+ipcMain.handle('gateway:asegurar', () =>
+  asegurarGatewayLocal()
 );
 
 ipcMain.handle('caja:listar-cobrados', (_, limite) =>

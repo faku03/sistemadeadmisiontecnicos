@@ -185,6 +185,28 @@ document.addEventListener('DOMContentLoaded', () => {
     await cargarInforme();
   }
 
+  async function asegurarGatewayAntesDeCargar() {
+    if (!window.apiCaja?.asegurarGateway) {
+      return;
+    }
+
+    const estado = await window.apiCaja.asegurarGateway();
+    if (estado?.ok && estado?.started) {
+      await mostrarAlerta(
+        'Gateway iniciado',
+        'El gateway local no estaba corriendo. Se inicio automaticamente.'
+      );
+      return;
+    }
+
+    if (!estado?.ok && estado?.message) {
+      await mostrarAlerta(
+        'Gateway no disponible',
+        `${estado.message}\n\nURL actual: ${estado.apiUrl || 'sin definir'}`
+      );
+    }
+  }
+
   async function cobrarSeleccionado() {
     if (!pendienteSeleccionado) {
       await mostrarAlerta('Sin ticket seleccionado', 'Seleccione un ticket pendiente para cobrar.');
@@ -271,7 +293,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   activarTab('cobrar');
-  cargarTodo().catch(error => {
+  asegurarGatewayAntesDeCargar().then(() => cargarTodo()).catch(error => {
     mostrarAlerta('No se pudo cargar caja', error.message || 'No se pudo cargar la informacion de caja.');
   });
 });

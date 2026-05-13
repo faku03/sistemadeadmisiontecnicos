@@ -119,8 +119,11 @@
 
       <div class="panel config-panel hidden" data-panel="licencia">
         <div class="config-grid">
+          <div class="config-inline-actions full-row">
+            <button id="btnEditarUrls" type="button">Editar URLs</button>
+          </div>
           <label class="field-label">URL del gateway / API
-            <input id="cfgApiUrl" type="text" placeholder="http://localhost:3000">
+            <input id="cfgApiUrl" type="text" placeholder="http://localhost:3000" readonly>
           </label>
           <label class="field-label">Modo de licencia
             <select id="cfgLicenseMode">
@@ -129,7 +132,13 @@
             </select>
           </label>
           <label class="field-label">URL servidor de licencias
-            <input id="cfgLicenseServerUrl" type="text" placeholder="https://sistematickets.licences.mardeltech.com">
+            <input id="cfgLicenseServerUrl" type="text" placeholder="https://sistematickets.licences.mardeltech.com" readonly>
+          </label>
+          <label class="field-label">WhatsApp de soporte
+            <input id="cfgLicenseSupportWhatsApp" type="text" placeholder="5492230000000">
+          </label>
+          <label class="field-label">Email de soporte
+            <input id="cfgLicenseSupportEmail" type="text" placeholder="soporte@negocio.com">
           </label>
           <label class="field-label">Clave de licencia
             <input id="cfgLicenseKey" type="text" placeholder="Clave actual del sistema">

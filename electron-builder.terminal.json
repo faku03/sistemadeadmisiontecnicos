@@ -1,8 +1,9 @@
-{
+﻿{
   "appId": "com.sistematecnicocaja.terminal",
   "productName": "SistemaTerminal",
+  "executableName": "SistemaDeTickets",
   "directories": {
-    "output": "dist-terminal-next"
+    "output": "dist-terminal-retryclose"
   },
   "files": [
     "package.json",
@@ -82,3 +83,5 @@
     "shortcutName": "Sistema Terminal"
   }
 }
+
+

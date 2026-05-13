@@ -7,12 +7,19 @@ Var InstallCaja
 Var TicketsCheckbox
 Var CajaCheckbox
 Var ServerHost
+Var GatewayHost
 Var ServerHostInput
 Var TerminalExePath
 
+!macro customCheckAppRunning
+  ; Desactiva el chequeo generico de electron-builder que en este flujo
+  ; da falsos positivos al instalar/actualizar la terminal.
+!macroend
+
 !macro customInit
-  StrCpy $INSTDIR "C:\mardeltech\sistemadetickets"
+  StrCpy $INSTDIR "C:\mardeltech\sistemadetickets\SistemaTerminal"
   ReadEnvStr $ServerHost "COMPUTERNAME"
+  StrCpy $GatewayHost $ServerHost
 !macroend
 
 !macro customPageAfterChangeDir
@@ -53,10 +60,22 @@ Function componentsPageLeave
   ${NSD_GetText} $ServerHostInput $ServerHost
   ${NSD_GetState} $TicketsCheckbox $InstallTickets
   ${NSD_GetState} $CajaCheckbox $InstallCaja
+  StrCpy $GatewayHost $ServerHost
 
   ${If} $ServerHost == ""
     MessageBox MB_ICONEXCLAMATION "Debe indicar el nombre o IP del servidor."
     Abort
+  ${EndIf}
+
+  ${If} $ServerHost == "localhost"
+    StrCpy $GatewayHost "127.0.0.1"
+  ${ElseIf} $ServerHost == "127.0.0.1"
+    StrCpy $GatewayHost "127.0.0.1"
+  ${Else}
+    ReadEnvStr $0 "COMPUTERNAME"
+    ${If} $ServerHost == $0
+      StrCpy $GatewayHost "127.0.0.1"
+    ${EndIf}
   ${EndIf}
 
   ${If} $InstallTickets != ${BST_CHECKED}
@@ -75,24 +94,18 @@ FunctionEnd
   StrCpy $TerminalExePath "$INSTDIR\${APP_EXECUTABLE_FILENAME}"
 
   ${If} $InstallTickets == ${BST_CHECKED}
-    ${If} ${FileExists} "$TerminalExePath"
-      CopyFiles /SILENT "$TerminalExePath" "$INSTDIR\Sistema de Tickets.exe"
-    ${EndIf}
     CreateShortCut "$SMPROGRAMS\Sistema Tecnico y Caja\Sistema de Tickets.lnk" "$TerminalExePath" "--modulo=tickets" "$TerminalExePath" 0 "" "" "Sistema de Tickets / Servicio Tecnico"
     CreateShortCut "$DESKTOP\Sistema de Tickets.lnk" "$TerminalExePath" "--modulo=tickets" "$TerminalExePath" 0 "" "" "Sistema de Tickets / Servicio Tecnico"
   ${EndIf}
 
   ${If} $InstallCaja == ${BST_CHECKED}
-    ${If} ${FileExists} "$TerminalExePath"
-      CopyFiles /SILENT "$TerminalExePath" "$INSTDIR\Sistema de Caja.exe"
-    ${EndIf}
     CreateShortCut "$SMPROGRAMS\Sistema Tecnico y Caja\Sistema de Caja.lnk" "$TerminalExePath" "--modulo=caja" "$TerminalExePath" 0 "" "" "Sistema de Caja"
     CreateShortCut "$DESKTOP\Sistema de Caja.lnk" "$TerminalExePath" "--modulo=caja" "$TerminalExePath" 0 "" "" "Sistema de Caja"
   ${EndIf}
 
   FileOpen $0 "$INSTDIR\app.config.json" "w"
   FileWrite $0 "{$\r$\n"
-  FileWrite $0 "  $\"apiUrl$\": $\"http://$ServerHost:3000$\",$\r$\n"
+  FileWrite $0 "  $\"apiUrl$\": $\"http://$GatewayHost:3000$\",$\r$\n"
   FileWrite $0 "  $\"licenseMode$\": $\"server$\",$\r$\n"
   FileWrite $0 "  $\"licenseServerUrl$\": $\"https://sistematickets.licences.mardeltech.com$\"$\r$\n"
   FileWrite $0 "}$\r$\n"
@@ -113,6 +126,4 @@ FunctionEnd
   Delete "$SMPROGRAMS\Sistema Tecnico y Caja\Sistema de Tickets.lnk"
   Delete "$SMPROGRAMS\Sistema Tecnico y Caja\Sistema de Caja.lnk"
   RMDir "$SMPROGRAMS\Sistema Tecnico y Caja"
-  Delete "$INSTDIR\Sistema de Tickets.exe"
-  Delete "$INSTDIR\Sistema de Caja.exe"
 !macroend
