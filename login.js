@@ -1,5 +1,36 @@
 document.addEventListener('DOMContentLoaded', async () => {
-  const api = window.api || window.apiCaja;
+  const nativeApi = window.api || window.apiCaja;
+  const isWebLogin = !nativeApi;
+  const api = nativeApi || {
+    async login(username, password) {
+      const response = await fetch('/auth/login', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.error || `Error HTTP ${response.status}`);
+      }
+
+      return data;
+    },
+    async currentSession() {
+      const response = await fetch('/auth/me', {
+        credentials: 'same-origin'
+      });
+
+      if (!response.ok) {
+        return null;
+      }
+
+      return response.json();
+    }
+  };
   const form = document.getElementById('loginForm');
   const usernameInput = document.getElementById('loginUsername');
   const passwordInput = document.getElementById('loginPassword');
@@ -34,14 +65,33 @@ document.addEventListener('DOMContentLoaded', async () => {
     return window.confirm(message);
   }
 
-  try {
-    const context = await api.obtenerContextoAdmin();
-    await api.bootstrapAdmin(context);
-    setStatus('Usuario inicial disponible: admin.', true);
-    usernameInput.value = 'admin';
+  usernameInput.value = 'admin';
+
+  if (isWebLogin) {
+    btnResetAdmin.classList.add('hidden');
+
+    try {
+      const session = await api.currentSession();
+
+      if (session?.user) {
+        window.location.href = '/admin-panel';
+        return;
+      }
+    } catch (_) {
+      // Sin sesion previa.
+    }
+
+    setStatus('Ingresa con el usuario administrador del servidor de licencias.', true);
     passwordInput.focus();
-  } catch (error) {
-    setStatus(error.message || 'No se pudo preparar el usuario administrador.', true);
+  } else {
+    try {
+      const context = await api.obtenerContextoAdmin();
+      await api.bootstrapAdmin(context);
+      setStatus('Usuario inicial disponible: admin.', true);
+      passwordInput.focus();
+    } catch (error) {
+      setStatus(error.message || 'No se pudo preparar el usuario administrador.', true);
+    }
   }
 
   form.addEventListener('submit', async event => {
@@ -50,6 +100,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     try {
       await api.login(usernameInput.value, passwordInput.value);
+      if (isWebLogin) {
+        window.location.href = '/admin-panel';
+      }
     } catch (error) {
       await alert('No se pudo iniciar sesion', error.message || 'Usuario o clave invalidos.');
       passwordInput.focus();

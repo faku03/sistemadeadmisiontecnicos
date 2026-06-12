@@ -542,12 +542,16 @@ async function listValidations(url) {
   return result.rows;
 }
 
-async function handleLicenseAdminRoute({ method, path, url, req, res, sendJson, readJson }) {
+async function handleLicenseAdminRoute({ method, path, url, req, res, sendJson, readJson, authorizeAdmin }) {
   if (!path.startsWith('/admin/')) {
     return false;
   }
 
-  if (!hasAdminAccess(req)) {
+  const isAuthorized = typeof authorizeAdmin === 'function'
+    ? await authorizeAdmin(req)
+    : hasAdminAccess(req);
+
+  if (!isAuthorized) {
     sendJson(res, 401, { error: 'No autorizado' });
     return true;
   }

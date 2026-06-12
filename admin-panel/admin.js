@@ -15,10 +15,15 @@ const state = {
 const $ = selector => document.querySelector(selector);
 
 function headers() {
-  return {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${state.token}`
+  const values = {
+    'Content-Type': 'application/json'
   };
+
+  if (state.token) {
+    values.Authorization = `Bearer ${state.token}`;
+  }
+
+  return values;
 }
 
 function toDateInput(value) {
@@ -43,6 +48,7 @@ function showMessage(text, isError = false) {
 async function request(path, options = {}) {
   const response = await fetch(path, {
     ...options,
+    credentials: 'same-origin',
     headers: {
       ...headers(),
       ...(options.headers || {})
@@ -51,10 +57,24 @@ async function request(path, options = {}) {
   const data = await response.json().catch(() => null);
 
   if (!response.ok) {
+    if (response.status === 401 && !state.token) {
+      window.location.href = '/login';
+      throw new Error('Sesion vencida. Redirigiendo al login.');
+    }
+
     throw new Error(data?.error || `Error HTTP ${response.status}`);
   }
 
   return data;
+}
+
+async function logout() {
+  await fetch('/auth/logout', {
+    method: 'POST',
+    credentials: 'same-origin'
+  });
+  localStorage.removeItem('sistemaAdminToken');
+  window.location.href = '/login';
 }
 
 function formData(form) {
@@ -782,6 +802,10 @@ function wireEvents() {
     } catch (error) {
       showMessage(error.message, true);
     }
+  });
+
+  $('#logoutBtn').addEventListener('click', () => {
+    logout().catch(error => showMessage(error.message, true));
   });
 
   $('#groupForm').addEventListener('submit', event => {

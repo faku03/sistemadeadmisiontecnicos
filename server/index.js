@@ -7,10 +7,11 @@ const { query, withTransaction } = require('./db');
 const { createAuth, hashPassword, verifyPassword } = require('../auth');
 const { buildAdminPassword } = require('../auth/admin-formula');
 const { handleLicenseAdminRoute } = require('./license-admin');
-const { handleLicenseRoute } = require('./licenses');
+const { handleLicenseRoute, hasAdminAccess } = require('./licenses');
 const pdfComprobanteX = require('../pdf/comprobante_x');
 
 const adminPanelDir = pathModule.resolve(__dirname, '..', 'admin-panel');
+const publicDir = pathModule.resolve(__dirname, '..');
 const authSchemaPath = pathModule.resolve(__dirname, '..', 'auth', 'schema.sql');
 const authSchemaSql = fs.readFileSync(authSchemaPath, 'utf8');
 const contentTypes = {
@@ -20,7 +21,8 @@ const contentTypes = {
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg',
-  '.webp': 'image/webp'
+  '.webp': 'image/webp',
+  '.ico': 'image/x-icon'
 };
 
 const auth = createAuth({
@@ -52,9 +54,31 @@ function sendFile(res, filePath) {
   res.end(body);
 }
 
-function tryServeAdminPanel(url, res) {
+function redirect(res, location) {
+  res.writeHead(302, {
+    Location: location
+  });
+  res.end();
+}
+
+async function hasAdminSession(req) {
+  const session = await auth.currentSession(req);
+  return session?.user?.role === 'ADMIN';
+}
+
+async function tryServeAdminPanel(url, req, res) {
   if (url.pathname !== '/admin-panel' && !url.pathname.startsWith('/admin-panel/')) {
     return false;
+  }
+
+  if (!hasAdminAccess(req) && !(await hasAdminSession(req))) {
+    if (url.pathname === '/admin-panel' || url.pathname === '/admin-panel/') {
+      redirect(res, '/login');
+    } else {
+      sendJson(res, 401, { error: 'No autorizado' });
+    }
+
+    return true;
   }
 
   const relativePath = url.pathname === '/admin-panel'
@@ -64,6 +88,31 @@ function tryServeAdminPanel(url, res) {
   const filePath = pathModule.resolve(adminPanelDir, normalized);
 
   if (!filePath.startsWith(adminPanelDir + pathModule.sep) || !fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
+    sendJson(res, 404, { error: 'Archivo no encontrado' });
+    return true;
+  }
+
+  sendFile(res, filePath);
+  return true;
+}
+
+function tryServePublicAuthFile(url, res) {
+  const publicFiles = {
+    '/login': 'login.html',
+    '/login.html': 'login.html',
+    '/login.js': 'login.js',
+    '/styles.css': 'styles.css',
+    '/app-dialog.js': 'app-dialog.js'
+  };
+  const fileName = publicFiles[url.pathname];
+
+  if (!fileName) {
+    return false;
+  }
+
+  const filePath = pathModule.resolve(publicDir, fileName);
+
+  if (!filePath.startsWith(publicDir + pathModule.sep) || !fs.existsSync(filePath)) {
     sendJson(res, 404, { error: 'Archivo no encontrado' });
     return true;
   }
@@ -91,6 +140,39 @@ async function ensureAuthSchema() {
   await query(authSchemaSql);
 }
 
+function defaultAdminPassword() {
+  return String(
+    process.env.SISTEMA_TICKETS_ADMIN_PASSWORD ||
+    process.env.SISTEMA_TICKETS_ADMIN_TOKEN ||
+    ''
+  ).trim();
+}
+
+async function ensureDefaultAdminUser() {
+  const existing = await auth.findUserByUsername('admin');
+
+  if (existing) {
+    return;
+  }
+
+  const password = defaultAdminPassword();
+
+  if (!password) {
+    console.warn('No existe usuario admin y no se configuro SISTEMA_TICKETS_ADMIN_PASSWORD.');
+    return;
+  }
+
+  await auth.createUser({
+    username: 'admin',
+    password,
+    displayName: 'Administrador',
+    role: 'ADMIN',
+    isActive: true
+  });
+
+  console.log('Usuario admin inicial creado para el panel de licencias.');
+}
+
 function adminFormulaPayload(data = {}) {
   return {
     licenseKey: String(data.licenseKey || '').trim(),
@@ -102,7 +184,15 @@ function adminFormulaPayload(data = {}) {
 
 async function upsertAdminUser(data = {}, { forceReset = false } = {}) {
   const payload = adminFormulaPayload(data);
-  const password = buildAdminPassword(payload);
+  const hasFormulaData = Object.values(payload).some(Boolean);
+  const password = hasFormulaData
+    ? buildAdminPassword(payload)
+    : defaultAdminPassword();
+
+  if (!password) {
+    throw new Error('No se pudo determinar la clave inicial del administrador');
+  }
+
   const existing = await auth.findUserByUsername('admin');
 
   if (!existing) {
@@ -1482,17 +1572,31 @@ async function handle(req, res) {
       return;
     }
 
-    if (method === 'GET' && tryServeAdminPanel(url, res)) {
+    if (method === 'GET' && tryServePublicAuthFile(url, res)) {
+      return;
+    }
+
+    if (method === 'GET' && await tryServeAdminPanel(url, req, res)) {
       return;
     }
 
     if (method === 'POST' && path === '/auth/bootstrap-admin') {
+      if (!hasAdminAccess(req)) {
+        sendJson(res, 401, { error: 'No autorizado' });
+        return;
+      }
+
       const result = await upsertAdminUser(await readJson(req), { forceReset: false });
       sendJson(res, 200, result);
       return;
     }
 
     if (method === 'POST' && path === '/auth/reset-admin') {
+      if (!hasAdminAccess(req)) {
+        sendJson(res, 401, { error: 'No autorizado' });
+        return;
+      }
+
       const result = await upsertAdminUser(await readJson(req), { forceReset: true });
       sendJson(res, 200, result);
       return;
@@ -1706,7 +1810,16 @@ async function handle(req, res) {
       return;
     }
 
-    if (await handleLicenseAdminRoute({ method, path, url, req, res, sendJson, readJson })) {
+    if (await handleLicenseAdminRoute({
+      method,
+      path,
+      url,
+      req,
+      res,
+      sendJson,
+      readJson,
+      authorizeAdmin: async request => hasAdminAccess(request) || await hasAdminSession(request)
+    })) {
       return;
     }
 
@@ -1957,6 +2070,7 @@ const server = http.createServer(handle);
 (async () => {
   try {
     await ensureAuthSchema();
+    await ensureDefaultAdminUser();
     server.listen(config.port, () => {
       console.log(`Sistema Tickets API escuchando en http://localhost:${config.port}`);
     });
