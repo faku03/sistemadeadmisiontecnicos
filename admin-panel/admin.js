@@ -591,7 +591,10 @@ async function createLicense(data) {
   });
 
   await copyText(created.license_key);
-  return `Licencia creada y copiada. Clave: ${created.license_key}`;
+  return {
+    id: created.id,
+    message: `Licencia creada correctamente. Clave copiada: ${created.license_key}`
+  };
 }
 
 function licenseById(id) {
@@ -793,7 +796,21 @@ function wireEvents() {
 
   $('#licenseForm').addEventListener('submit', event => {
     event.preventDefault();
-    handleSubmit(event.currentTarget, createLicense);
+    const form = event.currentTarget;
+
+    (async () => {
+      try {
+        const result = await createLicense(formData(form));
+        form.reset();
+        await loadAll();
+        state.selectedLicenseId = result.id;
+        render();
+        closeAltaModal();
+        showMessage(result.message || 'Licencia creada correctamente.');
+      } catch (error) {
+        showMessage(error.message, true);
+      }
+    })();
   });
 
   $('#refreshBtn').addEventListener('click', () => {
@@ -899,26 +916,9 @@ function wireEvents() {
 
 async function renewExpiringLicense(id) {
   const license = licenseById(id);
-  const expiresAt = $(`#expiring-renew-${id}`).value;
+  const expiresAt = validateRenewDate($(`#expiring-renew-${id}`).value);
 
-  await request(`/admin/licenses/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify({
-      status: 'ACTIVE',
-      plan: license.plan,
-      grace_days: license.grace_days,
-      expires_at: expiresAt,
-      subscription_status: license.subscription_status,
-      subscription_reference: license.subscription_reference,
-      billing_period: license.billing_period,
-      next_payment_due_at: expiresAt,
-      payment_notes: license.payment_notes,
-      features: license.features
-    })
-  });
-
-  await loadAll();
-  showMessage(`Vencimiento actualizado para ${license.unit_code}.`);
+  await renewLicense(id, expiresAt);
 }
 
 wireEvents();

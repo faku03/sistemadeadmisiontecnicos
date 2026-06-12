@@ -355,11 +355,11 @@ async function updateLicense(id, data) {
     SET status = $1,
         plan = $2,
         grace_days = $3,
-        expires_at = $4,
+        expires_at = $4::timestamptz,
         subscription_status = $5,
         subscription_reference = $6,
         billing_period = $7,
-        next_payment_due_at = $8,
+        next_payment_due_at = $8::timestamptz,
         payment_notes = $9,
         features = $10::jsonb,
         updated_at = NOW()
