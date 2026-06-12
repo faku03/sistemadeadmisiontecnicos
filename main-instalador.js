@@ -1,5 +1,10 @@
 const path = require('path');
 
+if (process.argv.map(arg => String(arg).toLowerCase()).includes('--server-tray')) {
+  require('./server-tickets-tray');
+  return;
+}
+
 if (process.argv.map(arg => String(arg).toLowerCase()).includes('--gateway')) {
   require('./server/index');
   return;

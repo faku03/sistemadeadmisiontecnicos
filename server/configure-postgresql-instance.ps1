@@ -374,7 +374,7 @@ ALTER SYSTEM SET checkpoint_completion_target = '0.9';
 ALTER SYSTEM SET autovacuum = 'on';
 ALTER SYSTEM SET log_min_messages = 'warning';
 ALTER SYSTEM SET log_min_duration_statement = '-1';
-ALTER SYSTEM SET shared_preload_libraries = '';
+ALTER SYSTEM RESET shared_preload_libraries;
 "@
 
 Invoke-PsqlCommand -PsqlPath $psqlPath -Database "postgres" -Sql $tuningSql

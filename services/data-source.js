@@ -32,6 +32,45 @@ async function obtenerSucursalParaTicket() {
 }
 
 module.exports = {
+  setAuthToken: token =>
+    api.setAuthToken(token),
+
+  authBootstrapAdmin: data =>
+    api.authBootstrapAdmin(data),
+
+  authResetAdmin: data =>
+    api.authResetAdmin(data),
+
+  authLogin: (username, password) =>
+    api.authLogin(username, password),
+
+  authLogout: () =>
+    api.authLogout(),
+
+  authVerifyPassword: password =>
+    api.authVerifyPassword(password),
+
+  authMe: () =>
+    api.authMe(),
+
+  authListUsers: () =>
+    api.authListUsers(),
+
+  authListAudit: limit =>
+    api.authListAudit(limit),
+
+  authCreateUser: data =>
+    api.authCreateUser(data),
+
+  authUpdateUser: data =>
+    api.authUpdateUser(data),
+
+  authUpdateUserStatus: (id, isActive) =>
+    api.authUpdateUserStatus(id, isActive),
+
+  authResetUserPassword: (id, password) =>
+    api.authResetUserPassword(id, password),
+
   buscarClientePorDni: dni =>
     api.buscarClientePorDni(dni),
 

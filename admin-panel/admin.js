@@ -4,6 +4,8 @@ const state = {
   licenses: [],
   validations: [],
   selectedGroupId: null,
+  selectedLicenseId: null,
+  licenseSearch: '',
   groupSearch: '',
   unitSearch: '',
   expiringSearch: '',
@@ -148,6 +150,56 @@ function statusInfo(license) {
   return { text: 'ACTIVA', className: 'status-active' };
 }
 
+function paymentInfo(license) {
+  const status = String(license.subscription_status || 'PENDING').toUpperCase();
+  const due = license.next_payment_due_at || license.expires_at;
+  const remaining = daysTo(due);
+
+  if (status === 'ACTIVE' && remaining >= 0) {
+    return { text: `Pago al dia (${remaining} dias)`, className: 'status-active' };
+  }
+
+  if (status === 'TRIAL') {
+    return { text: `Demo (${Math.max(remaining, 0)} dias)`, className: remaining <= 2 ? 'status-warning' : 'status-active' };
+  }
+
+  if (remaining < 0) {
+    return { text: `Pago vencido ${Math.abs(remaining)} dias`, className: 'status-blocked' };
+  }
+
+  return { text: status, className: remaining <= 7 ? 'status-warning' : 'status-blocked' };
+}
+
+function buildLicenseDeliveryText(license) {
+  const due = toDateInput(license.expires_at);
+  const lines = [
+    'Hola, te envio la licencia del Sistema de Tickets MardelTech.',
+    '',
+    `Cliente: ${license.group_name || license.group_code}`,
+    `Sucursal/tecnico: ${license.unit_name} (${license.unit_code})`,
+    `Clave de licencia: ${license.license_key}`,
+    `Vigencia: hasta ${due}`,
+    '',
+    'Para activarla: abrir el sistema, tocar "Activar licencia", pegar la clave y confirmar.',
+    '',
+    'Recordatorio comercial:',
+    'Alta / instalacion inicial: $75.000',
+    'Licencia mensual por local o sucursal: $30.000',
+    'Terminal adicional o caja adicional: $10.000',
+    'Pago anual: $300.000, con alta bonificada'
+  ];
+
+  return lines.join('\n');
+}
+
+function getSelectedLicense() {
+  return state.licenses.find(item => String(item.id) === String(state.selectedLicenseId)) || null;
+}
+
+function confirmAction(message) {
+  return window.confirm(message);
+}
+
 function expiringStatusClass(license) {
   const remaining = daysTo(license.expires_at);
 
@@ -171,49 +223,107 @@ function renderSummary() {
 
 function renderLicenses() {
   const body = $('#licensesBody');
+  const visibleLicenses = state.licenses.filter(license =>
+    includesText(
+      license,
+      ['group_code', 'group_name', 'unit_code', 'unit_name'],
+      state.licenseSearch
+    )
+  );
 
   if (!state.licenses.length) {
-    body.innerHTML = '<tr><td colspan="9">Sin licencias cargadas.</td></tr>';
+    state.selectedLicenseId = null;
+    body.innerHTML = '<tr><td colspan="8">Sin licencias cargadas.</td></tr>';
     return;
   }
 
-  body.innerHTML = state.licenses.map(license => {
+  if (!visibleLicenses.length) {
+    state.selectedLicenseId = null;
+    body.innerHTML = '<tr><td colspan="8">No hay licencias para esa busqueda.</td></tr>';
+    return;
+  }
+
+  if (state.selectedLicenseId && !visibleLicenses.some(license => String(license.id) === String(state.selectedLicenseId))) {
+    state.selectedLicenseId = null;
+  }
+
+  body.innerHTML = visibleLicenses.map(license => {
     const status = statusInfo(license);
-    const dateId = `renew-${license.id}`;
+    const payment = paymentInfo(license);
     const licenseKey = license.license_key || '';
-    const activeAction = license.status === 'ACTIVE'
-      ? `<button class="btn btn-danger" data-action="suspend" data-id="${license.id}">Suspender</button>`
-      : `<button class="btn btn-secondary" data-action="activate" data-id="${license.id}">Activar</button>`;
+    const selected = String(license.id) === String(state.selectedLicenseId) ? ' selected-row' : '';
 
     return `
-      <tr>
+      <tr class="license-row${selected}" data-license-row="${license.id}">
         <td>${license.group_code}</td>
         <td><strong>${license.unit_code}</strong></td>
         <td>${license.unit_name}</td>
         <td>
           <div class="license-key-box">
             <code>${escapeHtml(licenseKey || license.license_key_label || 'Sin clave')}</code>
-            ${licenseKey
-              ? `<button class="btn btn-secondary btn-copy" data-copy-license="${escapeHtml(licenseKey)}">Copiar</button>`
-              : ''}
           </div>
         </td>
         <td><span class="status-pill ${status.className}">${status.text}</span></td>
-        <td>${toDateInput(license.expires_at)}</td>
         <td>
-          <div class="renew-box">
-            <input id="${dateId}" type="date" value="${toDateInput(license.expires_at)}">
-            <button class="btn btn-primary" data-action="renew" data-id="${license.id}">Guardar</button>
+          <div class="payment-cell">
+            <span class="status-pill ${payment.className}">${payment.text}</span>
+            ${license.subscription_reference ? `<small>${escapeHtml(license.subscription_reference)}</small>` : ''}
           </div>
         </td>
+        <td>${toDateInput(license.expires_at)}</td>
         <td class="machine" title="${license.machine_id || ''}">${license.machine_id || 'Sin activar'}</td>
-        <td class="actions">
-          ${activeAction}
-          <button class="btn btn-secondary" data-action="release" data-id="${license.id}">Liberar PC</button>
-        </td>
       </tr>
     `;
   }).join('');
+}
+
+function renderActionPanel() {
+  const license = getSelectedLicense();
+  const selectedText = $('#selectedLicenseText');
+  const selectedCard = $('#selectedLicenseCard');
+  const renewDate = $('#selectedRenewDate');
+  const buttons = document.querySelectorAll('.license-selected-action');
+
+  if (!license) {
+    selectedText.textContent = 'Selecciona una licencia de la grilla.';
+    selectedCard.textContent = 'Sin registro seleccionado.';
+    renewDate.value = '';
+    renewDate.disabled = true;
+    buttons.forEach(button => {
+      button.disabled = true;
+    });
+    $('#selectedStatusBtn').textContent = 'Suspender';
+    $('#selectedStatusBtn').className = 'btn btn-danger license-selected-action';
+    return;
+  }
+
+  const status = statusInfo(license);
+  const payment = paymentInfo(license);
+  selectedText.textContent = `${license.group_code} / ${license.unit_code}`;
+  selectedCard.innerHTML = `
+    <strong>${escapeHtml(license.unit_name)}</strong>
+    <span>${escapeHtml(license.group_name || license.group_code)}</span>
+    <span>Licencia: ${escapeHtml(license.license_key || license.license_key_label || 'Sin clave')}</span>
+    <span>Estado: ${escapeHtml(status.text)} / Pago: ${escapeHtml(payment.text)}</span>
+    <span>Equipo: ${escapeHtml(license.machine_id || 'Sin activar')}</span>
+  `;
+  renewDate.disabled = false;
+  renewDate.value = toDateInput(license.expires_at);
+  buttons.forEach(button => {
+    button.disabled = false;
+  });
+  $('#selectedMessageBtn').disabled = !license.license_key;
+  $('#selectedCopyBtn').disabled = !license.license_key;
+  $('#selectedReleaseBtn').disabled = !license.machine_id;
+
+  const statusButton = $('#selectedStatusBtn');
+  if (license.status === 'ACTIVE') {
+    statusButton.textContent = 'Suspender';
+    statusButton.className = 'btn btn-danger license-selected-action';
+  } else {
+    statusButton.textContent = 'Activar';
+    statusButton.className = 'btn btn-secondary license-selected-action';
+  }
 }
 
 function isExpiringLicense(license) {
@@ -390,6 +500,7 @@ function render() {
   renderSelects();
   renderSummary();
   renderLicenses();
+  renderActionPanel();
   renderExpiringLicenses();
   renderValidations();
   renderGroupsView();
@@ -412,6 +523,9 @@ async function loadAll() {
   state.units = units;
   state.licenses = licenses;
   state.validations = validations;
+  state.selectedLicenseId = state.licenses.some(license => String(license.id) === String(state.selectedLicenseId))
+    ? state.selectedLicenseId
+    : null;
   state.selectedGroupId = state.groups.some(group => String(group.id) === String(state.selectedGroupId))
     ? state.selectedGroupId
     : state.groups[0]?.id || null;
@@ -462,6 +576,10 @@ async function createLicense(data) {
       group_id: Number(unit.group_id),
       unit_id: Number(data.unit_id),
       plan: data.plan,
+      subscription_status: data.subscription_status,
+      subscription_reference: data.subscription_reference,
+      billing_period: data.billing_period,
+      next_payment_due_at: data.expires_at,
       expires_at: data.expires_at,
       grace_days: Number(data.grace_days || 7),
       features: {
@@ -486,9 +604,33 @@ function licenseById(id) {
   return license;
 }
 
-async function renewLicense(id) {
+function requireSelectedLicense() {
+  const license = getSelectedLicense();
+
+  if (!license) {
+    throw new Error('Selecciona una licencia de la grilla');
+  }
+
+  return license;
+}
+
+function validateRenewDate(value) {
+  if (!value) {
+    throw new Error('Indica el nuevo vencimiento');
+  }
+
+  const date = new Date(`${value}T00:00:00`);
+
+  if (Number.isNaN(date.getTime())) {
+    throw new Error('Fecha de vencimiento invalida');
+  }
+
+  return value;
+}
+
+async function renewLicense(id, expiresAt) {
   const license = licenseById(id);
-  const expiresAt = $(`#renew-${id}`).value;
+  const nextExpiresAt = validateRenewDate(expiresAt);
 
   await request(`/admin/licenses/${id}`, {
     method: 'PUT',
@@ -496,13 +638,119 @@ async function renewLicense(id) {
       status: 'ACTIVE',
       plan: license.plan,
       grace_days: license.grace_days,
-      expires_at: expiresAt,
+      expires_at: nextExpiresAt,
+      subscription_status: license.subscription_status,
+      subscription_reference: license.subscription_reference,
+      billing_period: license.billing_period,
+      next_payment_due_at: nextExpiresAt,
+      payment_notes: license.payment_notes,
       features: license.features
     })
   });
 
   await loadAll();
   showMessage(`Vencimiento renovado para ${license.unit_code}.`);
+}
+
+async function recordMonthlyPayment(id) {
+  const license = licenseById(id);
+
+  await request(`/admin/licenses/${id}/payment`, {
+    method: 'POST',
+    body: JSON.stringify({
+      amount: 30000,
+      currency: 'ARS',
+      payment_method: 'MANUAL',
+      valid_days: license.billing_period === 'ANNUAL' ? 365 : 30,
+      subscription_status: 'ACTIVE',
+      payment_reference: license.subscription_reference || '',
+      notes: 'Pago registrado desde panel administrador'
+    })
+  });
+
+  await loadAll();
+  showMessage(`Pago registrado y licencia renovada para ${license.unit_code}.`);
+}
+
+async function copyLicenseDelivery(id) {
+  const license = licenseById(id);
+
+  if (!license.license_key) {
+    throw new Error('La clave completa no esta disponible para copiar');
+  }
+
+  await copyText(buildLicenseDeliveryText(license));
+  showMessage('Mensaje de licencia copiado para enviar al cliente.');
+}
+
+async function copySelectedLicenseKey() {
+  const license = requireSelectedLicense();
+
+  if (!license.license_key) {
+    throw new Error('La clave completa no esta disponible para copiar');
+  }
+
+  await copyText(license.license_key);
+  showMessage('Clave de licencia copiada.');
+}
+
+async function renewSelectedLicense() {
+  const license = requireSelectedLicense();
+  const expiresAt = validateRenewDate($('#selectedRenewDate').value);
+
+  if (!confirmAction(`Renovar ${license.group_code} / ${license.unit_code} hasta ${expiresAt}?`)) {
+    return;
+  }
+
+  await renewLicense(license.id, expiresAt);
+}
+
+async function recordSelectedPayment() {
+  const license = requireSelectedLicense();
+
+  if (!confirmAction(`Registrar pago aprobado y renovar ${license.group_code} / ${license.unit_code}?`)) {
+    return;
+  }
+
+  await recordMonthlyPayment(license.id);
+}
+
+async function copySelectedDeliveryMessage() {
+  const license = requireSelectedLicense();
+
+  if (!license.license_key) {
+    throw new Error('La clave completa no esta disponible para armar el mensaje');
+  }
+
+  await copyLicenseDelivery(license.id);
+}
+
+async function toggleSelectedLicenseStatus() {
+  const license = requireSelectedLicense();
+  const action = license.status === 'ACTIVE' ? 'suspend' : 'activate';
+  const label = action === 'suspend' ? 'suspender' : 'activar';
+
+  if (!confirmAction(`Confirmas ${label} la licencia ${license.group_code} / ${license.unit_code}?`)) {
+    return;
+  }
+
+  await postAction(license.id, action);
+  showMessage(action === 'suspend' ? 'Licencia suspendida.' : 'Licencia activada.');
+}
+
+async function releaseSelectedLicenseMachine() {
+  const license = requireSelectedLicense();
+
+  if (!license.machine_id) {
+    throw new Error('La licencia seleccionada no tiene una PC vinculada');
+  }
+
+  if (!confirmAction(`Liberar la PC vinculada a ${license.group_code} / ${license.unit_code}?`)) {
+    return;
+  }
+
+  await postAction(license.id, 'release-machine');
+  showMessage('PC liberada para nueva activacion.');
 }
 
 async function postAction(id, action) {
@@ -512,6 +760,14 @@ async function postAction(id, action) {
 
 function wireEvents() {
   $('#adminToken').value = state.token;
+
+  function openAltaModal() {
+    $('#licenseAltaModal').classList.remove('hidden');
+  }
+
+  function closeAltaModal() {
+    $('#licenseAltaModal').classList.add('hidden');
+  }
 
   $('#tokenForm').addEventListener('submit', async event => {
     event.preventDefault();
@@ -544,30 +800,59 @@ function wireEvents() {
     loadAll().catch(error => showMessage(error.message, true));
   });
 
+  $('#openLicenseAltaBtn').addEventListener('click', openAltaModal);
+  $('#closeLicenseAltaBtn').addEventListener('click', closeAltaModal);
+  $('#licenseAltaModal').addEventListener('click', event => {
+    if (event.target.id === 'licenseAltaModal') {
+      closeAltaModal();
+    }
+  });
+
+  $('#licenseSearch').addEventListener('input', event => {
+    state.licenseSearch = event.target.value;
+    renderLicenses();
+  });
+
   $('#refreshExpiringBtn').addEventListener('click', () => {
     loadAll().catch(error => showMessage(error.message, true));
   });
 
+  $('#refreshValidationsBtn').addEventListener('click', () => {
+    loadAll().catch(error => showMessage(error.message, true));
+  });
+
   $('#licensesBody').addEventListener('click', event => {
-    const copyButton = event.target.closest('button[data-copy-license]');
+    const row = event.target.closest('tr[data-license-row]');
 
-    if (copyButton) {
-      copyText(copyButton.dataset.copyLicense)
-        .then(() => showMessage('Clave de licencia copiada.'))
-        .catch(error => showMessage(error.message, true));
-      return;
-    }
+    if (!row) return;
 
-    const button = event.target.closest('button[data-action]');
+    state.selectedLicenseId = row.dataset.licenseRow;
+    renderLicenses();
+    renderActionPanel();
+  });
 
-    if (!button) return;
+  $('#selectedRenewBtn').addEventListener('click', () => {
+    renewSelectedLicense().catch(error => showMessage(error.message, true));
+  });
 
-    const { action, id } = button.dataset;
-    const run = action === 'renew'
-      ? renewLicense(id)
-      : postAction(id, action === 'release' ? 'release-machine' : action);
+  $('#selectedPaymentBtn').addEventListener('click', () => {
+    recordSelectedPayment().catch(error => showMessage(error.message, true));
+  });
 
-    run.catch(error => showMessage(error.message, true));
+  $('#selectedMessageBtn').addEventListener('click', () => {
+    copySelectedDeliveryMessage().catch(error => showMessage(error.message, true));
+  });
+
+  $('#selectedCopyBtn').addEventListener('click', () => {
+    copySelectedLicenseKey().catch(error => showMessage(error.message, true));
+  });
+
+  $('#selectedStatusBtn').addEventListener('click', () => {
+    toggleSelectedLicenseStatus().catch(error => showMessage(error.message, true));
+  });
+
+  $('#selectedReleaseBtn').addEventListener('click', () => {
+    releaseSelectedLicenseMachine().catch(error => showMessage(error.message, true));
   });
 
   document.querySelectorAll('.menu-item').forEach(button => {
@@ -623,6 +908,11 @@ async function renewExpiringLicense(id) {
       plan: license.plan,
       grace_days: license.grace_days,
       expires_at: expiresAt,
+      subscription_status: license.subscription_status,
+      subscription_reference: license.subscription_reference,
+      billing_period: license.billing_period,
+      next_payment_due_at: expiresAt,
+      payment_notes: license.payment_notes,
       features: license.features
     })
   });

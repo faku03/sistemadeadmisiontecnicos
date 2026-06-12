@@ -2,6 +2,45 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 /* ================= API PRINCIPAL ================= */
 contextBridge.exposeInMainWorld('api', {
+  login: (username, password) =>
+    ipcRenderer.invoke('auth:login', { username, password }),
+
+  cerrarSesion: () =>
+    ipcRenderer.invoke('auth:logout'),
+
+  obtenerUsuarioActual: () =>
+    ipcRenderer.invoke('auth:current-user'),
+
+  bootstrapAdmin: data =>
+    ipcRenderer.invoke('auth:bootstrap-admin', data),
+
+  restablecerClaveAdmin: data =>
+    ipcRenderer.invoke('auth:reset-admin', data),
+
+  verificarClaveAdmin: password =>
+    ipcRenderer.invoke('auth:verify-password', { password }),
+
+  obtenerContextoAdmin: () =>
+    ipcRenderer.invoke('auth:contexto-admin'),
+
+  listarUsuarios: () =>
+    ipcRenderer.invoke('auth:list-users'),
+
+  listarAuditoriaUsuarios: limit =>
+    ipcRenderer.invoke('auth:list-audit', limit),
+
+  crearUsuario: data =>
+    ipcRenderer.invoke('auth:create-user', data),
+
+  actualizarUsuario: data =>
+    ipcRenderer.invoke('auth:update-user', data),
+
+  actualizarEstadoUsuario: (id, isActive) =>
+    ipcRenderer.invoke('auth:update-user-status', { id, isActive }),
+
+  restablecerClaveUsuario: (id, password) =>
+    ipcRenderer.invoke('auth:reset-user-password', { id, password }),
+
   // ===== LICENCIA =====
   obtenerEstadoLicencia: () =>
     ipcRenderer.invoke('licencia:estado'),
@@ -11,6 +50,12 @@ contextBridge.exposeInMainWorld('api', {
 
   activarLicencia: clave =>
     ipcRenderer.invoke('licencia:activar', clave),
+
+  abrirUrlExterna: url =>
+    ipcRenderer.invoke('abrir-url-externa', url),
+
+  guardarSolicitudLicencia: texto =>
+    ipcRenderer.invoke('licencia:guardar-solicitud-txt', texto),
 
   asegurarGateway: () =>
     ipcRenderer.invoke('gateway:asegurar'),

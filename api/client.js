@@ -32,13 +32,19 @@ function normalizarBaseUrl(rawUrl) {
 class ApiClient {
   constructor(baseUrl = process.env.SISTEMA_TICKETS_API_URL || DEFAULT_API_URL) {
     this.baseUrl = normalizarBaseUrl(baseUrl);
+    this.authToken = '';
   }
 
   async request(path, options = {}) {
+    const authHeaders = this.authToken
+      ? { Authorization: `Bearer ${this.authToken}` }
+      : {};
+
     const response = await fetch(`${this.baseUrl}${path}`, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
+        ...authHeaders,
         ...(options.headers || {})
       }
     });
@@ -50,6 +56,10 @@ class ApiClient {
     }
 
     return data;
+  }
+
+  setAuthToken(token) {
+    this.authToken = String(token || '').trim();
   }
 
   health() {
@@ -320,6 +330,80 @@ class ApiClient {
   obtenerComprobanteX(uuid) {
     return this.request(`/caja/${uuid}/comprobante-x`, {
       method: 'POST'
+    });
+  }
+
+  authBootstrapAdmin(data) {
+    return this.request('/auth/bootstrap-admin', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  }
+
+  authResetAdmin(data) {
+    return this.request('/auth/reset-admin', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  }
+
+  authLogin(username, password) {
+    return this.request('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password })
+    });
+  }
+
+  authLogout() {
+    return this.request('/auth/logout', {
+      method: 'POST'
+    });
+  }
+
+  authVerifyPassword(password) {
+    return this.request('/auth/verify-password', {
+      method: 'POST',
+      body: JSON.stringify({ password })
+    });
+  }
+
+  authMe() {
+    return this.request('/auth/me');
+  }
+
+  authListUsers() {
+    return this.request('/auth/users');
+  }
+
+  authListAudit(limit = 80) {
+    return this.request(`/auth/audit?limit=${encodeURIComponent(limit)}`);
+  }
+
+  authCreateUser(data) {
+    return this.request('/auth/users', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  }
+
+  authUpdateUser(data) {
+    return this.request(`/auth/users/${encodeURIComponent(data.id)}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  }
+
+  authUpdateUserStatus(id, isActive) {
+    return this.request(`/auth/users/${encodeURIComponent(id)}/status`, {
+      method: 'POST',
+      body: JSON.stringify({ isActive })
+    });
+  }
+
+  authResetUserPassword(id, password) {
+    return this.request(`/auth/users/${encodeURIComponent(id)}/reset-password`, {
+      method: 'POST',
+      body: JSON.stringify({ password })
     });
   }
 }

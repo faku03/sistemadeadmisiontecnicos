@@ -13,21 +13,18 @@ set "LOG_FILE=%LOG_DIR%\server-bootstrap-cmd.log"
 if not exist "%LOG_DIR%" mkdir "%LOG_DIR%"
 
 echo [%date% %time%] Inicio bootstrap cmd > "%LOG_FILE%"
+
+echo [%date% %time%] Registrando ServerTickets en inicio de Windows...>> "%LOG_FILE%"
+call "%SCRIPT_DIR%register-startup-tasks.cmd" "%INSTALL_DIR%" >> "%LOG_FILE%" 2>&1
+if errorlevel 1 echo [%date% %time%] Advertencia: no se pudo registrar ServerTickets en este equipo.>> "%LOG_FILE%"
+
 echo [%date% %time%] Instalando y configurando PostgreSQL...>> "%LOG_FILE%"
 call "%SCRIPT_DIR%setup-database.cmd" "%INSTALL_DIR%" >> "%LOG_FILE%" 2>&1
 if errorlevel 1 goto :fail
 
-echo [%date% %time%] Registrando tareas...>> "%LOG_FILE%"
+echo [%date% %time%] Solicitando arranque de ServerTickets...>> "%LOG_FILE%"
 call "%SCRIPT_DIR%register-startup-tasks.cmd" "%INSTALL_DIR%" >> "%LOG_FILE%" 2>&1
-if errorlevel 1 echo [%date% %time%] Advertencia: no se pudieron registrar tareas en este equipo.>> "%LOG_FILE%"
-
-echo [%date% %time%] Iniciando PostgreSQL para esta sesion...>> "%LOG_FILE%"
-"%POWER_SHELL%" -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "%SCRIPT_DIR%start-postgresql.ps1" >> "%LOG_FILE%" 2>&1
-if errorlevel 1 echo [%date% %time%] Advertencia: no se pudo iniciar PostgreSQL en caliente.>> "%LOG_FILE%"
-
-echo [%date% %time%] Iniciando gateway para esta sesion...>> "%LOG_FILE%"
-"%POWER_SHELL%" -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "%SCRIPT_DIR%start-gateway.ps1" >> "%LOG_FILE%" 2>&1
-if errorlevel 1 goto :fail
+if errorlevel 1 echo [%date% %time%] Advertencia: no se pudo relanzar ServerTickets en este equipo.>> "%LOG_FILE%"
 
 echo [%date% %time%] Esperando respuesta de health...>> "%LOG_FILE%"
 "%POWER_SHELL%" -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command ^

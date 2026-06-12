@@ -55,7 +55,27 @@ CREATE TABLE IF NOT EXISTS licenses (
 );
 
 ALTER TABLE licenses
-  ADD COLUMN IF NOT EXISTS license_key TEXT;
+  ADD COLUMN IF NOT EXISTS license_key TEXT,
+  ADD COLUMN IF NOT EXISTS subscription_status TEXT NOT NULL DEFAULT 'PENDING',
+  ADD COLUMN IF NOT EXISTS subscription_reference TEXT,
+  ADD COLUMN IF NOT EXISTS billing_period TEXT NOT NULL DEFAULT 'MONTHLY',
+  ADD COLUMN IF NOT EXISTS last_payment_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS next_payment_due_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS payment_notes TEXT;
+
+CREATE TABLE IF NOT EXISTS license_payments (
+  id SERIAL PRIMARY KEY,
+  license_id INTEGER NOT NULL REFERENCES licenses(id),
+  amount NUMERIC(12, 2) NOT NULL DEFAULT 0,
+  currency TEXT NOT NULL DEFAULT 'ARS',
+  payment_method TEXT NOT NULL DEFAULT 'MANUAL',
+  payment_reference TEXT,
+  period_start DATE,
+  period_end DATE,
+  paid_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
 
 CREATE TABLE IF NOT EXISTS license_validations (
   id SERIAL PRIMARY KEY,
@@ -71,5 +91,8 @@ CREATE TABLE IF NOT EXISTS license_validations (
 
 CREATE INDEX IF NOT EXISTS idx_licenses_unit ON licenses(unit_id);
 CREATE INDEX IF NOT EXISTS idx_licenses_status ON licenses(status);
+CREATE INDEX IF NOT EXISTS idx_licenses_next_payment_due ON licenses(next_payment_due_at);
 CREATE INDEX IF NOT EXISTS idx_license_validations_license ON license_validations(license_id);
 CREATE INDEX IF NOT EXISTS idx_license_validations_created ON license_validations(created_at);
+CREATE INDEX IF NOT EXISTS idx_license_payments_license ON license_payments(license_id);
+CREATE INDEX IF NOT EXISTS idx_license_payments_paid_at ON license_payments(paid_at);

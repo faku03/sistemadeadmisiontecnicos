@@ -17,6 +17,7 @@
     "app-dialog.js",
     "date-format.js",
     "license-ui.js",
+    "login.js",
     "tickets.js",
     "alertas.js",
     "configuracion.js",
@@ -33,7 +34,9 @@
     "devoluciones-caja.html",
     "listado-caja.html",
     "reporte-listado-caja.html",
+    "login.html",
     "styles.css",
+    "assets/**/*",
     "abm/**/*",
     "api/**/*",
     "config/**/*",
@@ -68,11 +71,22 @@
     "!.gitignore",
     "!electron-builder*.json"
   ],
+  "extraResources": [
+    {
+      "from": "assets/icons/tickets.ico",
+      "to": "icons/tickets.ico"
+    },
+    {
+      "from": "assets/icons/caja.ico",
+      "to": "icons/caja.ico"
+    }
+  ],
   "extraMetadata": {
     "main": "main-instalador.js"
   },
   "win": {
     "target": "nsis",
+    "icon": "assets/icons/tickets.ico",
     "artifactName": "SistemaTerminal-Setup-${version}.${ext}"
   },
   "nsis": {

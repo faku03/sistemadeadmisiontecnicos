@@ -4,11 +4,15 @@ const pathModule = require('path');
 const { randomUUID } = require('crypto');
 const config = require('./config');
 const { query, withTransaction } = require('./db');
+const { createAuth, hashPassword, verifyPassword } = require('../auth');
+const { buildAdminPassword } = require('../auth/admin-formula');
 const { handleLicenseAdminRoute } = require('./license-admin');
 const { handleLicenseRoute } = require('./licenses');
 const pdfComprobanteX = require('../pdf/comprobante_x');
 
 const adminPanelDir = pathModule.resolve(__dirname, '..', 'admin-panel');
+const authSchemaPath = pathModule.resolve(__dirname, '..', 'auth', 'schema.sql');
+const authSchemaSql = fs.readFileSync(authSchemaPath, 'utf8');
 const contentTypes = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
@@ -18,6 +22,15 @@ const contentTypes = {
   '.jpeg': 'image/jpeg',
   '.webp': 'image/webp'
 };
+
+const auth = createAuth({
+  query,
+  withTransaction,
+  routePrefix: '/auth',
+  cookieName: 'sistema_tickets_auth',
+  secureCookies: false,
+  sessionHours: 12
+});
 
 function sendJson(res, status, data) {
   const body = JSON.stringify(data);
@@ -72,6 +85,105 @@ async function readJson(req) {
 
 function parseUrl(req) {
   return new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+}
+
+async function ensureAuthSchema() {
+  await query(authSchemaSql);
+}
+
+function adminFormulaPayload(data = {}) {
+  return {
+    licenseKey: String(data.licenseKey || '').trim(),
+    licenseUnitId: String(data.licenseUnitId || data.unitId || '').trim(),
+    sucursalId: String(data.sucursalId || '').trim(),
+    businessTaxId: String(data.businessTaxId || '').trim()
+  };
+}
+
+async function upsertAdminUser(data = {}, { forceReset = false } = {}) {
+  const payload = adminFormulaPayload(data);
+  const password = buildAdminPassword(payload);
+  const existing = await auth.findUserByUsername('admin');
+
+  if (!existing) {
+    const user = await auth.createUser({
+      username: 'admin',
+      password,
+      displayName: 'Administrador',
+      role: 'ADMIN',
+      isActive: true
+    });
+
+    return {
+      action: 'created',
+      user,
+      username: 'admin',
+      password
+    };
+  }
+
+  if (forceReset) {
+    const passwordHash = await hashPassword(password);
+    const result = await query(
+      `
+      UPDATE auth_users
+      SET password_hash = $1,
+          role = 'ADMIN',
+          is_active = TRUE,
+          updated_at = NOW()
+      WHERE username = 'admin'
+      RETURNING id, username, display_name, role, is_active
+      `,
+      [passwordHash]
+    );
+
+    await auth.audit('ADMIN_PASSWORD_RESET', {
+      username: 'admin',
+      entityType: 'auth_user',
+      entityId: String(result.rows[0].id)
+    });
+
+    return {
+      action: 'reset',
+      user: {
+        id: result.rows[0].id,
+        username: result.rows[0].username,
+        displayName: result.rows[0].display_name,
+        role: result.rows[0].role,
+        isActive: result.rows[0].is_active
+      },
+      username: 'admin',
+      password
+    };
+  }
+
+  return {
+    action: 'exists',
+    user: existing,
+    username: 'admin',
+    password
+  };
+}
+
+async function listAuthUsers() {
+  const result = await query(
+    `
+    SELECT
+      id,
+      username,
+      display_name,
+      role,
+      is_active,
+      last_login_at,
+      created_at
+    FROM auth_users
+    ORDER BY
+      CASE WHEN role = 'ADMIN' THEN 0 ELSE 1 END,
+      username
+    `
+  );
+
+  return result.rows;
 }
 
 function money(value) {
@@ -1374,6 +1486,222 @@ async function handle(req, res) {
       return;
     }
 
+    if (method === 'POST' && path === '/auth/bootstrap-admin') {
+      const result = await upsertAdminUser(await readJson(req), { forceReset: false });
+      sendJson(res, 200, result);
+      return;
+    }
+
+    if (method === 'POST' && path === '/auth/reset-admin') {
+      const result = await upsertAdminUser(await readJson(req), { forceReset: true });
+      sendJson(res, 200, result);
+      return;
+    }
+
+    if (await auth.handleAuthRoute({ method, path, req, res, sendJson, readJson })) {
+      return;
+    }
+
+    if (method === 'GET' && path === '/auth/users') {
+      await auth.requireAuth(req, ['ADMIN']);
+      sendJson(res, 200, await listAuthUsers());
+      return;
+    }
+
+    if (method === 'GET' && path === '/auth/audit') {
+      await auth.requireAuth(req, ['ADMIN']);
+      const limit = Math.min(Math.max(Number(url.searchParams.get('limit') || 80), 1), 300);
+      const result = await query(
+        `
+        SELECT id, username, action, result, created_at
+        FROM auth_audit_log
+        ORDER BY created_at DESC
+        LIMIT $1
+        `,
+        [limit]
+      );
+      sendJson(res, 200, result.rows);
+      return;
+    }
+
+    if (method === 'POST' && path === '/auth/users') {
+      const session = await auth.requireAuth(req, ['ADMIN']);
+      const body = await readJson(req);
+      const created = await auth.createUser(body);
+      await auth.audit('USER_CREATED_BY_ADMIN', {
+        user: session.user,
+        entityType: 'auth_user',
+        entityId: String(created.id),
+        details: {
+          username: created.username,
+          role: created.role
+        }
+      });
+      sendJson(res, 201, created);
+      return;
+    }
+
+    const userUpdateMatch = path.match(/^\/auth\/users\/(\d+)$/);
+    if (method === 'PUT' && userUpdateMatch) {
+      const session = await auth.requireAuth(req, ['ADMIN']);
+      const body = await readJson(req);
+      const userId = Number(userUpdateMatch[1]);
+      const displayName = String(body.displayName || body.display_name || '').trim();
+      const role = String(body.role || '').trim().toUpperCase();
+
+      if (!displayName) {
+        sendJson(res, 400, { error: 'El nombre visible es obligatorio' });
+        return;
+      }
+
+      if (!['ADMIN', 'OPERADOR'].includes(role)) {
+        sendJson(res, 400, { error: 'El rol no es valido' });
+        return;
+      }
+
+      const existing = await query(
+        `SELECT id, username FROM auth_users WHERE id = $1`,
+        [userId]
+      );
+
+      if (!existing.rowCount) {
+        sendJson(res, 404, { error: 'Usuario no encontrado' });
+        return;
+      }
+
+      const username = existing.rows[0].username;
+      if (username === 'admin' && role !== 'ADMIN') {
+        sendJson(res, 400, { error: 'El usuario admin debe conservar el rol ADMIN' });
+        return;
+      }
+
+      const result = await query(
+        `
+        UPDATE auth_users
+        SET display_name = $1,
+            role = $2,
+            updated_at = NOW()
+        WHERE id = $3
+        RETURNING id, username, display_name, role, is_active
+        `,
+        [displayName, role, userId]
+      );
+
+      await auth.audit('USER_UPDATED_BY_ADMIN', {
+        user: session.user,
+        entityType: 'auth_user',
+        entityId: String(userId),
+        details: {
+          username,
+          displayName,
+          role
+        }
+      });
+
+      sendJson(res, 200, result.rows[0]);
+      return;
+    }
+
+    if (method === 'POST' && path === '/auth/verify-password') {
+      const session = await auth.requireAuth(req, ['ADMIN']);
+      const body = await readJson(req);
+      const password = String(body.password || '').trim();
+
+      if (!password) {
+        sendJson(res, 400, { error: 'La clave es obligatoria' });
+        return;
+      }
+
+      const adminUser = await auth.findUserByUsername(session.user.username);
+      const ok = adminUser && adminUser.is_active && await verifyPassword(password, adminUser.password_hash);
+
+      if (!ok) {
+        sendJson(res, 401, { error: 'La clave del administrador no es correcta' });
+        return;
+      }
+
+      sendJson(res, 200, { ok: true });
+      return;
+    }
+
+    const userStatusMatch = path.match(/^\/auth\/users\/(\d+)\/status$/);
+    if (method === 'POST' && userStatusMatch) {
+      const session = await auth.requireAuth(req, ['ADMIN']);
+      const body = await readJson(req);
+      const userId = Number(userStatusMatch[1]);
+      const isActive = Boolean(body.isActive);
+
+      const result = await query(
+        `
+        UPDATE auth_users
+        SET is_active = $1,
+            updated_at = NOW()
+        WHERE id = $2
+        RETURNING id, username, display_name, role, is_active
+        `,
+        [isActive, userId]
+      );
+
+      if (!result.rowCount) {
+        sendJson(res, 404, { error: 'Usuario no encontrado' });
+        return;
+      }
+
+      await auth.audit(isActive ? 'USER_REACTIVATED' : 'USER_DEACTIVATED', {
+        user: session.user,
+        entityType: 'auth_user',
+        entityId: String(userId),
+        details: {
+          username: result.rows[0].username
+        }
+      });
+
+      sendJson(res, 200, result.rows[0]);
+      return;
+    }
+
+    const userResetMatch = path.match(/^\/auth\/users\/(\d+)\/reset-password$/);
+    if (method === 'POST' && userResetMatch) {
+      const session = await auth.requireAuth(req, ['ADMIN']);
+      const body = await readJson(req);
+      const userId = Number(userResetMatch[1]);
+      const password = String(body.password || '').trim();
+
+      if (!password) {
+        sendJson(res, 400, { error: 'La nueva clave es obligatoria' });
+        return;
+      }
+
+      const passwordHash = await hashPassword(password);
+      const result = await query(
+        `
+        UPDATE auth_users
+        SET password_hash = $1,
+            updated_at = NOW()
+        WHERE id = $2
+        RETURNING id, username, display_name, role, is_active
+        `,
+        [passwordHash, userId]
+      );
+
+      if (!result.rowCount) {
+        sendJson(res, 404, { error: 'Usuario no encontrado' });
+        return;
+      }
+
+      await auth.audit('USER_PASSWORD_RESET', {
+        user: session.user,
+        entityType: 'auth_user',
+        entityId: String(userId),
+        details: {
+          username: result.rows[0].username
+        }
+      });
+
+      sendJson(res, 200, result.rows[0]);
+      return;
+    }
+
     if (await handleLicenseRoute({ method, path, req, res, sendJson, readJson })) {
       return;
     }
@@ -1626,6 +1954,14 @@ async function handle(req, res) {
 
 const server = http.createServer(handle);
 
-server.listen(config.port, () => {
-  console.log(`Sistema Tickets API escuchando en http://localhost:${config.port}`);
-});
+(async () => {
+  try {
+    await ensureAuthSchema();
+    server.listen(config.port, () => {
+      console.log(`Sistema Tickets API escuchando en http://localhost:${config.port}`);
+    });
+  } catch (error) {
+    console.error('No se pudo iniciar el gateway:', error);
+    process.exit(1);
+  }
+})();

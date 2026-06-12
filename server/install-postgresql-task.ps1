@@ -10,12 +10,16 @@ if (-not (Test-Path $scriptPath)) {
   throw "No se encontro $scriptPath"
 }
 
-$startupDir = [Environment]::GetFolderPath("Startup")
+$startupDir = [Environment]::GetFolderPath("CommonStartup")
+if (-not $startupDir) {
+  $startupDir = [Environment]::GetFolderPath("Startup")
+}
 New-Item -ItemType Directory -Force -Path $startupDir | Out-Null
 
 $launcherPath = Join-Path $startupDir "MardelTech-PostgreSQL.cmd"
 $launcherContent = @"
 @echo off
+set "SISTEMA_TICKETS_INSTALL_DIR=$InstallDir"
 powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "$scriptPath"
 "@
 Set-Content -Path $launcherPath -Value $launcherContent -Encoding ASCII -Force

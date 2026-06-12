@@ -36,20 +36,13 @@ if ($LASTEXITCODE -eq 0) {
 $stdout = Join-Path $logDir "postgresql.out.log"
 $stderr = Join-Path $logDir "postgresql.err.log"
 
-$startInfo = New-Object System.Diagnostics.ProcessStartInfo
-$startInfo.FileName = $postgresExePath
-$startInfo.Arguments = "-D `"$dataDir`" -p $port"
-$startInfo.WorkingDirectory = $postgresPrefix
-$startInfo.UseShellExecute = $false
-$startInfo.CreateNoWindow = $true
-$startInfo.RedirectStandardOutput = $true
-$startInfo.RedirectStandardError = $true
-
-$process = New-Object System.Diagnostics.Process
-$process.StartInfo = $startInfo
-[void]$process.Start()
-$process.StandardOutput.ReadToEndAsync() | Out-Null
-$process.StandardError.ReadToEndAsync() | Out-Null
+Start-Process `
+  -FilePath $postgresExePath `
+  -ArgumentList @("-D", $dataDir, "-p", "$port") `
+  -WorkingDirectory $postgresPrefix `
+  -WindowStyle Hidden `
+  -RedirectStandardOutput $stdout `
+  -RedirectStandardError $stderr | Out-Null
 
 $deadline = (Get-Date).AddSeconds(60)
 while ((Get-Date) -lt $deadline) {

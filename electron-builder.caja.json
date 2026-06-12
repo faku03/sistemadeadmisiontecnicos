@@ -12,6 +12,7 @@
   },
   "win": {
     "target": "nsis",
+    "icon": "assets/icons/caja.ico",
     "artifactName": "${productName}-Setup-${version}.${ext}"
   },
   "nsis": {

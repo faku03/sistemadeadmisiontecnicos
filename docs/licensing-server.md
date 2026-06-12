@@ -182,6 +182,8 @@ El panel permite:
 - Crear sucursales o tecnicos con codigo estable.
 - Crear licencias.
 - Renovar licencias cambiando solo la fecha de vencimiento.
+- Registrar pago mensual aprobado y renovar automaticamente 30 dias.
+- Guardar referencia de suscripcion o cobro externo.
 - Suspender/reactivar licencias.
 - Liberar una licencia de una PC.
 - Ver las ultimas validaciones.
@@ -215,6 +217,21 @@ PUT  /admin/licenses/:id
 POST /admin/licenses/:id/suspend
 POST /admin/licenses/:id/activate
 POST /admin/licenses/:id/release-machine
+POST /admin/licenses/:id/payment
+```
+
+`POST /admin/licenses/:id/payment` registra un cobro aprobado y actualiza la licencia. Cuerpo recomendado:
+
+```json
+{
+  "amount": 30000,
+  "currency": "ARS",
+  "payment_method": "MERCADO_PAGO",
+  "payment_reference": "preapproval-id-o-payment-id",
+  "valid_days": 30,
+  "subscription_status": "ACTIVE",
+  "notes": "Pago mensual aprobado"
+}
 ```
 
 Auditoria:

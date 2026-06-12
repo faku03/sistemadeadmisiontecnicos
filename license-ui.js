@@ -81,6 +81,108 @@
     return modal;
   }
 
+  function ensureRequestModal() {
+    let modal = document.getElementById('licenseRequestModal');
+
+    if (modal) {
+      return modal;
+    }
+
+    modal = document.createElement('div');
+    modal.id = 'licenseRequestModal';
+    modal.className = 'modal hidden';
+    modal.innerHTML = `
+      <div class="modal-content license-request-modal-content">
+        <h3>Solicitar licencia</h3>
+        <p class="muted">
+          Completa los datos del titular y del pago. El sistema arma el mensaje para enviar a soporte.
+        </p>
+        <div class="license-request-grid">
+          <label class="field-label">Nombre completo / razon social
+            <input id="licenseReqName" type="text" placeholder="Nombre completo o razon social">
+          </label>
+          <label class="field-label">CUIT / CUIL
+            <input id="licenseReqTaxId" type="text" placeholder="CUIT o CUIL">
+          </label>
+          <label class="field-label full-row">Direccion
+            <input id="licenseReqAddress" type="text" placeholder="Calle, numero, localidad y provincia">
+          </label>
+          <label class="field-label">Email
+            <input id="licenseReqEmail" type="email" placeholder="email@cliente.com">
+          </label>
+          <label class="field-label">Celular
+            <input id="licenseReqPhone" type="text" placeholder="223...">
+          </label>
+          <label class="field-label full-row">Comprobante de pago
+            <textarea id="licenseReqPayment" placeholder="Adjunto comprobante / numero de operacion / detalle de la transferencia"></textarea>
+          </label>
+        </div>
+        <div class="license-meta" id="licenseRequestMeta"></div>
+        <div class="modal-actions">
+          <button id="licenseRequestNextBtn">Aceptar</button>
+          <button id="licenseRequestCloseBtn">Cerrar</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    modal.querySelector('#licenseRequestCloseBtn').onclick = () => {
+      modal.classList.add('hidden');
+    };
+
+    modal.addEventListener('click', event => {
+      if (event.target === modal) {
+        modal.classList.add('hidden');
+      }
+    });
+
+    return modal;
+  }
+
+  function ensureRequestPreviewModal() {
+    let modal = document.getElementById('licenseRequestPreviewModal');
+
+    if (modal) {
+      return modal;
+    }
+
+    modal = document.createElement('div');
+    modal.id = 'licenseRequestPreviewModal';
+    modal.className = 'modal hidden';
+    modal.innerHTML = `
+      <div class="modal-content license-preview-modal-content">
+        <h3>Solicitud de licencia</h3>
+        <p class="muted">
+          Revisa los datos y elegi como enviar la solicitud.
+        </p>
+        <pre id="licenseRequestPreviewText" class="license-request-preview"></pre>
+        <div class="modal-actions">
+          <button id="licensePreviewBackBtn">Corregir datos</button>
+          <button id="licensePreviewCopyBtn">Copiar texto</button>
+          <button id="licensePreviewWhatsappBtn">Solicitar por WhatsApp</button>
+          <button id="licensePreviewEmailBtn">Solicitar por email</button>
+          <button id="licensePreviewTxtBtn">Guardar TXT</button>
+          <button id="licensePreviewCloseBtn">Cerrar</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    modal.querySelector('#licensePreviewCloseBtn').onclick = () => {
+      modal.classList.add('hidden');
+    };
+
+    modal.addEventListener('click', event => {
+      if (event.target === modal) {
+        modal.classList.add('hidden');
+      }
+    });
+
+    return modal;
+  }
+
   function describeUnit(status) {
     const parts = [
       status?.unitType || '',
@@ -91,11 +193,33 @@
     return parts.join(' - ');
   }
 
-  function buildRequestText(status) {
+  function readRequestForm(modal) {
+    return {
+      name: modal.querySelector('#licenseReqName').value.trim(),
+      taxId: modal.querySelector('#licenseReqTaxId').value.trim(),
+      address: modal.querySelector('#licenseReqAddress').value.trim(),
+      email: modal.querySelector('#licenseReqEmail').value.trim(),
+      phone: modal.querySelector('#licenseReqPhone').value.trim(),
+      payment: modal.querySelector('#licenseReqPayment').value.trim()
+    };
+  }
+
+  function validateRequestForm(data) {
+    if (!data.name) return 'Ingresa nombre completo o razon social.';
+    if (!data.taxId) return 'Ingresa CUIT o CUIL.';
+    if (!data.address) return 'Ingresa direccion.';
+    if (!data.email) return 'Ingresa email.';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) return 'El email no tiene un formato valido.';
+    if (!data.phone) return 'Ingresa celular.';
+    if (!data.payment) return 'Ingresa el detalle del comprobante de pago.';
+    return '';
+  }
+
+  function buildRequestText(status, requestData = {}) {
     const cfg = currentConfig || {};
-    const businessName = cfg.pdfBusinessName || cfg.sucursalNombre || status?.unitName || '-';
-    const contactPhone = cfg.businessMobile || cfg.pdfBusinessPhone || '-';
-    const contactEmail = cfg.pdfBusinessEmail || '-';
+    const businessName = requestData.name || cfg.pdfBusinessName || cfg.sucursalNombre || status?.unitName || '-';
+    const contactPhone = requestData.phone || cfg.businessMobile || cfg.pdfBusinessPhone || '-';
+    const contactEmail = requestData.email || cfg.pdfBusinessEmail || '-';
     const location = [
       cfg.pdfBusinessLocality || '',
       cfg.pdfBusinessProvince || ''
@@ -105,12 +229,14 @@
       '',
       'Datos comerciales',
       `Nombre / razon social: ${businessName}`,
-      `CUIT/CUIL: ${cfg.businessTaxId || '-'}`,
+      `CUIT/CUIL: ${requestData.taxId || cfg.businessTaxId || '-'}`,
       `Contacto responsable: ${cfg.businessContactName || '-'}`,
       `Email de contacto: ${contactEmail}`,
       `Celular: ${contactPhone}`,
-      `Direccion: ${cfg.pdfBusinessAddress || cfg.pdfBusinessStreet || '-'}`,
+      `Direccion: ${requestData.address || cfg.pdfBusinessAddress || cfg.pdfBusinessStreet || '-'}`,
       `Localidad / provincia: ${location}`,
+      `Comprobante / pago: ${requestData.payment || '-'}`,
+      'Adjunto comprobante de transferencia.',
       '',
       'Datos tecnicos',
       `Sucursal o local: ${cfg.sucursalNombre || status?.unitName || '-'}`,
@@ -118,6 +244,9 @@
       `Codigo grupo: ${cfg.licenseGroupId || status?.groupCode || status?.groupId || '-'}`,
       `Tipo unidad: ${cfg.licenseUnitType || status?.unitType || '-'}`,
       `Machine ID: ${status?.machineId || '-'}`,
+      `CUIT/CUIL: ${requestData.taxId || cfg.businessTaxId || '-'}`,
+      `Email: ${contactEmail}`,
+      `Celular: ${contactPhone}`,
       `Clave actual: ${status?.licenseKey || cfg.licenseKey || '-'}`,
       '',
       'Plan solicitado',
@@ -136,27 +265,66 @@
     return lines.join('\n');
   }
 
-  async function requestLicense(status) {
+  async function copyRequestText(text) {
+    if (!navigator.clipboard?.writeText) {
+      return false;
+    }
+
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  async function saveRequestText(text) {
+    const api = getApi();
+
+    if (!api?.guardarSolicitudLicencia) {
+      await copyRequestText(text);
+      await showAlert('Solicitud copiada', 'No se pudo guardar TXT desde esta pantalla, pero la solicitud se copio al portapapeles.');
+      return null;
+    }
+
+    const filePath = await api.guardarSolicitudLicencia(text);
+    await showAlert('Solicitud guardada', `Se guardo y abrio el archivo:\n${filePath}`);
+    return filePath;
+  }
+
+  async function sendRequestByEmail(text) {
     const api = getApi();
     const cfg = currentConfig || {};
-    const text = buildRequestText(status);
-
-    if (navigator.clipboard?.writeText) {
-      try {
-        await navigator.clipboard.writeText(text);
-      } catch (_) {
-        // seguimos igual
-      }
-    }
-
     const email = String(cfg.licenseSupportEmail || '').trim();
-    const phone = String(cfg.licenseSupportWhatsApp || '').replace(/\D/g, '');
 
-    if (email && api?.abrirUrlExterna) {
-      const subject = encodeURIComponent('Solicitud de licencia - Sistema de Tickets MardelTech');
-      await api.abrirUrlExterna(`mailto:${email}?subject=${subject}&body=${encodeURIComponent(text)}`);
+    await copyRequestText(text);
+
+    if (!email || !api?.abrirUrlExterna) {
+      await saveRequestText(text);
       return;
     }
+
+    const subject = encodeURIComponent('Solicitud de licencia - Sistema de Tickets MardelTech');
+
+    try {
+      await api.abrirUrlExterna(`mailto:${email}?subject=${subject}&body=${encodeURIComponent(text)}`);
+      await saveRequestText(text);
+      await showAlert(
+        'Email preparado',
+        'Se intento abrir el correo y tambien se guardo un TXT por si esta PC no tiene cliente de email configurado.'
+      );
+      return;
+    } catch (_) {
+      await saveRequestText(text);
+    }
+  }
+
+  async function sendRequestByWhatsapp(text) {
+    const api = getApi();
+    const cfg = currentConfig || {};
+    const phone = String(cfg.licenseSupportWhatsApp || '').replace(/\D/g, '');
+
+    await copyRequestText(text);
 
     if (phone && api?.abrirUrlExterna) {
       await api.abrirUrlExterna(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`);
@@ -164,9 +332,62 @@
     }
 
     await showAlert(
-      'Solicitud de licencia',
-      `Se copio la solicitud al portapapeles. Envia estos datos a soporte:\n\n${text}`
+      'WhatsApp no configurado',
+      'No hay WhatsApp de soporte configurado. La solicitud se copio al portapapeles.'
     );
+  }
+
+  function openRequestPreview(status, text) {
+    const formModal = ensureRequestModal();
+    const previewModal = ensureRequestPreviewModal();
+
+    formModal.classList.add('hidden');
+    previewModal.querySelector('#licenseRequestPreviewText').textContent = text;
+    previewModal.classList.remove('hidden');
+
+    previewModal.querySelector('#licensePreviewBackBtn').onclick = () => {
+      previewModal.classList.add('hidden');
+      formModal.classList.remove('hidden');
+    };
+
+    previewModal.querySelector('#licensePreviewCopyBtn').onclick = async () => {
+      await copyRequestText(text);
+      await showAlert('Solicitud copiada', 'La solicitud se copio al portapapeles.');
+    };
+
+    previewModal.querySelector('#licensePreviewWhatsappBtn').onclick = () => sendRequestByWhatsapp(text);
+    previewModal.querySelector('#licensePreviewEmailBtn').onclick = () => sendRequestByEmail(text);
+    previewModal.querySelector('#licensePreviewTxtBtn').onclick = () => saveRequestText(text);
+  }
+
+  async function requestLicense(status) {
+    const modal = ensureRequestModal();
+    const cfg = currentConfig || {};
+
+    modal.querySelector('#licenseReqName').value = cfg.pdfBusinessName || cfg.sucursalNombre || status?.unitName || '';
+    modal.querySelector('#licenseReqTaxId').value = cfg.businessTaxId || '';
+    modal.querySelector('#licenseReqAddress').value = cfg.pdfBusinessAddress || cfg.pdfBusinessStreet || '';
+    modal.querySelector('#licenseReqEmail').value = cfg.pdfBusinessEmail || '';
+    modal.querySelector('#licenseReqPhone').value = cfg.businessMobile || cfg.pdfBusinessPhone || '';
+    modal.querySelector('#licenseReqPayment').value = '';
+    modal.querySelector('#licenseRequestMeta').textContent =
+      `Equipo: ${status?.machineId || 'sin identificar'}${describeUnit(status) ? ` | ${describeUnit(status)}` : ''}`;
+
+    modal.classList.remove('hidden');
+    modal.querySelector('#licenseReqName').focus();
+
+    modal.querySelector('#licenseRequestNextBtn').onclick = async () => {
+      const data = readRequestForm(modal);
+      const error = validateRequestForm(data);
+
+      if (error) {
+        await showAlert('Faltan datos', error);
+        return;
+      }
+
+      const text = buildRequestText(status, data);
+      openRequestPreview(status, text);
+    };
   }
 
   function openActivationModal(status) {

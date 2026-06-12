@@ -5,27 +5,37 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$scriptPath = Join-Path $InstallDir "resources\server\start-gateway.ps1"
-if (-not (Test-Path $scriptPath)) {
-  throw "No se encontro $scriptPath"
+$serverExe = Join-Path $InstallDir "SistemaServidor.exe"
+if (-not (Test-Path $serverExe)) {
+  throw "No se encontro $serverExe"
 }
 
-$startupDir = [Environment]::GetFolderPath("Startup")
+$startupDir = [Environment]::GetFolderPath("CommonStartup")
+if (-not $startupDir) {
+  $startupDir = [Environment]::GetFolderPath("Startup")
+}
 New-Item -ItemType Directory -Force -Path $startupDir | Out-Null
 
-$launcherPath = Join-Path $startupDir "MardelTech-Gateway.cmd"
+$oldLaunchers = @(
+  (Join-Path $startupDir "MardelTech-Gateway.cmd"),
+  (Join-Path $startupDir "MardelTech-PostgreSQL.cmd"),
+  (Join-Path $startupDir "MardelTech-ServerTickets.cmd")
+)
+
+foreach ($oldLauncher in $oldLaunchers) {
+  Remove-Item -LiteralPath $oldLauncher -Force -ErrorAction SilentlyContinue
+}
+
+$launcherPath = Join-Path $startupDir "MardelTech-ServerTickets.vbs"
+$safeInstallDir = $InstallDir.Replace('"', '""')
+$safeServerExe = $serverExe.Replace('"', '""')
 $launcherContent = @"
-@echo off
-powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "$scriptPath"
+Set shell = CreateObject("WScript.Shell")
+shell.Environment("PROCESS")("SISTEMA_TICKETS_INSTALL_DIR") = "$safeInstallDir"
+shell.Run Chr(34) & "$safeServerExe" & Chr(34) & " --server-tray", 0, False
 "@
 Set-Content -Path $launcherPath -Value $launcherContent -Encoding ASCII -Force
 
-Start-Process -FilePath "powershell.exe" -ArgumentList @(
-  "-NoProfile",
-  "-NonInteractive",
-  "-ExecutionPolicy", "Bypass",
-  "-WindowStyle", "Hidden",
-  "-File", $scriptPath
-) -WindowStyle Hidden
+Start-Process -FilePath $serverExe -ArgumentList "--server-tray" -WindowStyle Hidden
 
-Write-Output "Gateway configurado para inicio de Windows e iniciado: $launcherPath"
+Write-Output "ServerTickets configurado para inicio de Windows e iniciado: $launcherPath"

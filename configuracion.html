@@ -22,6 +22,7 @@
         <button class="config-tab" type="button" data-tab="pdf">Configuracion de PDF</button>
         <button class="config-tab" type="button" data-tab="alertas">Configuracion de alertas</button>
         <button class="config-tab" type="button" data-tab="licencia">Servidor y licencia</button>
+        <button class="config-tab hidden" type="button" data-tab="usuarios" id="tabUsuarios">Usuarios</button>
       </div>
 
       <div class="panel config-panel" data-panel="general">
@@ -166,8 +167,194 @@
           </label>
         </div>
       </div>
+
+      <div class="panel config-panel hidden" data-panel="usuarios">
+        <div class="config-users-layout">
+          <section class="panel">
+            <div class="config-users-header">
+              <div>
+                <h3>Usuarios registrados</h3>
+                <p class="muted">Solo visible para el administrador.</p>
+              </div>
+              <div class="config-users-tools">
+                <input id="usuariosSearch" type="text" placeholder="Buscar usuario o nombre">
+                <button id="btnRefrescarUsuarios" type="button">Actualizar</button>
+              </div>
+            </div>
+
+            <div class="table-shell">
+              <table class="tabla tabla-usuarios">
+                <thead>
+                  <tr>
+                    <th>Usuario</th>
+                    <th>Nombre</th>
+                    <th>Rol</th>
+                    <th>Estado</th>
+                    <th>Ultimo acceso</th>
+                  </tr>
+                </thead>
+                <tbody id="usuariosBody">
+                  <tr>
+                    <td colspan="5" class="muted">Cargando usuarios...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <aside class="panel config-users-side">
+            <h3>Acciones</h3>
+            <p class="muted" id="usuariosSeleccionInfo">Seleccione un usuario para operar.</p>
+            <div class="config-users-actions">
+              <button id="btnAbrirAltaUsuario" type="button">Alta</button>
+              <button id="btnEditarUsuario" type="button">Editar</button>
+              <button id="btnDesactivarUsuario" type="button">Desactivar</button>
+              <button id="btnReactivarUsuario" type="button">Reactivar</button>
+              <button id="btnGestionClavesUsuario" type="button">Gestion de claves</button>
+              <button id="btnVerAuditoriaUsuarios" type="button">Auditoria</button>
+            </div>
+            <div id="usuariosStatus" class="inline-notice hidden"></div>
+          </aside>
+        </div>
+      </div>
     </section>
   </main>
+
+  <div id="usuarioModal" class="modal-overlay hidden">
+    <section class="modal-card config-user-modal">
+      <div class="modal-header">
+        <h3 id="usuarioModalTitulo">Alta de usuario</h3>
+      </div>
+      <form id="formUsuario" class="config-grid config-grid-users">
+        <label class="field-label">Usuario
+          <input id="cfgUserUsername" type="text" placeholder="operador1">
+        </label>
+        <label class="field-label">Nombre visible
+          <input id="cfgUserDisplayName" type="text" placeholder="Nombre y apellido">
+        </label>
+        <label class="field-label">Clave
+          <input id="cfgUserPassword" type="password" placeholder="Clave inicial">
+        </label>
+        <label class="field-label">Rol
+          <select id="cfgUserRole">
+            <option value="OPERADOR">Operador</option>
+            <option value="ADMIN">Administrador</option>
+          </select>
+        </label>
+        <div class="config-inline-actions full-row">
+          <button id="btnCrearUsuario" type="submit">Crear usuario</button>
+          <button id="btnCancelarUsuarioModal" type="button">Cancelar</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <div id="usuarioClaveModal" class="modal-overlay hidden">
+    <section class="modal-card config-user-modal config-password-modal">
+      <div class="modal-header">
+        <h3>Restablecer clave</h3>
+      </div>
+      <form id="formUsuarioClave" class="config-grid">
+        <p id="usuarioClaveInfo" class="muted">Ingrese la nueva clave del usuario seleccionado.</p>
+        <label class="field-label">Nueva clave
+          <input id="cfgResetUserPassword" type="password" placeholder="Nueva clave">
+        </label>
+        <div class="config-inline-actions">
+          <button id="btnConfirmarResetClave" type="submit">Guardar clave</button>
+          <button id="btnCancelarResetClave" type="button">Cancelar</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <div id="gestionClavesModal" class="modal-overlay hidden">
+    <section class="modal-card config-user-modal config-keys-modal">
+      <div class="modal-header">
+        <h3>Gestion de claves</h3>
+      </div>
+
+      <div id="gestionClavesAuth" class="config-keys-auth">
+        <p class="muted">Confirme la clave del administrador para operar sobre contraseñas.</p>
+        <div class="config-keys-auth-row">
+          <label class="field-label">Clave administrador
+            <input id="cfgAdminPasswordConfirm" type="password" placeholder="Clave de admin">
+          </label>
+          <button id="btnValidarClaveAdmin" type="button">Validar</button>
+        </div>
+        <div id="gestionClavesAuthStatus" class="inline-notice hidden"></div>
+      </div>
+
+      <div id="gestionClavesContenido" class="hidden">
+        <div class="config-users-tools">
+          <input id="gestionClavesSearch" type="search" placeholder="Buscar usuario o nombre">
+        </div>
+
+        <div class="config-users-layout config-keys-layout">
+          <section class="panel">
+            <div class="table-shell">
+              <table class="tabla tabla-usuarios">
+                <thead>
+                  <tr>
+                    <th>Usuario</th>
+                    <th>Nombre</th>
+                    <th>Rol</th>
+                    <th>Estado</th>
+                    <th>Ultimo acceso</th>
+                  </tr>
+                </thead>
+                <tbody id="gestionClavesBody">
+                  <tr>
+                    <td colspan="5" class="muted">Cargando usuarios...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <aside class="panel config-users-side">
+            <h3>Clave</h3>
+            <p class="muted" id="gestionClavesSeleccionInfo">Seleccione un usuario para operar.</p>
+            <div class="config-users-actions">
+              <button id="btnClaveManual" type="button">Nueva clave manual</button>
+              <button id="btnClaveTemporal" type="button">Generar temporal</button>
+              <button id="btnCerrarGestionClaves" type="button">Cerrar</button>
+            </div>
+            <div id="gestionClavesStatus" class="inline-notice hidden"></div>
+          </aside>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div id="auditoriaUsuariosModal" class="modal-overlay hidden">
+    <section class="modal-card config-user-modal config-audit-modal">
+      <div class="modal-header">
+        <h3>Auditoria de usuarios</h3>
+      </div>
+
+      <div class="table-shell">
+        <table class="tabla tabla-usuarios">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Usuario</th>
+              <th>Accion</th>
+              <th>Resultado</th>
+            </tr>
+          </thead>
+          <tbody id="auditoriaUsuariosBody">
+            <tr>
+              <td colspan="4" class="muted">Cargando auditoria...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="config-inline-actions">
+        <button id="btnCerrarAuditoriaUsuarios" type="button">Cerrar</button>
+      </div>
+    </section>
+  </div>
 
   <script src="app-dialog.js"></script>
   <script src="configuracion.js"></script>

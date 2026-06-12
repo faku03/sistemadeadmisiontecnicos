@@ -8,6 +8,7 @@ const db = require('./services/data-source');
 const configStore = require('./config/store');
 const pdfReporteCaja = require('./pdf/reporte_caja');
 const license = require('./license/license-service');
+const { readLicenseCache } = require('./license/license-cache');
 
 const appDataBase = path.join(process.env.APPDATA || app.getPath('appData'), 'SistemaTicketsCaja');
 const electronSessionDir = path.join(appDataBase, 'electron-session');
@@ -19,6 +20,10 @@ fs.mkdirSync(electronCacheDir, { recursive: true });
 app.setPath('sessionData', electronSessionDir);
 app.commandLine.appendSwitch('disk-cache-dir', electronCacheDir);
 app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
+
+let loginWindow = null;
+let mainWindow = null;
+let authSession = null;
 
 function gatewayUrlActual() {
   const config = configStore.getConfig();
@@ -62,6 +67,19 @@ function scriptsServidorDir() {
   return localServerDir;
 }
 
+function contextoAdmin() {
+  const config = configStore.getConfig();
+  const licenseCache = readLicenseCache() || {};
+
+  return {
+    username: 'admin',
+    licenseKey: licenseCache.licenseKey || config.licenseKey || '',
+    licenseUnitId: config.licenseUnitId || config.sucursalId || '',
+    sucursalId: config.sucursalId || '',
+    businessTaxId: config.businessTaxId || ''
+  };
+}
+
 async function healthGateway(url) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 4000);
@@ -84,7 +102,10 @@ function ejecutarScriptPowerShell(scriptPath) {
   }
 
   const child = spawn('powershell.exe', [
+    '-NoProfile',
+    '-NonInteractive',
     '-ExecutionPolicy', 'Bypass',
+    '-WindowStyle', 'Hidden',
     '-File', scriptPath
   ], {
     detached: true,
@@ -137,10 +158,10 @@ async function asegurarGatewayLocal() {
   const gatewayScript = path.join(serverScripts, 'start-gateway.ps1');
 
   ejecutarScriptPowerShell(postgresScript);
-  await new Promise(resolve => setTimeout(resolve, 2500));
+  await new Promise(resolve => setTimeout(resolve, 5000));
   ejecutarScriptPowerShell(gatewayScript);
 
-  const deadline = Date.now() + 20000;
+  const deadline = Date.now() + 90000;
   while (Date.now() < deadline) {
     if (await healthGateway(apiUrlEfectiva)) {
       return {
@@ -158,7 +179,7 @@ async function asegurarGatewayLocal() {
     started: true,
     local: true,
     apiUrl,
-    message: 'Se intento iniciar el gateway local, pero no respondio a tiempo.'
+    message: 'Se intento iniciar el gateway local, pero no respondio a tiempo. Revisa C:\\ProgramData\\MardelTech\\SistemaTickets\\logs.'
   };
 }
 
@@ -169,8 +190,13 @@ function requireLicense(handler) {
   };
 }
 
-function createWindow() {
-  const win = new BrowserWindow({
+function createMainWindow() {
+  if (mainWindow) {
+    mainWindow.focus();
+    return;
+  }
+
+  mainWindow = new BrowserWindow({
     width: 1120,
     height: 720,
     center: true,
@@ -183,7 +209,45 @@ function createWindow() {
     }
   });
 
-  win.loadFile('index-caja.html');
+  mainWindow.loadFile('index-caja.html');
+
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+    authSession = null;
+    db.setAuthToken('');
+  });
+}
+
+function createLoginWindow() {
+  if (loginWindow) {
+    loginWindow.focus();
+    return;
+  }
+
+  loginWindow = new BrowserWindow({
+    width: 520,
+    height: 460,
+    center: true,
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    autoHideMenuBar: true,
+    title: 'Ingreso al sistema',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload-caja.js'),
+      contextIsolation: true,
+      sandbox: true
+    }
+  });
+
+  loginWindow.loadFile('login.html');
+
+  loginWindow.on('closed', () => {
+    loginWindow = null;
+    if (!mainWindow && !authSession) {
+      app.quit();
+    }
+  });
 }
 
 function abrirVentana(ruta, titulo, width = 1060, height = 720) {
@@ -279,9 +343,140 @@ ipcMain.handle('abrir-url-externa', (_, url) =>
   shell.openExternal(url)
 );
 
+ipcMain.handle('licencia:guardar-solicitud-txt', async (_, texto) => {
+  const outputDir = path.join(app.getPath('documents'), 'SistemaTickets', 'solicitudes-licencia');
+  const fileName = `solicitud-licencia-${new Date().toISOString().replace(/[:.]/g, '-')}.txt`;
+  const filePath = path.join(outputDir, fileName);
+
+  fs.mkdirSync(outputDir, { recursive: true });
+  fs.writeFileSync(filePath, String(texto || ''), 'utf8');
+  await shell.openPath(filePath);
+  return filePath;
+});
+
 ipcMain.handle('gateway:asegurar', () =>
   asegurarGatewayLocal()
 );
+
+ipcMain.handle('auth:contexto-admin', () =>
+  contextoAdmin()
+);
+
+ipcMain.handle('auth:bootstrap-admin', async (_, data = {}) => {
+  const gateway = await asegurarGatewayLocal();
+  if (!gateway.ok) {
+    throw new Error(gateway.message || 'No se pudo preparar el gateway local.');
+  }
+
+  return db.authBootstrapAdmin(data);
+});
+
+ipcMain.handle('auth:reset-admin', async (_, data = {}) => {
+  const gateway = await asegurarGatewayLocal();
+  if (!gateway.ok) {
+    throw new Error(gateway.message || 'No se pudo preparar el gateway local.');
+  }
+
+  return db.authResetAdmin(data);
+});
+
+ipcMain.handle('auth:login', async (_, credentials = {}) => {
+  const gateway = await asegurarGatewayLocal();
+  if (!gateway.ok) {
+    throw new Error(gateway.message || 'No se pudo iniciar el gateway local.');
+  }
+
+  const session = await db.authLogin(credentials.username, credentials.password);
+  authSession = session;
+  db.setAuthToken(session.token || '');
+
+  if (loginWindow && !loginWindow.isDestroyed()) {
+    loginWindow.close();
+  }
+
+  createMainWindow();
+  return session.user;
+});
+
+ipcMain.handle('auth:logout', async () => {
+  try {
+    await db.authLogout();
+  } catch (_) {
+    // no-op
+  }
+
+  authSession = null;
+  db.setAuthToken('');
+
+  BrowserWindow.getAllWindows().forEach(window => {
+    if (!window.isDestroyed()) {
+      window.close();
+    }
+  });
+
+  createLoginWindow();
+  return { ok: true };
+});
+
+ipcMain.handle('auth:verify-password', async (_, data = {}) => {
+  if (!authSession || authSession.user?.role !== 'ADMIN') {
+    throw new Error('Solo un administrador puede validar la clave.');
+  }
+
+  return db.authVerifyPassword(data.password);
+});
+
+ipcMain.handle('auth:current-user', () =>
+  authSession?.user || null
+);
+
+ipcMain.handle('auth:list-users', async () => {
+  if (!authSession || authSession.user?.role !== 'ADMIN') {
+    throw new Error('Solo un administrador puede listar usuarios.');
+  }
+
+  return db.authListUsers();
+});
+
+ipcMain.handle('auth:list-audit', async (_, limit = 80) => {
+  if (!authSession || authSession.user?.role !== 'ADMIN') {
+    throw new Error('Solo un administrador puede ver la auditoria.');
+  }
+
+  return db.authListAudit(limit);
+});
+
+ipcMain.handle('auth:create-user', async (_, data = {}) => {
+  if (!authSession || authSession.user?.role !== 'ADMIN') {
+    throw new Error('Solo un administrador puede crear usuarios.');
+  }
+
+  return db.authCreateUser(data);
+});
+
+ipcMain.handle('auth:update-user', async (_, data = {}) => {
+  if (!authSession || authSession.user?.role !== 'ADMIN') {
+    throw new Error('Solo un administrador puede editar usuarios.');
+  }
+
+  return db.authUpdateUser(data);
+});
+
+ipcMain.handle('auth:update-user-status', async (_, data = {}) => {
+  if (!authSession || authSession.user?.role !== 'ADMIN') {
+    throw new Error('Solo un administrador puede cambiar el estado de usuarios.');
+  }
+
+  return db.authUpdateUserStatus(data.id, data.isActive);
+});
+
+ipcMain.handle('auth:reset-user-password', async (_, data = {}) => {
+  if (!authSession || authSession.user?.role !== 'ADMIN') {
+    throw new Error('Solo un administrador puede restablecer claves.');
+  }
+
+  return db.authResetUserPassword(data.id, data.password);
+});
 
 ipcMain.handle('caja:listar-cobrados', (_, limite) =>
   db.listarCajaCobrada(limite)
@@ -385,4 +580,19 @@ ipcMain.handle('caja:generar-reporte-listado-pdf', (_, payload = {}) => {
   return pdfReporteCaja(reportPayload);
 });
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  db.setAuthToken('');
+  createLoginWindow();
+});
+
+app.on('activate', () => {
+  if (!loginWindow && !mainWindow) {
+    createLoginWindow();
+  }
+});
+
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') {
+    app.quit();
+  }
+});

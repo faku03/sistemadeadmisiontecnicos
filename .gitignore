@@ -5,14 +5,18 @@ dist-instalador/
 dist-terminal/
 dist-terminal-fresh/
 dist-terminal-next/
+dist-terminal-retryclose/
+.electron-builder-cache/
 backups/
 
 pdfs/**
 pdf_presupuesto/*.pdf
 *.log
 *.zip
+tmp-*.cmd
 app.config.json
 server.config.json
+00DatosBaseDatosServer.txt
 
 .env
 .env.*

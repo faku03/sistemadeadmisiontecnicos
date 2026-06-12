@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ingreso al sistema</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="login-shell">
+    <section class="login-card">
+      <h1>Ingreso al sistema</h1>
+      <p class="muted" id="loginSubtitle">Ingresa con tu usuario y clave.</p>
+
+      <form id="loginForm" class="login-form">
+        <label class="field-label">Usuario
+          <input id="loginUsername" type="text" placeholder="admin u operador" autocomplete="username">
+        </label>
+        <label class="field-label">Clave
+          <input id="loginPassword" type="password" placeholder="Clave" autocomplete="current-password">
+        </label>
+        <div class="login-actions">
+          <button id="btnLogin" class="btn-primary" type="submit">Ingresar</button>
+          <button id="btnResetAdmin" type="button">Restablecer clave administrador</button>
+        </div>
+      </form>
+
+      <div id="loginStatus" class="inline-notice hidden"></div>
+      <div id="loginAdminInfo" class="inline-notice hidden"></div>
+    </section>
+  </main>
+
+  <script src="app-dialog.js"></script>
+  <script src="login.js"></script>
+</body>
+</html>

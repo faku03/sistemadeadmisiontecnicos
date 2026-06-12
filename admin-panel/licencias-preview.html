@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vista previa - Licencias</title>
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <main class="admin-shell">
+    <section class="topbar">
+      <div>
+        <p class="eyebrow">Sistema de Tickets</p>
+        <h1>Licencias</h1>
+      </div>
+      <nav class="main-menu" aria-label="Menu administrativo">
+        <button class="menu-item active" type="button">Licencias</button>
+        <button class="menu-item" type="button">Grupos y sucursales</button>
+        <button class="menu-item" type="button">Vencimientos</button>
+        <button class="menu-item" type="button">Validaciones</button>
+      </nav>
+      <form class="token-box">
+        <input type="password" placeholder="Token administrador" value="preview">
+        <button type="button" class="btn btn-primary">Conectar</button>
+      </form>
+    </section>
+
+    <section class="message">Vista previa con datos de ejemplo. La grilla queda desplegada y las altas pasan al modal.</section>
+
+    <section class="summary-grid">
+      <article class="summary-card">
+        <span>Grupos</span>
+        <strong>4</strong>
+      </article>
+      <article class="summary-card">
+        <span>Sucursales y tecnicos</span>
+        <strong>9</strong>
+      </article>
+      <article class="summary-card">
+        <span>Licencias activas</span>
+        <strong>7</strong>
+      </article>
+      <article class="summary-card">
+        <span>Vencen pronto</span>
+        <strong>2</strong>
+      </article>
+    </section>
+
+    <section class="view active-view">
+      <section class="content-grid">
+        <section class="license-workspace">
+        <section class="panel main-panel">
+          <div class="panel-header">
+            <div>
+              <h2>Licencias por sucursal o tecnico</h2>
+              <p>El codigo no cambia. Para renovar, actualiza la fecha de vencimiento.</p>
+            </div>
+            <div class="panel-actions">
+              <input id="licenseSearch" class="panel-search" placeholder="Buscar grupo o sucursal">
+              <button id="openLicenseAltaBtn" class="btn btn-primary" type="button">Alta de licencias</button>
+              <button class="btn btn-secondary" type="button">Actualizar</button>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Grupo</th>
+                  <th>Codigo</th>
+                  <th>Nombre</th>
+                  <th>Licencia</th>
+                  <th>Estado</th>
+                  <th>Pago</th>
+                  <th>Vence</th>
+                  <th>Equipo</th>
+                </tr>
+              </thead>
+              <tbody id="licensesBody">
+                <tr class="license-row selected-row" data-license-row="1" data-search="mardel cell suc-mdp local centro">
+                  <td>MARDEL-CELL</td>
+                  <td><strong>SUC-MDP</strong></td>
+                  <td>Local Centro</td>
+                  <td>
+                    <div class="license-key-box">
+                      <code>ABCD-1234-EFGH</code>
+                    </div>
+                  </td>
+                  <td><span class="status-pill status-active">ACTIVA</span></td>
+                  <td>
+                    <div class="payment-cell">
+                      <span class="status-pill status-active">Pago al dia (28 dias)</span>
+                      <small>MP-PREAPPROVAL-001</small>
+                    </div>
+                  </td>
+                  <td>2026-06-24</td>
+                  <td class="machine">PC-VENTAS-01</td>
+                </tr>
+                <tr class="license-row" data-license-row="2" data-search="mardel cell caja-02 caja adicional">
+                  <td>MARDEL-CELL</td>
+                  <td><strong>CAJA-02</strong></td>
+                  <td>Caja adicional</td>
+                  <td>
+                    <div class="license-key-box">
+                      <code>****-****-9XYZ</code>
+                    </div>
+                  </td>
+                  <td><span class="status-pill status-warning">5 dias</span></td>
+                  <td>
+                    <div class="payment-cell">
+                      <span class="status-pill status-warning">PENDING</span>
+                      <small>Transferencia pendiente</small>
+                    </div>
+                  </td>
+                  <td>2026-06-01</td>
+                  <td class="machine">Sin activar</td>
+                </tr>
+                <tr class="license-row" data-license-row="3" data-search="tecno sur suc-batan local batan">
+                  <td>TECNO-SUR</td>
+                  <td><strong>SUC-BATAN</strong></td>
+                  <td>Local Batan</td>
+                  <td>
+                    <div class="license-key-box">
+                      <code>HJKL-8821-RTYU</code>
+                    </div>
+                  </td>
+                  <td><span class="status-pill status-active">ACTIVA</span></td>
+                  <td><span class="status-pill status-active">Pago al dia (17 dias)</span></td>
+                  <td>2026-06-13</td>
+                  <td class="machine">PC-BATAN</td>
+                </tr>
+                <tr class="license-row" data-license-row="4" data-search="zona norte tecnico-01 tecnico externo">
+                  <td>ZONA-NORTE</td>
+                  <td><strong>TECNICO-01</strong></td>
+                  <td>Tecnico externo</td>
+                  <td>
+                    <div class="license-key-box">
+                      <code>QWER-4567-ASDF</code>
+                    </div>
+                  </td>
+                  <td><span class="status-pill status-active">ACTIVA</span></td>
+                  <td><span class="status-pill status-active">Demo (6 dias)</span></td>
+                  <td>2026-06-02</td>
+                  <td class="machine">NOTE-TECNICO</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <aside class="panel license-actions-panel">
+          <div>
+            <h2>Acciones</h2>
+            <p id="selectedLicenseText">MARDEL-CELL / SUC-MDP</p>
+          </div>
+          <div class="selected-license-card" id="selectedLicenseCard">
+            <strong>Local Centro</strong>
+            <span>MARDEL-CELL</span>
+            <span>Licencia: ABCD-1234-EFGH</span>
+            <span>Estado: ACTIVA / Pago: Pago al dia</span>
+            <span>Equipo: PC-VENTAS-01</span>
+          </div>
+          <label class="field-label" for="selectedRenewDate">Nuevo vencimiento</label>
+          <input id="selectedRenewDate" type="date" value="2026-06-24">
+          <div class="action-grid">
+            <button class="btn btn-primary license-selected-action" type="button">Renovar</button>
+            <button class="btn btn-primary license-selected-action" type="button">Pago +30</button>
+            <button class="btn btn-secondary license-selected-action" type="button">Mensaje</button>
+            <button class="btn btn-secondary license-selected-action" type="button">Copiar clave</button>
+            <button class="btn btn-danger license-selected-action" type="button">Suspender</button>
+            <button class="btn btn-secondary license-selected-action" type="button">Liberar PC</button>
+          </div>
+        </aside>
+        </section>
+      </section>
+    </section>
+  </main>
+
+  <div id="licenseAltaModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="licenseAltaTitle">
+    <section class="modal-content alta-modal-content">
+      <div class="modal-header">
+        <div>
+          <h2 id="licenseAltaTitle">Alta de licencias</h2>
+          <p>Crear cliente, sucursal y licencia desde una sola ventana.</p>
+        </div>
+        <button id="closeLicenseAltaBtn" class="btn btn-secondary" type="button">Cerrar</button>
+      </div>
+
+      <section class="alta-grid">
+        <section class="alta-panel">
+          <h2>Nuevo grupo</h2>
+          <form class="stack">
+            <input placeholder="Codigo de grupo" value="CLIENTE-NUEVO">
+            <input placeholder="Nombre comercial" value="Cliente Nuevo">
+            <input placeholder="CUIT/CUIL">
+            <input placeholder="Contacto responsable">
+            <input type="email" placeholder="Email">
+            <input placeholder="Celular">
+            <input placeholder="Direccion">
+            <input placeholder="Localidad">
+            <input placeholder="Provincia">
+            <button class="btn btn-primary" type="button">Crear grupo</button>
+          </form>
+        </section>
+
+        <section class="alta-panel">
+          <h2>Nueva sucursal o tecnico</h2>
+          <form class="stack">
+            <select><option>CLIENTE-NUEVO - Cliente Nuevo</option></select>
+            <input placeholder="Codigo estable de sucursal/tecnico" value="SUC-001">
+            <input placeholder="Nombre visible" value="Local principal">
+            <select><option>Sucursal</option><option>Tecnico</option></select>
+            <button class="btn btn-primary" type="button">Crear unidad</button>
+          </form>
+        </section>
+
+        <section class="alta-panel">
+          <h2>Nueva licencia</h2>
+          <form class="stack">
+            <select><option>CLIENTE-NUEVO / SUC-001 - Local principal</option></select>
+            <select><option>Standard</option><option>Pro</option></select>
+            <select><option>Demo / prueba</option><option>Pendiente de pago</option><option>Suscripcion activa</option><option>Pago manual</option></select>
+            <input placeholder="Referencia Mercado Pago / transferencia" value="MP-PREAPPROVAL-002">
+            <select><option>Mensual</option><option>Anual</option><option>Demo</option></select>
+            <input type="date" value="2026-06-26">
+            <input type="number" min="0" value="7" placeholder="Dias de gracia">
+            <button class="btn btn-primary" type="button">Crear licencia</button>
+          </form>
+        </section>
+      </section>
+    </section>
+  </div>
+
+  <script>
+    const modal = document.getElementById('licenseAltaModal');
+    const search = document.getElementById('licenseSearch');
+    const rows = Array.from(document.querySelectorAll('#licensesBody tr'));
+    const selectedText = document.getElementById('selectedLicenseText');
+    const selectedCard = document.getElementById('selectedLicenseCard');
+    const selectedDate = document.getElementById('selectedRenewDate');
+    const selectedData = {
+      1: {
+        text: 'MARDEL-CELL / SUC-MDP',
+        date: '2026-06-24',
+        card: '<strong>Local Centro</strong><span>MARDEL-CELL</span><span>Licencia: ABCD-1234-EFGH</span><span>Estado: ACTIVA / Pago: Pago al dia</span><span>Equipo: PC-VENTAS-01</span>'
+      },
+      2: {
+        text: 'MARDEL-CELL / CAJA-02',
+        date: '2026-06-01',
+        card: '<strong>Caja adicional</strong><span>MARDEL-CELL</span><span>Licencia: ****-****-9XYZ</span><span>Estado: 5 dias / Pago: PENDING</span><span>Equipo: Sin activar</span>'
+      },
+      3: {
+        text: 'TECNO-SUR / SUC-BATAN',
+        date: '2026-06-13',
+        card: '<strong>Local Batan</strong><span>TECNO-SUR</span><span>Licencia: HJKL-8821-RTYU</span><span>Estado: ACTIVA / Pago: Pago al dia</span><span>Equipo: PC-BATAN</span>'
+      },
+      4: {
+        text: 'ZONA-NORTE / TECNICO-01',
+        date: '2026-06-02',
+        card: '<strong>Tecnico externo</strong><span>ZONA-NORTE</span><span>Licencia: QWER-4567-ASDF</span><span>Estado: ACTIVA / Pago: Demo</span><span>Equipo: NOTE-TECNICO</span>'
+      }
+    };
+
+    document.getElementById('openLicenseAltaBtn').addEventListener('click', () => modal.classList.remove('hidden'));
+    document.getElementById('closeLicenseAltaBtn').addEventListener('click', () => modal.classList.add('hidden'));
+    modal.addEventListener('click', event => {
+      if (event.target === modal) {
+        modal.classList.add('hidden');
+      }
+    });
+    search.addEventListener('input', event => {
+      const value = event.target.value.trim().toLowerCase();
+      rows.forEach(row => {
+        row.hidden = value && !row.dataset.search.includes(value);
+      });
+    });
+    rows.forEach(row => {
+      row.addEventListener('click', () => {
+        rows.forEach(item => item.classList.remove('selected-row'));
+        row.classList.add('selected-row');
+        const data = selectedData[row.dataset.licenseRow];
+        selectedText.textContent = data.text;
+        selectedCard.innerHTML = data.card;
+        selectedDate.value = data.date;
+      });
+    });
+    if (new URLSearchParams(window.location.search).get('modal') === '1') {
+      modal.classList.remove('hidden');
+    }
+  </script>
+</body>
+</html>

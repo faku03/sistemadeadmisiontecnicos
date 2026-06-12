@@ -17,6 +17,7 @@
         <button class="menu-item active" type="button" data-view="licensesView">Licencias</button>
         <button class="menu-item" type="button" data-view="groupsView">Grupos y sucursales</button>
         <button class="menu-item" type="button" data-view="expiringView">Vencimientos</button>
+        <button class="menu-item" type="button" data-view="validationsView">Validaciones</button>
       </nav>
       <form id="tokenForm" class="token-box">
         <input id="adminToken" type="password" placeholder="Token administrador">
@@ -47,91 +48,61 @@
 
     <section id="licensesView" class="view active-view">
       <section class="content-grid">
-      <section class="panel main-panel">
-        <div class="panel-header">
-          <div>
-            <h2>Licencias por sucursal o tecnico</h2>
-            <p>El codigo no cambia. Para renovar, actualiza la fecha de vencimiento.</p>
-          </div>
-          <button id="refreshBtn" class="btn btn-secondary" type="button">Actualizar</button>
-        </div>
+        <section class="license-workspace">
+          <section class="panel main-panel">
+            <div class="panel-header">
+              <div>
+                <h2>Licencias por sucursal o tecnico</h2>
+                <p>Selecciona un registro para operar sobre la licencia.</p>
+              </div>
+              <div class="panel-actions">
+                <input id="licenseSearch" class="panel-search" placeholder="Buscar grupo o sucursal">
+                <button id="openLicenseAltaBtn" class="btn btn-primary" type="button">Alta de licencias</button>
+                <button id="refreshBtn" class="btn btn-secondary" type="button">Actualizar</button>
+              </div>
+            </div>
 
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Grupo</th>
-                <th>Codigo</th>
-                <th>Nombre</th>
-                <th>Licencia</th>
-                <th>Estado</th>
-                <th>Vence</th>
-                <th>Renovar</th>
-                <th>Equipo</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody id="licensesBody"></tbody>
-          </table>
-        </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Grupo</th>
+                    <th>Codigo</th>
+                    <th>Nombre</th>
+                    <th>Licencia</th>
+                    <th>Estado</th>
+                    <th>Pago</th>
+                    <th>Vence</th>
+                    <th>Equipo</th>
+                  </tr>
+                </thead>
+                <tbody id="licensesBody"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <aside class="panel license-actions-panel">
+            <div>
+              <h2>Acciones</h2>
+              <p id="selectedLicenseText">Selecciona una licencia de la grilla.</p>
+            </div>
+            <div class="selected-license-card" id="selectedLicenseCard">
+              Sin registro seleccionado.
+            </div>
+            <label class="field-label" for="selectedRenewDate">Nuevo vencimiento</label>
+            <input id="selectedRenewDate" type="date" disabled>
+            <div class="action-grid">
+              <button id="selectedRenewBtn" class="btn btn-primary license-selected-action" type="button" disabled>Renovar</button>
+              <button id="selectedPaymentBtn" class="btn btn-primary license-selected-action" type="button" disabled>Pago +30</button>
+              <button id="selectedMessageBtn" class="btn btn-secondary license-selected-action" type="button" disabled>Mensaje</button>
+              <button id="selectedCopyBtn" class="btn btn-secondary license-selected-action" type="button" disabled>Copiar clave</button>
+              <button id="selectedStatusBtn" class="btn btn-danger license-selected-action" type="button" disabled>Suspender</button>
+              <button id="selectedReleaseBtn" class="btn btn-secondary license-selected-action" type="button" disabled>Liberar PC</button>
+            </div>
+          </aside>
+        </section>
       </section>
 
-      <aside class="forms-column">
-        <section class="panel">
-          <h2>Nuevo grupo</h2>
-          <form id="groupForm" class="stack">
-            <input name="codigo" placeholder="Codigo de grupo" required>
-            <input name="nombre" placeholder="Nombre comercial" required>
-            <input name="tax_id" placeholder="CUIT/CUIL">
-            <input name="contact_name" placeholder="Contacto responsable">
-            <input name="contact_email" type="email" placeholder="Email">
-            <input name="contact_phone" placeholder="Celular">
-            <input name="address" placeholder="Direccion">
-            <input name="locality" placeholder="Localidad">
-            <input name="province" placeholder="Provincia">
-            <button class="btn btn-primary" type="submit">Crear grupo</button>
-          </form>
-        </section>
-
-        <section class="panel">
-          <h2>Nueva sucursal o tecnico</h2>
-          <form id="unitForm" class="stack">
-            <select name="group_id" id="unitGroup" required></select>
-            <input name="codigo" placeholder="Codigo estable de sucursal/tecnico" required>
-            <input name="nombre" placeholder="Nombre visible" required>
-            <select name="tipo">
-              <option value="SUCURSAL">Sucursal</option>
-              <option value="TECNICO">Tecnico</option>
-            </select>
-            <button class="btn btn-primary" type="submit">Crear unidad</button>
-          </form>
-        </section>
-
-        <section class="panel">
-          <h2>Nueva licencia</h2>
-          <form id="licenseForm" class="stack">
-            <select name="unit_id" id="licenseUnit" required></select>
-            <select name="plan">
-              <option value="STANDARD">Standard</option>
-              <option value="PRO">Pro</option>
-            </select>
-            <input name="expires_at" type="date" required>
-            <input name="grace_days" type="number" min="0" value="7" placeholder="Dias de gracia">
-            <button class="btn btn-primary" type="submit">Crear licencia</button>
-          </form>
-        </section>
-      </aside>
-      </section>
-
-      <section class="panel audit-panel">
-      <div class="panel-header">
-        <div>
-          <h2>Ultimas validaciones</h2>
-          <p>Control online contra fecha del servidor y vencimiento guardado en PostgreSQL.</p>
-        </div>
-      </div>
-      <div class="audit-list" id="validationsList"></div>
-      </section>
     </section>
 
     <section id="groupsView" class="view">
@@ -217,7 +188,90 @@
         </div>
       </section>
     </section>
+
+    <section id="validationsView" class="view">
+      <section class="panel audit-panel">
+        <div class="panel-header">
+          <div>
+            <h2>Ultimas validaciones</h2>
+            <p>Auditoria online de activaciones, rechazos, equipos y fecha del servidor.</p>
+          </div>
+          <button id="refreshValidationsBtn" class="btn btn-secondary" type="button">Actualizar</button>
+        </div>
+        <div class="audit-list" id="validationsList"></div>
+      </section>
+    </section>
   </main>
+
+  <div id="licenseAltaModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="licenseAltaTitle">
+    <section class="modal-content alta-modal-content">
+      <div class="modal-header">
+        <div>
+          <h2 id="licenseAltaTitle">Alta de licencias</h2>
+          <p>Crear cliente, sucursal y licencia desde una sola ventana.</p>
+        </div>
+        <button id="closeLicenseAltaBtn" class="btn btn-secondary" type="button">Cerrar</button>
+      </div>
+
+      <section class="alta-grid">
+        <section class="alta-panel">
+          <h2>Nuevo grupo</h2>
+          <form id="groupForm" class="stack">
+            <input name="codigo" placeholder="Codigo de grupo" required>
+            <input name="nombre" placeholder="Nombre comercial" required>
+            <input name="tax_id" placeholder="CUIT/CUIL">
+            <input name="contact_name" placeholder="Contacto responsable">
+            <input name="contact_email" type="email" placeholder="Email">
+            <input name="contact_phone" placeholder="Celular">
+            <input name="address" placeholder="Direccion">
+            <input name="locality" placeholder="Localidad">
+            <input name="province" placeholder="Provincia">
+            <button class="btn btn-primary" type="submit">Crear grupo</button>
+          </form>
+        </section>
+
+        <section class="alta-panel">
+          <h2>Nueva sucursal o tecnico</h2>
+          <form id="unitForm" class="stack">
+            <select name="group_id" id="unitGroup" required></select>
+            <input name="codigo" placeholder="Codigo estable de sucursal/tecnico" required>
+            <input name="nombre" placeholder="Nombre visible" required>
+            <select name="tipo">
+              <option value="SUCURSAL">Sucursal</option>
+              <option value="TECNICO">Tecnico</option>
+            </select>
+            <button class="btn btn-primary" type="submit">Crear unidad</button>
+          </form>
+        </section>
+
+        <section class="alta-panel">
+          <h2>Nueva licencia</h2>
+          <form id="licenseForm" class="stack">
+            <select name="unit_id" id="licenseUnit" required></select>
+            <select name="plan">
+              <option value="STANDARD">Standard</option>
+              <option value="PRO">Pro</option>
+            </select>
+            <select name="subscription_status">
+              <option value="TRIAL">Demo / prueba</option>
+              <option value="PENDING">Pendiente de pago</option>
+              <option value="ACTIVE">Suscripcion activa</option>
+              <option value="MANUAL">Pago manual</option>
+            </select>
+            <input name="subscription_reference" placeholder="Referencia Mercado Pago / transferencia">
+            <select name="billing_period">
+              <option value="MONTHLY">Mensual</option>
+              <option value="ANNUAL">Anual</option>
+              <option value="TRIAL">Demo</option>
+            </select>
+            <input name="expires_at" type="date" required>
+            <input name="grace_days" type="number" min="0" value="7" placeholder="Dias de gracia">
+            <button class="btn btn-primary" type="submit">Crear licencia</button>
+          </form>
+        </section>
+      </section>
+    </section>
+  </div>
 
   <script src="/admin-panel/admin.js"></script>
 </body>

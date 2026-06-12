@@ -4,6 +4,7 @@ let ticketEntregaActual = null;
 let dateFormatActual = 'system';
 let currencyCodeActual = 'ARS';
 let currencyFormatActual = 'system';
+let usuarioActual = null;
 
 document.addEventListener('DOMContentLoaded', () => {
   const inicioPantalla = performance.now();
@@ -22,6 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const celular = document.getElementById('celular');
   const email = document.getElementById('email');
   const clienteAviso = document.getElementById('clienteAviso');
+  let ultimoDniBuscado = '';
 
   const tipoEquipo = document.getElementById('tipoEquipo');
   const marca = document.getElementById('marca');
@@ -61,6 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnEntregarTicket = document.getElementById('btnEntregarTicket');
   const btnVerAlertasTickets = document.getElementById('btnVerAlertasTickets');
   const btnConfiguracion = document.getElementById('btnConfiguracion');
+  const btnCerrarSesion = document.getElementById('btnCerrarSesion');
   const alertasResumen = document.getElementById('alertasResumen');
 
   let ticketPresupuestoActual = null;
@@ -236,6 +239,29 @@ document.addEventListener('DOMContentLoaded', () => {
     clienteAviso.classList.add('hidden');
   }
 
+  function aplicarPermisosPorRol() {
+    const esAdmin = usuarioActual?.role === 'ADMIN';
+    const menuDatosContainer = btnMenuDatos?.closest('.menu');
+    const puedeAbrirCatalogos = ['ADMIN', 'OPERADOR'].includes(usuarioActual?.role);
+
+    if (btnConfiguracion) {
+      btnConfiguracion.classList.toggle('hidden', !esAdmin);
+      btnConfiguracion.disabled = !esAdmin;
+    }
+
+    if (menuDatosContainer) {
+      menuDatosContainer.classList.toggle('hidden', !puedeAbrirCatalogos);
+    }
+
+    if (menuSucursales) {
+      menuSucursales.classList.toggle('hidden', !esAdmin);
+    }
+
+    if (!puedeAbrirCatalogos && menuDatos) {
+      menuDatos.classList.add('hidden');
+    }
+  }
+
   function enfocarNombreCliente() {
     setTimeout(() => {
       window.focus();
@@ -276,11 +302,13 @@ document.addEventListener('DOMContentLoaded', () => {
   async function buscarCliente(mostrarAviso) {
     const valor = dni.value.trim();
     if (!valor) {
+      ultimoDniBuscado = '';
       limpiarClienteActual();
       ocultarAvisoCliente();
       return false;
     }
 
+    ultimoDniBuscado = valor;
     const cliente = await window.api.buscarClientePorDni(valor);
 
     if (cliente) {
@@ -331,6 +359,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   dni.addEventListener('input', () => {
+    ultimoDniBuscado = '';
     if (!dni.value.trim()) {
       limpiarClienteActual();
       ocultarAvisoCliente();
@@ -341,6 +370,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (event.key !== 'Enter') return;
 
     event.preventDefault();
+    try {
+      await buscarCliente(true);
+    } catch (error) {
+      await mostrarAlerta('No se pudo buscar', error.message || 'No se pudo buscar el cliente', () => dni.focus());
+    }
+  });
+
+  dni.addEventListener('blur', async () => {
+    const valor = dni.value.trim();
+    if (!valor || valor === ultimoDniBuscado) return;
+
     try {
       await buscarCliente(true);
     } catch (error) {
@@ -630,6 +670,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function inicializarPantalla() {
     await asegurarGatewayAntesDeCargar();
+    usuarioActual = await window.api.obtenerUsuarioActual();
+    aplicarPermisosPorRol();
     await Promise.all([
       cargarConfiguracionSistema().then(() => medirPaso('configuracion')),
       inicializarCombos().then(() => medirPaso('combos')),
@@ -837,6 +879,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ================= MENÚ =================
   btnMenuDatos.addEventListener('click', e => {
+    if (!['ADMIN', 'OPERADOR'].includes(usuarioActual?.role)) return;
     e.stopPropagation();
     menuDatos.classList.toggle('hidden');
   });
@@ -845,16 +888,25 @@ document.addEventListener('DOMContentLoaded', () => {
     menuDatos.classList.add('hidden');
   });
 
-  menuTipos.addEventListener('click', () => window.api.abrirTiposEquipo());
-  menuMarcas.addEventListener('click', () => window.api.abrirMarcas());
-  menuModelos.addEventListener('click', () => window.api.abrirModelos());
-  menuClientes.addEventListener('click', () => window.api.abrirClientes());
-  menuSucursales.addEventListener('click', () => window.api.abrirSucursales());
+  menuTipos.addEventListener('click', () => ['ADMIN', 'OPERADOR'].includes(usuarioActual?.role) && window.api.abrirTiposEquipo());
+  menuMarcas.addEventListener('click', () => ['ADMIN', 'OPERADOR'].includes(usuarioActual?.role) && window.api.abrirMarcas());
+  menuModelos.addEventListener('click', () => ['ADMIN', 'OPERADOR'].includes(usuarioActual?.role) && window.api.abrirModelos());
+  menuClientes.addEventListener('click', () => ['ADMIN', 'OPERADOR'].includes(usuarioActual?.role) && window.api.abrirClientes());
+  menuSucursales.addEventListener('click', () => usuarioActual?.role === 'ADMIN' && window.api.abrirSucursales());
 
   buscadorTickets.addEventListener('input', cargarTickets);
   filtroEstado.addEventListener('change', cargarTickets);
   btnVerAlertasTickets?.addEventListener('click', () => window.api.abrirAlertasTickets());
-  btnConfiguracion?.addEventListener('click', () => window.api.abrirConfiguracion());
+  btnConfiguracion?.addEventListener('click', () => {
+    if (usuarioActual?.role === 'ADMIN') {
+      window.api.abrirConfiguracion();
+    }
+  });
+  btnCerrarSesion?.addEventListener('click', async () => {
+    const confirmed = await confirmar('Cerrar sesion', 'Se cerrara la sesion actual. Continuar?', 'Cerrar sesion');
+    if (!confirmed) return;
+    await window.api.cerrarSesion();
+  });
   btnVerTodosTickets.addEventListener('click', () => window.api.abrirTickets());
   btnPdfTicket.addEventListener('click', () => generarPDFIngresoSeleccionado(ticketSeleccionado));
   btnPresupuestoTicket.addEventListener('click', () => {

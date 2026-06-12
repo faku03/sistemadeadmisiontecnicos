@@ -7,9 +7,15 @@
   "files": [
     "**/*",
     "!dist/**",
+    "!dist*/**",
+    "!dist-*/**",
     "!dist-caja/**",
     "!dist-instalador/**",
     "!dist-terminal/**",
+    "!dist-terminal*/**",
+    "!.tmp*/**",
+    "!backups/**",
+    "!*.blockmap",
     "!pdfs/**",
     "!installer/**",
     "!*.zip",
@@ -69,6 +75,10 @@
       "to": "server/bootstrap-server.cmd"
     },
     {
+      "from": "server/repair-server.cmd",
+      "to": "server/repair-server.cmd"
+    },
+    {
       "from": "server/configure-postgresql-instance.ps1",
       "to": "server/configure-postgresql-instance.ps1"
     },
@@ -102,6 +112,7 @@
   },
   "win": {
     "target": "nsis",
+    "icon": "assets/icons/servidor.ico",
     "artifactName": "SistemaServidor-Setup-${version}.${ext}"
   },
   "nsis": {

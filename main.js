@@ -10,6 +10,7 @@ const pdfPresupuesto = require('./pdf/presupuesto');
 const pdfConfiguracionPreview = require('./pdf/configuracion-preview');
 const license = require('./license/license-service');
 const configStore = require('./config/store');
+const { readLicenseCache } = require('./license/license-cache');
 
 const appDataBase = path.join(process.env.APPDATA || app.getPath('appData'), 'SistemaTickets');
 const electronSessionDir = path.join(appDataBase, 'electron-session');
@@ -21,6 +22,10 @@ fs.mkdirSync(electronCacheDir, { recursive: true });
 app.setPath('sessionData', electronSessionDir);
 app.commandLine.appendSwitch('disk-cache-dir', electronCacheDir);
 app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
+
+let loginWindow = null;
+let mainWindow = null;
+let authSession = null;
 
 function gatewayUrlActual() {
   const config = configStore.getConfig();
@@ -64,6 +69,38 @@ function scriptsServidorDir() {
   return localServerDir;
 }
 
+function contextoAdmin() {
+  const config = configStore.getConfig();
+  const licenseCache = readLicenseCache() || {};
+
+  return {
+    username: 'admin',
+    licenseKey: licenseCache.licenseKey || config.licenseKey || '',
+    licenseUnitId: config.licenseUnitId || config.sucursalId || '',
+    sucursalId: config.sucursalId || '',
+    businessTaxId: config.businessTaxId || ''
+  };
+}
+
+function requireAdminSession() {
+  if (!authSession || authSession.user?.role !== 'ADMIN') {
+    throw new Error('Solo un administrador puede realizar esta accion.');
+  }
+
+  return authSession;
+}
+
+function requireRoles(...roles) {
+  const allowed = roles.map(role => String(role || '').toUpperCase());
+  const currentRole = String(authSession?.user?.role || '').toUpperCase();
+
+  if (!authSession || !allowed.includes(currentRole)) {
+    throw new Error('No tiene permisos para realizar esta accion.');
+  }
+
+  return authSession;
+}
+
 async function healthGateway(url) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 4000);
@@ -86,7 +123,10 @@ function ejecutarScriptPowerShell(scriptPath) {
   }
 
   const child = spawn('powershell.exe', [
+    '-NoProfile',
+    '-NonInteractive',
     '-ExecutionPolicy', 'Bypass',
+    '-WindowStyle', 'Hidden',
     '-File', scriptPath
   ], {
     detached: true,
@@ -139,10 +179,10 @@ async function asegurarGatewayLocal() {
   const gatewayScript = path.join(serverScripts, 'start-gateway.ps1');
 
   ejecutarScriptPowerShell(postgresScript);
-  await new Promise(resolve => setTimeout(resolve, 2500));
+  await new Promise(resolve => setTimeout(resolve, 5000));
   ejecutarScriptPowerShell(gatewayScript);
 
-  const deadline = Date.now() + 20000;
+  const deadline = Date.now() + 90000;
   while (Date.now() < deadline) {
     if (await healthGateway(apiUrlEfectiva)) {
       return {
@@ -160,7 +200,7 @@ async function asegurarGatewayLocal() {
     started: true,
     local: true,
     apiUrl,
-    message: 'Se intento iniciar el gateway local, pero no respondio a tiempo.'
+    message: 'Se intento iniciar el gateway local, pero no respondio a tiempo. Revisa C:\\ProgramData\\MardelTech\\SistemaTickets\\logs.'
   };
 }
 
@@ -171,9 +211,9 @@ function requireLicense(handler) {
   };
 }
 
-function createWindow() {
+function createMainWindow() {
   const createdAt = Date.now();
-  const win = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1120,
     height: 720,
     center: true,
@@ -185,14 +225,52 @@ function createWindow() {
     }
   });
 
-  win.loadFile('index.html');
+  mainWindow.loadFile('index.html');
 
   // 🔔 cuando vuelve a tomar foco
-  win.on('focus', () => {
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+    authSession = null;
+    db.setAuthToken('');
+  });
+
+  mainWindow.on('focus', () => {
     if ((Date.now() - createdAt) < 2500) {
       return;
     }
-    win.webContents.send('refrescar-combos');
+    mainWindow.webContents.send('refrescar-combos');
+  });
+}
+
+function createLoginWindow() {
+  if (loginWindow) {
+    loginWindow.focus();
+    return;
+  }
+
+  loginWindow = new BrowserWindow({
+    width: 520,
+    height: 460,
+    center: true,
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    autoHideMenuBar: true,
+    title: 'Ingreso al sistema',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      sandbox: true
+    }
+  });
+
+  loginWindow.loadFile('login.html');
+
+  loginWindow.on('closed', () => {
+    loginWindow = null;
+    if (!mainWindow && !authSession) {
+      app.quit();
+    }
   });
 }
 
@@ -213,9 +291,140 @@ ipcMain.handle('abrir-url-externa', (_, url) =>
   shell.openExternal(url)
 );
 
+ipcMain.handle('licencia:guardar-solicitud-txt', async (_, texto) => {
+  const outputDir = path.join(app.getPath('documents'), 'SistemaTickets', 'solicitudes-licencia');
+  const fileName = `solicitud-licencia-${new Date().toISOString().replace(/[:.]/g, '-')}.txt`;
+  const filePath = path.join(outputDir, fileName);
+
+  fs.mkdirSync(outputDir, { recursive: true });
+  fs.writeFileSync(filePath, String(texto || ''), 'utf8');
+  await shell.openPath(filePath);
+  return filePath;
+});
+
 ipcMain.handle('gateway:asegurar', () =>
   asegurarGatewayLocal()
 );
+
+ipcMain.handle('auth:contexto-admin', () =>
+  contextoAdmin()
+);
+
+ipcMain.handle('auth:bootstrap-admin', async (_, data = {}) => {
+  const gateway = await asegurarGatewayLocal();
+  if (!gateway.ok) {
+    throw new Error(gateway.message || 'No se pudo preparar el gateway local.');
+  }
+
+  return db.authBootstrapAdmin(data);
+});
+
+ipcMain.handle('auth:reset-admin', async (_, data = {}) => {
+  const gateway = await asegurarGatewayLocal();
+  if (!gateway.ok) {
+    throw new Error(gateway.message || 'No se pudo preparar el gateway local.');
+  }
+
+  return db.authResetAdmin(data);
+});
+
+ipcMain.handle('auth:login', async (_, credentials = {}) => {
+  const gateway = await asegurarGatewayLocal();
+  if (!gateway.ok) {
+    throw new Error(gateway.message || 'No se pudo iniciar el gateway local.');
+  }
+
+  const session = await db.authLogin(credentials.username, credentials.password);
+  authSession = session;
+  db.setAuthToken(session.token || '');
+
+  if (loginWindow && !loginWindow.isDestroyed()) {
+    loginWindow.close();
+  }
+
+  createMainWindow();
+  return session.user;
+});
+
+ipcMain.handle('auth:logout', async () => {
+  try {
+    await db.authLogout();
+  } catch (_) {
+    // no-op
+  }
+
+  authSession = null;
+  db.setAuthToken('');
+
+  BrowserWindow.getAllWindows().forEach(window => {
+    if (!window.isDestroyed()) {
+      window.close();
+    }
+  });
+
+  createLoginWindow();
+  return { ok: true };
+});
+
+ipcMain.handle('auth:verify-password', async (_, data = {}) => {
+  if (!authSession || authSession.user?.role !== 'ADMIN') {
+    throw new Error('Solo un administrador puede validar la clave.');
+  }
+
+  return db.authVerifyPassword(data.password);
+});
+
+ipcMain.handle('auth:current-user', () =>
+  authSession?.user || null
+);
+
+ipcMain.handle('auth:list-users', async () => {
+  if (!authSession || authSession.user?.role !== 'ADMIN') {
+    throw new Error('Solo un administrador puede listar usuarios.');
+  }
+
+  return db.authListUsers();
+});
+
+ipcMain.handle('auth:list-audit', async (_, limit = 80) => {
+  if (!authSession || authSession.user?.role !== 'ADMIN') {
+    throw new Error('Solo un administrador puede ver la auditoria.');
+  }
+
+  return db.authListAudit(limit);
+});
+
+ipcMain.handle('auth:create-user', async (_, data = {}) => {
+  if (!authSession || authSession.user?.role !== 'ADMIN') {
+    throw new Error('Solo un administrador puede crear usuarios.');
+  }
+
+  return db.authCreateUser(data);
+});
+
+ipcMain.handle('auth:update-user', async (_, data = {}) => {
+  if (!authSession || authSession.user?.role !== 'ADMIN') {
+    throw new Error('Solo un administrador puede editar usuarios.');
+  }
+
+  return db.authUpdateUser(data);
+});
+
+ipcMain.handle('auth:update-user-status', async (_, data = {}) => {
+  if (!authSession || authSession.user?.role !== 'ADMIN') {
+    throw new Error('Solo un administrador puede cambiar el estado de usuarios.');
+  }
+
+  return db.authUpdateUserStatus(data.id, data.isActive);
+});
+
+ipcMain.handle('auth:reset-user-password', async (_, data = {}) => {
+  if (!authSession || authSession.user?.role !== 'ADMIN') {
+    throw new Error('Solo un administrador puede restablecer claves.');
+  }
+
+  return db.authResetUserPassword(data.id, data.password);
+});
 
 ipcMain.handle('buscar-cliente-dni', (_, dni) =>
   db.buscarClientePorDni(dni)
@@ -323,6 +532,7 @@ ipcMain.handle('configuracion-obtener', () =>
 );
 
 ipcMain.handle('configuracion-guardar', (_, data) => {
+  requireAdminSession();
   const saved = configStore.saveConfig(data);
 
   BrowserWindow.getAllWindows().forEach(window => {
@@ -335,6 +545,7 @@ ipcMain.handle('configuracion-guardar', (_, data) => {
 });
 
 ipcMain.handle('configuracion-seleccionar-logo', async (event) => {
+  requireAdminSession();
   const parent = BrowserWindow.fromWebContents(event.sender);
   const result = await dialog.showOpenDialog(parent || undefined, {
     title: 'Seleccionar logo para PDF',
@@ -352,6 +563,7 @@ ipcMain.handle('configuracion-seleccionar-logo', async (event) => {
 });
 
 ipcMain.handle('configuracion-probar-pdf', async (_, data) => {
+  requireAdminSession();
   const filePath = pdfConfiguracionPreview(data);
   const error = await shell.openPath(filePath);
   if (error) {
@@ -457,23 +669,23 @@ function abrirVentanaModal(event, ruta, titulo, w = 860, h = 620) {
 }
 
 ipcMain.handle('abrir-tipos-equipo', () =>
-  abrirABM('abm/tipos_equipo.html', 'Tipos de Equipo')
+  (requireRoles('ADMIN', 'OPERADOR'), abrirABM('abm/tipos_equipo.html', 'Tipos de Equipo'))
 );
 
 ipcMain.handle('abrir-marcas', () =>
-  abrirABM('abm/marcas.html', 'Marcas')
+  (requireRoles('ADMIN', 'OPERADOR'), abrirABM('abm/marcas.html', 'Marcas'))
 );
 
 ipcMain.handle('abrir-modelos', () =>
-  abrirABM('abm/modelos.html', 'Modelos')
+  (requireRoles('ADMIN', 'OPERADOR'), abrirABM('abm/modelos.html', 'Modelos'))
 );
 
 ipcMain.handle('abrir-clientes', () =>
-  abrirABM('abm/clientes.html', 'Clientes')
+  (requireRoles('ADMIN', 'OPERADOR'), abrirABM('abm/clientes.html', 'Clientes'))
 );
 
 ipcMain.handle('abrir-sucursales', () =>
-  abrirABM('abm/sucursales.html', 'Sucursales')
+  (requireAdminSession(), abrirABM('abm/sucursales.html', 'Sucursales'))
 );
 
 ipcMain.handle('abrir-tickets', () =>
@@ -485,7 +697,7 @@ ipcMain.handle('abrir-alertas-tickets', () =>
 );
 
 ipcMain.handle('abrir-configuracion', () =>
-  abrirABM('configuracion.html', 'Configuracion', 980, 720)
+  (requireAdminSession(), abrirABM('configuracion.html', 'Configuracion', 980, 720))
 );
 
 ipcMain.handle('abrir-historial-ticket', (event, uuid) =>
@@ -571,5 +783,20 @@ ipcMain.handle('caja-cobrar-movimiento', requireLicense((_, uuid) =>
 ));
 
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  db.setAuthToken('');
+  createLoginWindow();
+});
+
+app.on('activate', () => {
+  if (!loginWindow && !mainWindow) {
+    createLoginWindow();
+  }
+});
+
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') {
+    app.quit();
+  }
+});
 

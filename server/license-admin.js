@@ -36,6 +36,10 @@ function addDays(days) {
   return new Date(Date.now() + (Number(days || 30) * DAY_MS));
 }
 
+function addDaysFrom(date, days) {
+  return new Date(new Date(date).getTime() + (Number(days || 30) * DAY_MS));
+}
+
 function generateLicenseKey() {
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   const raw = Array.from(randomBytes(12), byte => alphabet[byte % alphabet.length]).join('');
@@ -242,6 +246,12 @@ async function listLicenses() {
       l.machine_id,
       l.grace_days,
       l.expires_at,
+      l.subscription_status,
+      l.subscription_reference,
+      l.billing_period,
+      l.last_payment_at,
+      l.next_payment_due_at,
+      l.payment_notes,
       l.features,
       l.activated_at,
       l.last_validated_at,
@@ -302,9 +312,14 @@ async function createLicense(data) {
         plan,
         grace_days,
         expires_at,
+        subscription_status,
+        subscription_reference,
+        billing_period,
+        next_payment_due_at,
+        payment_notes,
         features
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb)
       RETURNING *
       `,
       [
@@ -317,6 +332,11 @@ async function createLicense(data) {
         normalizeCode(data.plan || 'STANDARD'),
         Number(data.grace_days || 7),
         expiresAt.toISOString(),
+        normalizeCode(data.subscription_status || 'PENDING'),
+        optionalText(data.subscription_reference),
+        normalizeCode(data.billing_period || 'MONTHLY'),
+        data.next_payment_due_at ? new Date(data.next_payment_due_at).toISOString() : expiresAt.toISOString(),
+        optionalText(data.payment_notes),
         JSON.stringify(data.features || { tickets: true, caja: true, derivaciones: true })
       ]
     );
@@ -336,9 +356,14 @@ async function updateLicense(id, data) {
         plan = $2,
         grace_days = $3,
         expires_at = $4,
-        features = $5::jsonb,
+        subscription_status = $5,
+        subscription_reference = $6,
+        billing_period = $7,
+        next_payment_due_at = $8,
+        payment_notes = $9,
+        features = $10::jsonb,
         updated_at = NOW()
-    WHERE id = $6
+    WHERE id = $11
     RETURNING *
     `,
     [
@@ -346,6 +371,11 @@ async function updateLicense(id, data) {
       normalizeCode(data.plan || 'STANDARD'),
       Number(data.grace_days || 7),
       new Date(required(data.expires_at, 'expires_at')).toISOString(),
+      normalizeCode(data.subscription_status || 'PENDING'),
+      optionalText(data.subscription_reference),
+      normalizeCode(data.billing_period || 'MONTHLY'),
+      data.next_payment_due_at ? new Date(data.next_payment_due_at).toISOString() : new Date(required(data.expires_at, 'expires_at')).toISOString(),
+      optionalText(data.payment_notes),
       JSON.stringify(data.features || { tickets: true, caja: true, derivaciones: true }),
       id
     ]
@@ -395,6 +425,91 @@ async function releaseLicenseMachine(id) {
   }
 
   return result.rows[0];
+}
+
+async function recordPayment(id, data) {
+  const amount = Number(data.amount || 0);
+
+  if (!Number.isFinite(amount) || amount < 0) {
+    throw new Error('Importe de pago invalido');
+  }
+
+  return withTransaction(async client => {
+    const current = await client.query(
+      `SELECT * FROM licenses WHERE id = $1 FOR UPDATE`,
+      [id]
+    );
+
+    if (current.rowCount === 0) {
+      throw new Error('Licencia no encontrada');
+    }
+
+    const license = current.rows[0];
+    const paidAt = data.paid_at ? new Date(data.paid_at) : new Date();
+    const periodStart = data.period_start ? new Date(data.period_start) : paidAt;
+    const periodEnd = data.period_end
+      ? new Date(data.period_end)
+      : addDaysFrom(
+          Math.max(new Date(license.expires_at).getTime(), paidAt.getTime()),
+          Number(data.valid_days || 30)
+        );
+
+    if ([paidAt, periodStart, periodEnd].some(date => Number.isNaN(date.getTime()))) {
+      throw new Error('Fecha de pago invalida');
+    }
+
+    await client.query(
+      `
+      INSERT INTO license_payments (
+        license_id,
+        amount,
+        currency,
+        payment_method,
+        payment_reference,
+        period_start,
+        period_end,
+        paid_at,
+        notes
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `,
+      [
+        id,
+        amount,
+        normalizeCode(data.currency || 'ARS'),
+        normalizeCode(data.payment_method || 'MANUAL'),
+        optionalText(data.payment_reference),
+        periodStart.toISOString().slice(0, 10),
+        periodEnd.toISOString().slice(0, 10),
+        paidAt.toISOString(),
+        optionalText(data.notes)
+      ]
+    );
+
+    const update = await client.query(
+      `
+      UPDATE licenses
+      SET status = 'ACTIVE',
+          subscription_status = $1,
+          last_payment_at = $2,
+          next_payment_due_at = $3,
+          expires_at = GREATEST(expires_at, $3::timestamptz),
+          payment_notes = $4,
+          updated_at = NOW()
+      WHERE id = $5
+      RETURNING *
+      `,
+      [
+        normalizeCode(data.subscription_status || 'ACTIVE'),
+        paidAt.toISOString(),
+        periodEnd.toISOString(),
+        optionalText(data.notes) || license.payment_notes,
+        id
+      ]
+    );
+
+    return update.rows[0];
+  });
 }
 
 async function listValidations(url) {
@@ -501,7 +616,7 @@ async function handleLicenseAdminRoute({ method, path, url, req, res, sendJson, 
     return true;
   }
 
-  const licenseMatch = path.match(/^\/admin\/licenses\/(\d+)\/?(suspend|activate|release-machine)?$/);
+  const licenseMatch = path.match(/^\/admin\/licenses\/(\d+)\/?(suspend|activate|release-machine|payment)?$/);
 
   if (licenseMatch && method === 'PUT' && !licenseMatch[2]) {
     sendJson(res, 200, await updateLicense(licenseMatch[1], await readJson(req)));
@@ -523,6 +638,11 @@ async function handleLicenseAdminRoute({ method, path, url, req, res, sendJson, 
     return true;
   }
 
+  if (licenseMatch && method === 'POST' && licenseMatch[2] === 'payment') {
+    sendJson(res, 200, await recordPayment(licenseMatch[1], await readJson(req)));
+    return true;
+  }
+
   if (method === 'GET' && path === '/admin/license-validations') {
     sendJson(res, 200, await listValidations(url));
     return true;
@@ -538,5 +658,6 @@ module.exports = {
   handleLicenseAdminRoute,
   listGroups,
   listLicenses,
-  listUnits
+  listUnits,
+  recordPayment
 };

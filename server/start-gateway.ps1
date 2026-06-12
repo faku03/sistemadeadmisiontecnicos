@@ -30,6 +30,13 @@ if (Test-Path $configPath) {
   if ($config.SISTEMA_TICKETS_ADMIN_TOKEN) { $env:SISTEMA_TICKETS_ADMIN_TOKEN = [string]$config.SISTEMA_TICKETS_ADMIN_TOKEN }
 }
 
+if (-not $env:PGHOST) { $env:PGHOST = "127.0.0.1" }
+if (-not $env:PGPORT) { $env:PGPORT = "3585" }
+if (-not $env:PGDATABASE) { $env:PGDATABASE = "sistema_tickets" }
+if (-not $env:PGUSER) { $env:PGUSER = "mardeltech_app" }
+if (-not $env:PGPASSWORD) { $env:PGPASSWORD = "mardeltech_app" }
+if (-not $env:SISTEMA_TICKETS_API_PORT) { $env:SISTEMA_TICKETS_API_PORT = "3000" }
+
 $pgIsReadyPath = Join-Path $postgresPrefix "bin\pg_isready.exe"
 if ((Test-Path $pgIsReadyPath) -and $env:PGHOST -and $env:PGPORT -and (($env:PGHOST -eq "127.0.0.1") -or ($env:PGHOST -eq "localhost"))) {
   $pgProbeUser = "postgres"
@@ -41,6 +48,10 @@ if ((Test-Path $pgIsReadyPath) -and $env:PGHOST -and $env:PGPORT -and (($env:PGH
     $null = & $pgIsReadyPath -h $env:PGHOST -p $env:PGPORT -U $pgProbeUser 2>$null
     if ($LASTEXITCODE -eq 0) {
       break
+    }
+    $postgresStarter = Join-Path $PSScriptRoot "start-postgresql.ps1"
+    if (Test-Path $postgresStarter) {
+      powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File $postgresStarter *> $null
     }
     Start-Sleep -Seconds 2
   }

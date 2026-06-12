@@ -94,13 +94,13 @@ FunctionEnd
   StrCpy $TerminalExePath "$INSTDIR\${APP_EXECUTABLE_FILENAME}"
 
   ${If} $InstallTickets == ${BST_CHECKED}
-    CreateShortCut "$SMPROGRAMS\Sistema Tecnico y Caja\Sistema de Tickets.lnk" "$TerminalExePath" "--modulo=tickets" "$TerminalExePath" 0 "" "" "Sistema de Tickets / Servicio Tecnico"
-    CreateShortCut "$DESKTOP\Sistema de Tickets.lnk" "$TerminalExePath" "--modulo=tickets" "$TerminalExePath" 0 "" "" "Sistema de Tickets / Servicio Tecnico"
+    CreateShortCut "$SMPROGRAMS\Sistema Tecnico y Caja\Sistema de Tickets.lnk" "$TerminalExePath" "--modulo=tickets" "$INSTDIR\resources\icons\tickets.ico" 0 "" "" "Sistema de Tickets / Servicio Tecnico"
+    CreateShortCut "$DESKTOP\Sistema de Tickets.lnk" "$TerminalExePath" "--modulo=tickets" "$INSTDIR\resources\icons\tickets.ico" 0 "" "" "Sistema de Tickets / Servicio Tecnico"
   ${EndIf}
 
   ${If} $InstallCaja == ${BST_CHECKED}
-    CreateShortCut "$SMPROGRAMS\Sistema Tecnico y Caja\Sistema de Caja.lnk" "$TerminalExePath" "--modulo=caja" "$TerminalExePath" 0 "" "" "Sistema de Caja"
-    CreateShortCut "$DESKTOP\Sistema de Caja.lnk" "$TerminalExePath" "--modulo=caja" "$TerminalExePath" 0 "" "" "Sistema de Caja"
+    CreateShortCut "$SMPROGRAMS\Sistema Tecnico y Caja\Sistema de Caja.lnk" "$TerminalExePath" "--modulo=caja" "$INSTDIR\resources\icons\caja.ico" 0 "" "" "Sistema de Caja"
+    CreateShortCut "$DESKTOP\Sistema de Caja.lnk" "$TerminalExePath" "--modulo=caja" "$INSTDIR\resources\icons\caja.ico" 0 "" "" "Sistema de Caja"
   ${EndIf}
 
   FileOpen $0 "$INSTDIR\app.config.json" "w"
