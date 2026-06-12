@@ -20,6 +20,27 @@ command_exists() {
   command -v "$1" >/dev/null 2>&1
 }
 
+wait_for_url() {
+  local url="$1"
+  local label="$2"
+  local attempts="${3:-30}"
+  local delay_seconds="${4:-2}"
+  local attempt
+
+  for attempt in $(seq 1 "$attempts"); do
+    if curl --fail --silent --show-error "$url"; then
+      printf '\n'
+      log "$label OK"
+      return 0
+    fi
+
+    log "$label todavia no responde. Reintento $attempt/$attempts en ${delay_seconds}s..."
+    sleep "$delay_seconds"
+  done
+
+  fail "$label no respondio en $((attempts * delay_seconds)) segundos: $url"
+}
+
 cd "$APP_DIR" || fail "No se pudo entrar a $APP_DIR"
 
 log "Actualizando servidor online en $APP_DIR"
@@ -86,12 +107,10 @@ log "Estado del servicio:"
 sudo systemctl --no-pager --full status "$SERVICE" || true
 
 log "Probando health check local..."
-curl --fail --silent --show-error http://127.0.0.1:3000/health
-printf '\n'
+wait_for_url http://127.0.0.1:3000/health "Health check local" 30 2
 
 log "Probando health check publico..."
-curl --fail --silent --show-error "$HEALTH_URL"
-printf '\n'
+wait_for_url "$HEALTH_URL" "Health check publico" 30 2
 
 log "Verificando tablas esperadas..."
 if command_exists psql && [ -n "${PGHOST:-}" ] && [ -n "${PGPORT:-}" ] && [ -n "${PGUSER:-}" ] && [ -n "${PGDATABASE:-}" ]; then
