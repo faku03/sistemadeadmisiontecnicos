@@ -527,11 +527,6 @@ function render() {
 }
 
 async function loadAll() {
-  if (!state.token) {
-    showMessage('Ingresa el token administrador para conectar.');
-    return;
-  }
-
   const [groups, units, licenses, validations] = await Promise.all([
     request('/admin/license-groups'),
     request('/admin/license-units'),
