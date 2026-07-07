@@ -97,6 +97,107 @@ ALTER TABLE tickets ADD COLUMN IF NOT EXISTS codigo TEXT;
 ALTER TABLE tickets ADD COLUMN IF NOT EXISTS numero INTEGER;
 ALTER TABLE tickets ADD COLUMN IF NOT EXISTS tecnico_codigo TEXT;
 ALTER TABLE tickets ADD COLUMN IF NOT EXISTS reparacion_presupuestada TEXT;
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS usuario_creador_id INTEGER;
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS usuario_creador_username TEXT;
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS usuario_creador_nombre TEXT;
+
+CREATE TABLE IF NOT EXISTS fallas_oficiales (
+  id SERIAL PRIMARY KEY,
+  codigo TEXT NOT NULL UNIQUE,
+  descripcion TEXT NOT NULL,
+  activo BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS trabajos_oficiales (
+  id SERIAL PRIMARY KEY,
+  codigo TEXT NOT NULL UNIQUE,
+  descripcion TEXT NOT NULL,
+  activo BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS repuestos_oficiales (
+  id SERIAL PRIMARY KEY,
+  codigo TEXT NOT NULL UNIQUE,
+  descripcion TEXT NOT NULL,
+  activo BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS fallas_internas (
+  id SERIAL PRIMARY KEY,
+  descripcion TEXT NOT NULL,
+  falla_oficial_id INTEGER REFERENCES fallas_oficiales(id),
+  activo BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS trabajos_internos (
+  id SERIAL PRIMARY KEY,
+  descripcion TEXT NOT NULL,
+  trabajo_oficial_id INTEGER REFERENCES trabajos_oficiales(id),
+  activo BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS repuestos_internos (
+  id SERIAL PRIMARY KEY,
+  descripcion TEXT NOT NULL,
+  repuesto_oficial_id INTEGER REFERENCES repuestos_oficiales(id),
+  activo BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS ticket_fallas (
+  id SERIAL PRIMARY KEY,
+  ticket_uuid TEXT NOT NULL REFERENCES tickets(uuid) ON DELETE CASCADE,
+  falla_oficial_id INTEGER REFERENCES fallas_oficiales(id),
+  falla_interna_id INTEGER REFERENCES fallas_internas(id),
+  detalle TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT ticket_fallas_origen_check CHECK (
+    (falla_oficial_id IS NOT NULL AND falla_interna_id IS NULL)
+    OR
+    (falla_oficial_id IS NULL AND falla_interna_id IS NOT NULL)
+  )
+);
+
+CREATE TABLE IF NOT EXISTS ticket_trabajos (
+  id SERIAL PRIMARY KEY,
+  ticket_uuid TEXT NOT NULL REFERENCES tickets(uuid) ON DELETE CASCADE,
+  trabajo_oficial_id INTEGER REFERENCES trabajos_oficiales(id),
+  trabajo_interno_id INTEGER REFERENCES trabajos_internos(id),
+  detalle TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT ticket_trabajos_origen_check CHECK (
+    (trabajo_oficial_id IS NOT NULL AND trabajo_interno_id IS NULL)
+    OR
+    (trabajo_oficial_id IS NULL AND trabajo_interno_id IS NOT NULL)
+  )
+);
+
+CREATE TABLE IF NOT EXISTS ticket_repuestos (
+  id SERIAL PRIMARY KEY,
+  ticket_uuid TEXT NOT NULL REFERENCES tickets(uuid) ON DELETE CASCADE,
+  repuesto_oficial_id INTEGER REFERENCES repuestos_oficiales(id),
+  repuesto_interno_id INTEGER REFERENCES repuestos_internos(id),
+  cantidad NUMERIC(12, 2) DEFAULT 1,
+  detalle TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT ticket_repuestos_origen_check CHECK (
+    (repuesto_oficial_id IS NOT NULL AND repuesto_interno_id IS NULL)
+    OR
+    (repuesto_oficial_id IS NULL AND repuesto_interno_id IS NOT NULL)
+  ),
+  CONSTRAINT ticket_repuestos_cantidad_check CHECK (cantidad IS NULL OR cantidad > 0)
+);
 
 WITH base AS (
   SELECT
@@ -204,6 +305,21 @@ CREATE INDEX IF NOT EXISTS idx_tickets_sucursal_actual ON tickets(sucursal_actua
 CREATE INDEX IF NOT EXISTS idx_tickets_estado ON tickets(estado_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_tickets_codigo_unique ON tickets(codigo) WHERE codigo IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_tickets_tecnico_sucursal_numero ON tickets(tecnico_codigo, sucursal_origen_id, numero);
+CREATE INDEX IF NOT EXISTS idx_fallas_oficiales_activo ON fallas_oficiales(activo);
+CREATE INDEX IF NOT EXISTS idx_trabajos_oficiales_activo ON trabajos_oficiales(activo);
+CREATE INDEX IF NOT EXISTS idx_repuestos_oficiales_activo ON repuestos_oficiales(activo);
+CREATE INDEX IF NOT EXISTS idx_fallas_internas_oficial ON fallas_internas(falla_oficial_id);
+CREATE INDEX IF NOT EXISTS idx_trabajos_internos_oficial ON trabajos_internos(trabajo_oficial_id);
+CREATE INDEX IF NOT EXISTS idx_repuestos_internos_oficial ON repuestos_internos(repuesto_oficial_id);
+CREATE INDEX IF NOT EXISTS idx_ticket_fallas_ticket ON ticket_fallas(ticket_uuid);
+CREATE INDEX IF NOT EXISTS idx_ticket_fallas_oficial ON ticket_fallas(falla_oficial_id);
+CREATE INDEX IF NOT EXISTS idx_ticket_fallas_interna ON ticket_fallas(falla_interna_id);
+CREATE INDEX IF NOT EXISTS idx_ticket_trabajos_ticket ON ticket_trabajos(ticket_uuid);
+CREATE INDEX IF NOT EXISTS idx_ticket_trabajos_oficial ON ticket_trabajos(trabajo_oficial_id);
+CREATE INDEX IF NOT EXISTS idx_ticket_trabajos_interno ON ticket_trabajos(trabajo_interno_id);
+CREATE INDEX IF NOT EXISTS idx_ticket_repuestos_ticket ON ticket_repuestos(ticket_uuid);
+CREATE INDEX IF NOT EXISTS idx_ticket_repuestos_oficial ON ticket_repuestos(repuesto_oficial_id);
+CREATE INDEX IF NOT EXISTS idx_ticket_repuestos_interno ON ticket_repuestos(repuesto_interno_id);
 CREATE INDEX IF NOT EXISTS idx_derivaciones_ticket_uuid ON derivaciones_ticket(ticket_uuid);
 CREATE INDEX IF NOT EXISTS idx_ticket_historial_ticket_fecha ON ticket_historial(ticket_uuid, fecha DESC);
 CREATE INDEX IF NOT EXISTS idx_movimientos_caja_estado ON movimientos_caja(estado);
@@ -224,3 +340,76 @@ ON CONFLICT (codigo) DO UPDATE
 SET descripcion = EXCLUDED.descripcion,
     orden = EXCLUDED.orden,
     is_deleted = FALSE;
+
+INSERT INTO fallas_oficiales (codigo, descripcion, activo, updated_at)
+VALUES
+  ('F0001', 'No enciende', TRUE, NOW()),
+  ('F0002', 'No carga', TRUE, NOW()),
+  ('F0003', 'Modulo sin imagen', TRUE, NOW()),
+  ('F0004', 'LEDs no funcionan', TRUE, NOW()),
+  ('F0005', 'Falla de placa de carga', TRUE, NOW())
+ON CONFLICT (codigo) DO UPDATE
+SET descripcion = EXCLUDED.descripcion,
+    activo = EXCLUDED.activo,
+    updated_at = NOW();
+
+INSERT INTO trabajos_oficiales (codigo, descripcion, activo, updated_at)
+VALUES
+  ('T0001', 'Cambio de modulo', TRUE, NOW()),
+  ('T0002', 'Cambio de LEDs', TRUE, NOW()),
+  ('T0003', 'Cambio de placa de carga', TRUE, NOW()),
+  ('T0004', 'Limpieza y mantenimiento', TRUE, NOW()),
+  ('T0005', 'Revision general', TRUE, NOW())
+ON CONFLICT (codigo) DO UPDATE
+SET descripcion = EXCLUDED.descripcion,
+    activo = EXCLUDED.activo,
+    updated_at = NOW();
+
+INSERT INTO repuestos_oficiales (codigo, descripcion, activo, updated_at)
+VALUES
+  ('R0001', 'Modulo', TRUE, NOW()),
+  ('R0002', 'LEDs', TRUE, NOW()),
+  ('R0003', 'Placa de carga', TRUE, NOW()),
+  ('R0004', 'Bateria', TRUE, NOW()),
+  ('R0005', 'Fuente', TRUE, NOW())
+ON CONFLICT (codigo) DO UPDATE
+SET descripcion = EXCLUDED.descripcion,
+    activo = EXCLUDED.activo,
+    updated_at = NOW();
+
+CREATE OR REPLACE VIEW estadistica_fallas AS
+SELECT
+  tf.ticket_uuid,
+  COALESCE(fo_direct.codigo, fo_normalizada.codigo, 'INT-' || fi.id::TEXT) AS codigo,
+  COALESCE(fo_direct.descripcion, fo_normalizada.descripcion, fi.descripcion) AS descripcion,
+  CASE WHEN COALESCE(fo_direct.id, fo_normalizada.id) IS NULL THEN FALSE ELSE TRUE END AS normalizada,
+  tf.created_at
+FROM ticket_fallas tf
+LEFT JOIN fallas_oficiales fo_direct ON fo_direct.id = tf.falla_oficial_id
+LEFT JOIN fallas_internas fi ON fi.id = tf.falla_interna_id
+LEFT JOIN fallas_oficiales fo_normalizada ON fo_normalizada.id = fi.falla_oficial_id;
+
+CREATE OR REPLACE VIEW estadistica_trabajos AS
+SELECT
+  tt.ticket_uuid,
+  COALESCE(to_direct.codigo, to_normalizado.codigo, 'INT-' || ti.id::TEXT) AS codigo,
+  COALESCE(to_direct.descripcion, to_normalizado.descripcion, ti.descripcion) AS descripcion,
+  CASE WHEN COALESCE(to_direct.id, to_normalizado.id) IS NULL THEN FALSE ELSE TRUE END AS normalizada,
+  tt.created_at
+FROM ticket_trabajos tt
+LEFT JOIN trabajos_oficiales to_direct ON to_direct.id = tt.trabajo_oficial_id
+LEFT JOIN trabajos_internos ti ON ti.id = tt.trabajo_interno_id
+LEFT JOIN trabajos_oficiales to_normalizado ON to_normalizado.id = ti.trabajo_oficial_id;
+
+CREATE OR REPLACE VIEW estadistica_repuestos AS
+SELECT
+  tr.ticket_uuid,
+  COALESCE(ro_direct.codigo, ro_normalizado.codigo, 'INT-' || ri.id::TEXT) AS codigo,
+  COALESCE(ro_direct.descripcion, ro_normalizado.descripcion, ri.descripcion) AS descripcion,
+  tr.cantidad,
+  CASE WHEN COALESCE(ro_direct.id, ro_normalizado.id) IS NULL THEN FALSE ELSE TRUE END AS normalizada,
+  tr.created_at
+FROM ticket_repuestos tr
+LEFT JOIN repuestos_oficiales ro_direct ON ro_direct.id = tr.repuesto_oficial_id
+LEFT JOIN repuestos_internos ri ON ri.id = tr.repuesto_interno_id
+LEFT JOIN repuestos_oficiales ro_normalizado ON ro_normalizado.id = ri.repuesto_oficial_id;

@@ -501,6 +501,9 @@ async function listarTickets(url) {
       t.reparacion_presupuestada,
       t.presupuesto_enviado,
       t.descripcion_falla,
+      t.usuario_creador_id,
+      t.usuario_creador_username,
+      t.usuario_creador_nombre,
       t.sucursal_origen_id,
       t.sucursal_actual_id,
       et.descripcion AS estado,
@@ -527,6 +530,62 @@ async function listarTickets(url) {
   return result.rows;
 }
 
+async function listarCodigosNomenclador() {
+  const result = await query(
+    `
+    SELECT 'falla' AS tipo, id, codigo, descripcion
+    FROM fallas_oficiales
+    WHERE activo = TRUE
+    UNION ALL
+    SELECT 'trabajo' AS tipo, id, codigo, descripcion
+    FROM trabajos_oficiales
+    WHERE activo = TRUE
+    UNION ALL
+    SELECT 'repuesto' AS tipo, id, codigo, descripcion
+    FROM repuestos_oficiales
+    WHERE activo = TRUE
+    ORDER BY tipo, codigo
+    `
+  );
+
+  return result.rows;
+}
+
+async function asociarCodigosTicket(client, ticketUuid, codigos = []) {
+  const items = Array.isArray(codigos) ? codigos : [];
+
+  for (const item of items) {
+    const tipo = String(item.tipo || '').toLowerCase();
+    const id = Number(item.id);
+
+    if (!Number.isInteger(id) || id <= 0) {
+      continue;
+    }
+
+    if (tipo === 'falla') {
+      await client.query(
+        `INSERT INTO ticket_fallas (ticket_uuid, falla_oficial_id, detalle) VALUES ($1, $2, $3)`,
+        [ticketUuid, id, item.detalle || null]
+      );
+    }
+
+    if (tipo === 'trabajo') {
+      await client.query(
+        `INSERT INTO ticket_trabajos (ticket_uuid, trabajo_oficial_id, detalle) VALUES ($1, $2, $3)`,
+        [ticketUuid, id, item.detalle || null]
+      );
+    }
+
+    if (tipo === 'repuesto') {
+      const cantidad = Number(item.cantidad || 1);
+      await client.query(
+        `INSERT INTO ticket_repuestos (ticket_uuid, repuesto_oficial_id, cantidad, detalle) VALUES ($1, $2, $3, $4)`,
+        [ticketUuid, id, Number.isFinite(cantidad) && cantidad > 0 ? cantidad : 1, item.detalle || null]
+      );
+    }
+  }
+}
+
 async function crearTicket(data) {
   return withTransaction(async client => {
     const estado = await estadoPorCodigo(client, 'PENDIENTE');
@@ -550,9 +609,12 @@ async function crearTicket(data) {
         tipo_equipo_id,
         modelo_id,
         descripcion_falla,
+        usuario_creador_id,
+        usuario_creador_username,
+        usuario_creador_nombre,
         estado_id
       )
-      VALUES ($1, $2, $3, $4, $5, $5, $6, $7, $8, $9, $10)
+      VALUES ($1, $2, $3, $4, $5, $5, $6, $7, $8, $9, $10, $11, $12, $13)
       RETURNING uuid, codigo
       `,
       [
@@ -565,9 +627,14 @@ async function crearTicket(data) {
         data.tipo_equipo_id,
         data.modelo_id,
         data.descripcion_falla,
+        data.usuario_creador_id || null,
+        data.usuario_creador_username || null,
+        data.usuario_creador_nombre || null,
         estado.id
       ]
     );
+
+    await asociarCodigosTicket(client, uuid, data.codigos_ticket);
 
     await registrarHistorial(client, {
       ticket_uuid: uuid,
@@ -577,7 +644,11 @@ async function crearTicket(data) {
       estado_destino_id: estado.id,
       metadata: {
         codigo: result.rows[0].codigo,
-        tecnico_codigo: ticketCodigo.tecnico
+        tecnico_codigo: ticketCodigo.tecnico,
+        usuario_creador_id: data.usuario_creador_id || null,
+        usuario_creador_username: data.usuario_creador_username || null,
+        usuario_creador_nombre: data.usuario_creador_nombre || null,
+        codigos_ticket: Array.isArray(data.codigos_ticket) ? data.codigos_ticket.length : 0
       }
     });
 
@@ -1833,6 +1904,11 @@ async function handle(req, res) {
         `SELECT id, codigo, descripcion FROM estados_ticket WHERE is_deleted = FALSE ORDER BY orden`
       );
       sendJson(res, 200, result.rows);
+      return;
+    }
+
+    if (method === 'GET' && path === '/nomencladores/codigos') {
+      sendJson(res, 200, await listarCodigosNomenclador());
       return;
     }
 

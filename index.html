@@ -6,104 +6,144 @@
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-  <header class="topbar">
-    <div class="sucursal-actual" id="sucursalActual">
-      SUCURSAL: --
+  <div class="layout-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark">FD</span>
+        <strong>FaroDesk</strong>
+      </div>
+
+      <nav class="side-nav">
+        <button class="side-nav-item is-active" type="button">Nuevo Ticket</button>
+        <button class="side-nav-item" id="btnVerTodosTickets" type="button">Tickets</button>
+        <button class="side-nav-item" id="btnVerAlertasTickets" type="button">Alertas <span id="alertasResumen">Sin alertas</span></button>
+
+        <div class="side-group menu">
+          <button class="side-nav-item" id="btnMenuDatos" type="button">Cargar Datos</button>
+          <div id="menuDatos" class="side-subnav hidden">
+            <button id="menuClientes" type="button">Clientes</button>
+            <button id="menuTipos" type="button">Tipos de Equipo</button>
+            <button id="menuMarcas" type="button">Marcas</button>
+            <button id="menuModelos" type="button">Modelos</button>
+            <button id="menuSucursales" type="button">Sucursales</button>
+            <button id="menuFallasInternas" type="button">Fallas internas</button>
+            <button id="menuTrabajosInternos" type="button">Trabajos internos</button>
+            <button id="menuRepuestosInternos" type="button">Repuestos internos</button>
+          </div>
+        </div>
+
+        <button class="side-nav-item" id="btnConfiguracion" type="button">Configuracion</button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="sidebar-status">Online</div>
+        <button id="btnCerrarSesion" type="button">Cerrar sesion</button>
+      </div>
+    </aside>
+
+    <div class="content-shell">
+      <div class="status-row">
+        <div class="user-chip" id="usuarioActualLabel">Usuario: --</div>
+        <div id="licenseBanner" class="license-banner hidden"></div>
+      </div>
+
+      <header class="app-topbar">
+        <h1>Nuevo Ticket</h1>
+        <div class="sucursal-actual hidden" id="sucursalActual">SUCURSAL: --</div>
+      </header>
+
+      <main class="app ticket-create-app">
+        <section class="panel form-panel cliente-panel">
+          <h2>Cliente</h2>
+          <div id="clienteAviso" class="inline-notice hidden"></div>
+          <div class="form-grid cliente-grid">
+            <input id="dni" placeholder="DNI">
+            <input id="nombre" placeholder="Nombre" disabled>
+            <input id="apellido" placeholder="Apellido" disabled>
+            <input id="celular" placeholder="Celular" disabled>
+            <input id="email" placeholder="Email" disabled>
+          </div>
+        </section>
+
+        <section class="panel form-panel equipo-panel">
+          <h2>Equipo</h2>
+          <div class="form-grid nuevo-ticket-equipo-grid">
+            <select id="tipoEquipo">
+              <option value="">Tipo de equipo</option>
+            </select>
+
+            <select id="marca">
+              <option value="">Marca</option>
+            </select>
+
+            <select id="modelo">
+              <option value="">Modelo</option>
+            </select>
+          </div>
+        </section>
+
+        <section class="panel form-panel codigos-ticket-panel">
+          <div class="codigos-ticket-header">
+            <h2>Detalle del ticket</h2>
+            <button id="btnCodigoInterno" type="button">+ Interno</button>
+          </div>
+
+          <div class="intervencion-layout">
+            <div class="intervencion-form">
+              <div class="intervencion-field">
+                <label for="intervencionFalla">Falla detectada</label>
+                <input id="intervencionFalla" placeholder="Codigo o descripcion">
+                <div id="resultadosFalla" class="codigo-results intervencion-results">
+                  <div class="codigo-empty">Escriba para buscar falla.</div>
+                </div>
+              </div>
+
+              <div class="intervencion-field">
+                <label for="intervencionTrabajo">Trabajo realizado</label>
+                <input id="intervencionTrabajo" placeholder="Codigo o descripcion">
+                <div id="resultadosTrabajo" class="codigo-results intervencion-results">
+                  <div class="codigo-empty">Escriba para buscar trabajo.</div>
+                </div>
+              </div>
+
+              <div class="intervencion-field">
+                <label for="intervencionRepuesto">Repuesto usado</label>
+                <input id="intervencionRepuesto" placeholder="Codigo o descripcion">
+                <div id="resultadosRepuesto" class="codigo-results intervencion-results">
+                  <div class="codigo-empty">Escriba para buscar repuesto.</div>
+                </div>
+              </div>
+
+              <label class="intervencion-cantidad">
+                Cant.
+                <input id="intervencionCantidad" type="number" min="1" step="1" value="1">
+              </label>
+            </div>
+
+            <div class="table-wrap codigos-seleccionados-wrap">
+              <table class="tabla-tickets codigos-seleccionados">
+                <thead>
+                  <tr>
+                    <th>Falla</th>
+                    <th>Trabajo</th>
+                    <th>Repuesto</th>
+                    <th>Cantidad</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="codigosSeleccionadosBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <div class="nuevo-ticket-actions">
+          <button id="btnCancelarTicket" type="button">Cancelar</button>
+          <button id="btnGuardar">Guardar Ticket</button>
+        </div>
+      </main>
     </div>
-    <div class="topbar-actions">
-      <button id="btnVerAlertasTickets" type="button">Ver alertas de tickets</button>
-      <span id="alertasResumen">Sin alertas</span>
-      <button id="btnConfiguracion" type="button">Configuracion</button>
-      <button id="btnCerrarSesion" type="button">Cerrar sesion</button>
-      <div class="menu">
-        <button id="btnMenuDatos">Cargar Datos</button>
-        <div id="menuDatos" class="menu-dropdown hidden">
-          <button id="menuSucursales">Sucursales</button>
-          <button id="menuTipos">Tipos de Equipo</button>
-          <button id="menuMarcas">Marcas</button>
-          <button id="menuModelos">Modelos</button>
-          <button id="menuClientes">Clientes</button>
-        </div>
-      </div>
-    </div>
-  </header>
-
-  <main class="app app-main">
-    <section class="panel form-panel">
-      <h2>Cliente</h2>
-      <div id="clienteAviso" class="inline-notice hidden"></div>
-      <div class="form-grid cliente-grid">
-        <input id="dni" placeholder="DNI">
-        <input id="nombre" placeholder="Nombre" disabled>
-        <input id="apellido" placeholder="Apellido" disabled>
-        <input id="celular" placeholder="Celular" disabled>
-        <input id="email" placeholder="Email" disabled>
-      </div>
-    </section>
-
-    <section class="panel form-panel">
-      <h2>Equipo</h2>
-      <div class="form-grid equipo-grid">
-        <select id="tipoEquipo">
-          <option value="">Tipo de equipo</option>
-        </select>
-
-        <select id="marca">
-          <option value="">Marca</option>
-        </select>
-
-        <select id="modelo">
-          <option value="">Modelo</option>
-        </select>
-
-        <textarea id="falla" placeholder="Descripcion de la falla"></textarea>
-
-        <button id="btnGuardar">Guardar Ticket</button>
-      </div>
-    </section>
-
-    <section class="panel tickets">
-      <div class="tickets-header">
-        <h2>Tickets</h2>
-        <div class="filtros-tickets">
-          <input type="text" id="buscadorTickets" placeholder="Buscar por cliente, equipo o codigo...">
-          <select id="filtroEstado">
-            <option value="">Todos los estados</option>
-          </select>
-          <button id="btnVerTodosTickets" type="button">Ver todos los tickets</button>
-        </div>
-      </div>
-
-      <div class="ticket-actions-bar">
-        <div id="ticketSeleccionadoInfo" class="ticket-selected-text">Seleccione un ticket para operar.</div>
-        <div class="ticket-actions">
-          <button id="btnPdfTicket" type="button" disabled>PDF ingreso</button>
-          <button id="btnPresupuestoTicket" type="button" disabled>Presupuesto</button>
-          <button id="btnEnviarPresupuestoTicket" type="button" disabled>Enviar presupuesto</button>
-          <button id="btnAceptarPresupuestoTicket" type="button" disabled>Aceptar presupuesto</button>
-          <button id="btnRechazarPresupuestoTicket" type="button" disabled>Rechazar presupuesto</button>
-          <button id="btnRetiradoSinRepararTicket" type="button" disabled>Retirado sin reparar</button>
-          <button id="btnEntregarTicket" type="button" disabled>Entregar</button>
-        </div>
-      </div>
-
-      <div class="table-wrap">
-        <table class="tabla-tickets">
-          <thead>
-            <tr>
-              <th>Fecha</th>
-              <th>Ticket</th>
-              <th>Cliente</th>
-              <th>Celular</th>
-              <th>Equipo</th>
-              <th>Estado</th>
-            </tr>
-          </thead>
-          <tbody id="listaTickets"></tbody>
-        </table>
-      </div>
-    </section>
-  </main>
+  </div>
 
   <div id="modalEntrega" class="modal hidden">
     <div class="modal-content">

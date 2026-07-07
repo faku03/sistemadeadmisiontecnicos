@@ -210,6 +210,10 @@ class ApiClient {
     return this.request('/estados-ticket');
   }
 
+  listarCodigosNomenclador() {
+    return this.request('/nomencladores/codigos');
+  }
+
   crearSucursal(data) {
     return this.request('/sucursales', {
       method: 'POST',

@@ -31,6 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const falla = document.getElementById('falla');
 
   const btnGuardar = document.getElementById('btnGuardar');
+  const btnCancelarTicket = document.getElementById('btnCancelarTicket');
   const listaTickets = document.getElementById('listaTickets');
 
   // ===== MODAL ENTREGA =====
@@ -65,11 +66,28 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnConfiguracion = document.getElementById('btnConfiguracion');
   const btnCerrarSesion = document.getElementById('btnCerrarSesion');
   const alertasResumen = document.getElementById('alertasResumen');
+  const usuarioActualLabel = document.getElementById('usuarioActualLabel');
+  const menuFallasInternas = document.getElementById('menuFallasInternas');
+  const menuTrabajosInternos = document.getElementById('menuTrabajosInternos');
+  const menuRepuestosInternos = document.getElementById('menuRepuestosInternos');
+  const intervencionFalla = document.getElementById('intervencionFalla');
+  const intervencionTrabajo = document.getElementById('intervencionTrabajo');
+  const intervencionRepuesto = document.getElementById('intervencionRepuesto');
+  const intervencionCantidad = document.getElementById('intervencionCantidad');
+  const resultadosFalla = document.getElementById('resultadosFalla');
+  const resultadosTrabajo = document.getElementById('resultadosTrabajo');
+  const resultadosRepuesto = document.getElementById('resultadosRepuesto');
+  const codigosSeleccionadosBody = document.getElementById('codigosSeleccionadosBody');
 
   let ticketPresupuestoActual = null;
   let ticketsActuales = [];
   let estadosActuales = [];
   let tiposActuales = [];
+  let codigosNomenclador = [];
+  let intervencionesSeleccionadas = [];
+  let intervencionActual = { falla: null, trabajo: null, repuesto: null };
+  let resultadosIntervencion = { falla: [], trabajo: [], repuesto: [] };
+  let resultadoSeleccionadoIntervencion = { falla: 0, trabajo: 0, repuesto: 0 };
   let estadosPromise = null;
   let tiposPromise = null;
   let ticketSeleccionado = null;
@@ -227,6 +245,11 @@ document.addEventListener('DOMContentLoaded', () => {
     return tiposActuales;
   }
 
+  async function cargarCodigosNomenclador() {
+    codigosNomenclador = await window.api.listarCodigosNomenclador();
+    ['falla', 'trabajo', 'repuesto'].forEach(tipo => renderResultadosIntervencion(tipo));
+  }
+
   function mostrarAvisoCliente(texto) {
     if (!clienteAviso) return;
     clienteAviso.textContent = texto;
@@ -243,6 +266,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const esAdmin = usuarioActual?.role === 'ADMIN';
     const menuDatosContainer = btnMenuDatos?.closest('.menu');
     const puedeAbrirCatalogos = ['ADMIN', 'OPERADOR'].includes(usuarioActual?.role);
+    const nombreUsuario = usuarioActual?.display_name || usuarioActual?.username || 'Sin usuario';
+
+    if (usuarioActualLabel) {
+      usuarioActualLabel.textContent = `Usuario: ${nombreUsuario}`;
+    }
 
     if (btnConfiguracion) {
       btnConfiguracion.classList.toggle('hidden', !esAdmin);
@@ -358,6 +386,22 @@ document.addEventListener('DOMContentLoaded', () => {
     email.disabled = false;
   }
 
+  function focusNext(control) {
+    if (!control || control.disabled) return;
+    setTimeout(() => {
+      control.focus();
+      if (typeof control.select === 'function' && control.tagName !== 'SELECT') {
+        control.select();
+      }
+    }, 0);
+  }
+
+  function avanzarSiEnter(event, siguiente) {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    focusNext(siguiente);
+  }
+
   dni.addEventListener('input', () => {
     ultimoDniBuscado = '';
     if (!dni.value.trim()) {
@@ -371,7 +415,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     event.preventDefault();
     try {
-      await buscarCliente(true);
+      const encontrado = await buscarCliente(true);
+      focusNext(encontrado ? tipoEquipo : nombre);
     } catch (error) {
       await mostrarAlerta('No se pudo buscar', error.message || 'No se pudo buscar el cliente', () => dni.focus());
     }
@@ -386,6 +431,315 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (error) {
       await mostrarAlerta('No se pudo buscar', error.message || 'No se pudo buscar el cliente', () => dni.focus());
     }
+  });
+
+  nombre.addEventListener('keydown', event => avanzarSiEnter(event, apellido));
+  apellido.addEventListener('keydown', event => avanzarSiEnter(event, celular));
+  celular.addEventListener('keydown', event => avanzarSiEnter(event, email));
+  email.addEventListener('keydown', event => avanzarSiEnter(event, tipoEquipo));
+  tipoEquipo.addEventListener('keydown', event => avanzarSiEnter(event, marca));
+  marca.addEventListener('keydown', event => avanzarSiEnter(event, modelo));
+  modelo.addEventListener('keydown', event => avanzarSiEnter(event, intervencionFalla || btnGuardar));
+
+  function etiquetaTipoCodigo(tipo) {
+    return {
+      falla: 'Falla',
+      trabajo: 'Trabajo',
+      repuesto: 'Repuesto'
+    }[tipo] || tipo;
+  }
+
+  function tagClassTipo(tipo) {
+    return {
+      falla: 'tag-blue',
+      trabajo: 'tag-orange',
+      repuesto: 'tag-green'
+    }[tipo] || 'tag-blue';
+  }
+
+  function normalizarTextoBusqueda(valor) {
+    return String(valor || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+  }
+
+  const controlesIntervencion = {
+    falla: { input: intervencionFalla, results: resultadosFalla, siguiente: intervencionTrabajo },
+    trabajo: { input: intervencionTrabajo, results: resultadosTrabajo, siguiente: intervencionRepuesto },
+    repuesto: { input: intervencionRepuesto, results: resultadosRepuesto, siguiente: intervencionCantidad }
+  };
+
+  function codigoTexto(codigo) {
+    return codigo ? `${codigo.codigo} - ${codigo.descripcion}` : '';
+  }
+
+  function renderResultadosIntervencion(tipo) {
+    const control = controlesIntervencion[tipo];
+    if (!control?.results) return;
+
+    const resultados = resultadosIntervencion[tipo] || [];
+    control.results.innerHTML = '';
+
+    if (!control.input?.value.trim()) {
+      const empty = document.createElement('div');
+      empty.className = 'codigo-empty';
+      empty.textContent = `Escriba para buscar ${etiquetaTipoCodigo(tipo).toLowerCase()}.`;
+      control.results.appendChild(empty);
+      return;
+    }
+
+    if (!resultados.length) {
+      const empty = document.createElement('div');
+      empty.className = 'codigo-empty';
+      empty.textContent = 'Sin resultados. Use + Interno si no existe en oficiales.';
+      control.results.appendChild(empty);
+      return;
+    }
+
+    resultados.forEach((codigo, index) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = index === resultadoSeleccionadoIntervencion[tipo] ? 'is-selected' : '';
+      button.innerHTML = `<strong>${codigo.codigo}</strong><span>${codigo.descripcion}</span>`;
+      button.addEventListener('click', () => {
+        resultadoSeleccionadoIntervencion[tipo] = index;
+        confirmarCodigoIntervencion(tipo);
+      });
+      control.results.appendChild(button);
+    });
+  }
+
+  function filtrarIntervencion(tipo) {
+    const control = controlesIntervencion[tipo];
+    const texto = normalizarTextoBusqueda(control?.input?.value);
+
+    if (intervencionActual[tipo] && control?.input?.value !== codigoTexto(intervencionActual[tipo])) {
+      intervencionActual[tipo] = null;
+    }
+
+    resultadosIntervencion[tipo] = codigosNomenclador
+      .filter(codigo => codigo.tipo === tipo)
+      .filter(codigo => texto && normalizarTextoBusqueda(`${codigo.codigo} ${codigo.descripcion}`).includes(texto))
+      .slice(0, 12);
+
+    resultadoSeleccionadoIntervencion[tipo] = Math.min(
+      resultadoSeleccionadoIntervencion[tipo],
+      Math.max(resultadosIntervencion[tipo].length - 1, 0)
+    );
+    renderResultadosIntervencion(tipo);
+  }
+
+  function seleccionarResultadoIntervencion(tipo, index) {
+    const resultados = resultadosIntervencion[tipo] || [];
+    if (!resultados.length) return;
+    resultadoSeleccionadoIntervencion[tipo] = Math.max(0, Math.min(index, resultados.length - 1));
+    renderResultadosIntervencion(tipo);
+    controlesIntervencion[tipo]?.results?.querySelector('button.is-selected')?.scrollIntoView({ block: 'nearest' });
+  }
+
+  function renderCodigosSeleccionados() {
+    if (!codigosSeleccionadosBody) return;
+
+    codigosSeleccionadosBody.innerHTML = '';
+
+    if (!intervencionesSeleccionadas.length) {
+      const row = document.createElement('tr');
+      row.innerHTML = `<td colspan="5" class="table-empty">Sin intervenciones cargadas</td>`;
+      codigosSeleccionadosBody.appendChild(row);
+      return;
+    }
+
+    intervencionesSeleccionadas.forEach((intervencion, index) => {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${intervencion.falla ? `<strong>${intervencion.falla.codigo}</strong> ${intervencion.falla.descripcion}` : '-'}</td>
+        <td>${intervencion.trabajo ? `<strong>${intervencion.trabajo.codigo}</strong> ${intervencion.trabajo.descripcion}` : '-'}</td>
+        <td>${intervencion.repuesto ? `<strong>${intervencion.repuesto.codigo}</strong> ${intervencion.repuesto.descripcion}` : '-'}</td>
+        <td>${intervencion.cantidad || 1}</td>
+        <td><button type="button" class="btn-quitar-codigo" title="Quitar">X</button></td>
+      `;
+      row.querySelector('.btn-quitar-codigo').addEventListener('click', () => {
+        intervencionesSeleccionadas.splice(index, 1);
+        renderCodigosSeleccionados();
+        focusNext(intervencionFalla);
+      });
+      codigosSeleccionadosBody.appendChild(row);
+    });
+  }
+
+  function confirmarCodigoIntervencion(tipo) {
+    const codigo = resultadosIntervencion[tipo]?.[resultadoSeleccionadoIntervencion[tipo]];
+    const control = controlesIntervencion[tipo];
+
+    if (!codigo) {
+      focusNext(control?.siguiente || btnGuardar);
+      return;
+    }
+
+    intervencionActual[tipo] = codigo;
+    control.input.value = codigoTexto(codigo);
+    resultadosIntervencion[tipo] = [];
+    renderResultadosIntervencion(tipo);
+    focusNext(control.siguiente);
+  }
+
+  function limpiarIntervencionActual() {
+    intervencionActual = { falla: null, trabajo: null, repuesto: null };
+    if (intervencionFalla) intervencionFalla.value = '';
+    if (intervencionTrabajo) intervencionTrabajo.value = '';
+    if (intervencionRepuesto) intervencionRepuesto.value = '';
+    if (intervencionCantidad) intervencionCantidad.value = '1';
+    ['falla', 'trabajo', 'repuesto'].forEach(tipo => {
+      resultadosIntervencion[tipo] = [];
+      resultadoSeleccionadoIntervencion[tipo] = 0;
+      renderResultadosIntervencion(tipo);
+    });
+  }
+
+  function agregarIntervencionActual() {
+    if (!intervencionActual.falla && !intervencionActual.trabajo && !intervencionActual.repuesto) {
+      focusNext(btnGuardar);
+      return;
+    }
+
+    const cantidad = Number(intervencionCantidad?.value || 1);
+    intervencionesSeleccionadas.push({
+      falla: intervencionActual.falla,
+      trabajo: intervencionActual.trabajo,
+      repuesto: intervencionActual.repuesto,
+      cantidad: Number.isFinite(cantidad) && cantidad > 0 ? cantidad : 1
+    });
+    renderCodigosSeleccionados();
+    limpiarIntervencionActual();
+    focusNext(intervencionFalla);
+  }
+
+  function configurarCampoIntervencion(tipo) {
+    const control = controlesIntervencion[tipo];
+    if (!control?.input) return;
+
+    control.input.addEventListener('input', () => filtrarIntervencion(tipo));
+    control.input.addEventListener('keydown', event => {
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        seleccionarResultadoIntervencion(tipo, resultadoSeleccionadoIntervencion[tipo] + 1);
+        return;
+      }
+
+      if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        seleccionarResultadoIntervencion(tipo, resultadoSeleccionadoIntervencion[tipo] - 1);
+        return;
+      }
+
+      if (event.key !== 'Enter') return;
+      event.preventDefault();
+
+      if (!control.input.value.trim()) {
+        if (tipo === 'falla') {
+          focusNext(btnGuardar);
+          return;
+        }
+
+        focusNext(control.siguiente);
+        return;
+      }
+
+      confirmarCodigoIntervencion(tipo);
+    });
+  }
+
+  ['falla', 'trabajo', 'repuesto'].forEach(configurarCampoIntervencion);
+  intervencionCantidad?.addEventListener('keydown', event => {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    agregarIntervencionActual();
+  });
+
+  renderCodigosSeleccionados();
+  limpiarIntervencionActual();
+
+  function limpiarFormularioTicket() {
+    clienteActual = null;
+    ultimoDniBuscado = '';
+
+    dni.value = '';
+    nombre.value = '';
+    apellido.value = '';
+    celular.value = '';
+    email.value = '';
+    ocultarAvisoCliente();
+
+    nombre.disabled = false;
+    apellido.disabled = false;
+    celular.disabled = false;
+    email.disabled = false;
+
+    tipoEquipo.value = '';
+    limpiarMarcas();
+    limpiarModelos();
+    if (falla) falla.value = '';
+
+    intervencionesSeleccionadas = [];
+    limpiarIntervencionActual();
+    renderCodigosSeleccionados();
+    focusNext(dni);
+  }
+
+  function codigosDesdeIntervenciones() {
+    return intervencionesSeleccionadas.flatMap(intervencion => {
+      const items = [];
+
+      if (intervencion.falla) {
+        items.push({ tipo: 'falla', id: intervencion.falla.id });
+      }
+
+      if (intervencion.trabajo) {
+        items.push({ tipo: 'trabajo', id: intervencion.trabajo.id });
+      }
+
+      if (intervencion.repuesto) {
+        items.push({
+          tipo: 'repuesto',
+          id: intervencion.repuesto.id,
+          cantidad: intervencion.cantidad || 1
+        });
+      }
+
+      return items;
+    });
+  }
+
+  btnCancelarTicket?.addEventListener('click', async () => {
+    const hayDatos = Boolean(
+      dni.value ||
+      nombre.value ||
+      apellido.value ||
+      celular.value ||
+      email.value ||
+      tipoEquipo.value ||
+      marca.value ||
+      modelo.value ||
+      falla?.value?.trim() ||
+      intervencionFalla?.value ||
+      intervencionTrabajo?.value ||
+      intervencionRepuesto?.value ||
+      intervencionesSeleccionadas.length
+    );
+
+    if (hayDatos) {
+      const confirmado = await confirmar(
+        'Cancelar ticket',
+        'Se limpiaran los datos cargados del ticket actual. Continuar?',
+        'Cancelar ticket'
+      );
+
+      if (!confirmado) return;
+    }
+
+    limpiarFormularioTicket();
   });
 
   // ================= GUARDAR TICKET =================
@@ -410,8 +764,14 @@ document.addEventListener('DOMContentLoaded', () => {
         clienteActual = { id };
       }
 
-      if (!tipoEquipo.value || !marca.value || !modelo.value || !falla.value.trim()) {
-        await mostrarAlerta('Faltan datos del equipo', 'Completa tipo, marca, modelo y descripcion de la falla.');
+      if (!tipoEquipo.value || !marca.value || !modelo.value) {
+        await mostrarAlerta('Faltan datos del equipo', 'Completa tipo, marca y modelo.');
+        return;
+      }
+
+      const fallaPrincipal = intervencionesSeleccionadas.find(intervencion => intervencion.falla)?.falla;
+      if (!fallaPrincipal) {
+        await mostrarAlerta('Falta la falla', 'Carga al menos una falla en Detalle del ticket.', () => focusNext(intervencionFalla));
         return;
       }
 
@@ -419,27 +779,11 @@ document.addEventListener('DOMContentLoaded', () => {
         cliente_id: clienteActual.id,
         tipo_equipo_id: tipoEquipo.value,
         modelo_id: modelo.value,
-        descripcion_falla: falla.value.trim()
+        descripcion_falla: fallaPrincipal.descripcion,
+        codigos_ticket: codigosDesdeIntervenciones()
       });
 
-      clienteActual = null;
-
-      dni.value = '';
-      nombre.value = '';
-      apellido.value = '';
-      celular.value = '';
-      email.value = '';
-      ocultarAvisoCliente();
-
-      nombre.disabled = false;
-      apellido.disabled = false;
-      celular.disabled = false;
-      email.disabled = false;
-
-      tipoEquipo.value = '';
-      limpiarMarcas();
-      limpiarModelos();
-      falla.value = '';
+      limpiarFormularioTicket();
 
       await mostrarAlerta('Ticket cargado', `Ticket cargado correctamente:\n${ticket.codigo || ticket.uuid}`, () => dni.focus());
       dni.focus();
@@ -454,14 +798,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ================= TICKETS =================
   async function cargarTickets() {
-    listaTickets.innerHTML = '';
-
     const [tickets, estados] = await Promise.all([
       window.api.listarTickets(),
       obtenerEstadosTicket()
     ]);
     ticketsActuales = tickets;
     estadosActuales = estados;
+    actualizarPanelAlertas(tickets);
+
+    if (!listaTickets) {
+      return;
+    }
+
+    listaTickets.innerHTML = '';
 
     const textoBusqueda = buscadorTickets?.value?.toLowerCase() || '';
     const estadoFiltro = filtroEstado?.value || '';
@@ -550,7 +899,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (ticketSeleccionado) {
       ticketSeleccionado = ticketsFiltrados.find(t => t.uuid === ticketSeleccionado.uuid) || null;
     }
-    actualizarPanelAlertas(tickets);
     actualizarAccionesTicket();
   }
 
@@ -566,21 +914,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function actualizarAccionesTicket() {
     const tieneTicket = Boolean(ticketSeleccionado);
-    btnPdfTicket.disabled = !tieneTicket;
-    btnPresupuestoTicket.disabled = !tieneTicket;
-    btnEnviarPresupuestoTicket.disabled = !tieneTicket;
-    btnAceptarPresupuestoTicket.disabled = !tieneTicket;
-    btnRechazarPresupuestoTicket.disabled = !tieneTicket;
-    btnRetiradoSinRepararTicket.disabled = !tieneTicket;
-    btnEntregarTicket.disabled = !tieneTicket;
+    if (btnPdfTicket) btnPdfTicket.disabled = !tieneTicket;
+    if (btnPresupuestoTicket) btnPresupuestoTicket.disabled = !tieneTicket;
+    if (btnEnviarPresupuestoTicket) btnEnviarPresupuestoTicket.disabled = !tieneTicket;
+    if (btnAceptarPresupuestoTicket) btnAceptarPresupuestoTicket.disabled = !tieneTicket;
+    if (btnRechazarPresupuestoTicket) btnRechazarPresupuestoTicket.disabled = !tieneTicket;
+    if (btnRetiradoSinRepararTicket) btnRetiradoSinRepararTicket.disabled = !tieneTicket;
+    if (btnEntregarTicket) btnEntregarTicket.disabled = !tieneTicket;
 
     if (!tieneTicket) {
-      ticketSeleccionadoInfo.textContent = 'Seleccione un ticket para operar.';
+      if (ticketSeleccionadoInfo) {
+        ticketSeleccionadoInfo.textContent = 'Seleccione un ticket para operar.';
+      }
       return;
     }
 
-    ticketSeleccionadoInfo.textContent =
-      `${ticketCodigo(ticketSeleccionado)} - ${ticketSeleccionado.nombre} ${ticketSeleccionado.apellido} - ${descripcionEquipo(ticketSeleccionado)}`;
+    if (ticketSeleccionadoInfo) {
+      ticketSeleccionadoInfo.textContent =
+        `${ticketCodigo(ticketSeleccionado)} - ${ticketSeleccionado.nombre} ${ticketSeleccionado.apellido} - ${descripcionEquipo(ticketSeleccionado)}`;
+    }
   }
 
   async function generarPDFIngresoSeleccionado(ticket) {
@@ -675,6 +1027,7 @@ document.addEventListener('DOMContentLoaded', () => {
     await Promise.all([
       cargarConfiguracionSistema().then(() => medirPaso('configuracion')),
       inicializarCombos().then(() => medirPaso('combos')),
+      cargarCodigosNomenclador().then(() => medirPaso('nomencladores')),
       cargarFiltroEstados().then(() => medirPaso('filtro-estados')),
       cargarTickets().then(() => medirPaso('tickets')),
       cargarSucursalLocal().then(() => medirPaso('sucursal'))
@@ -885,17 +1238,20 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.addEventListener('click', () => {
-    menuDatos.classList.add('hidden');
+    menuDatos?.classList.add('hidden');
   });
 
-  menuTipos.addEventListener('click', () => ['ADMIN', 'OPERADOR'].includes(usuarioActual?.role) && window.api.abrirTiposEquipo());
-  menuMarcas.addEventListener('click', () => ['ADMIN', 'OPERADOR'].includes(usuarioActual?.role) && window.api.abrirMarcas());
-  menuModelos.addEventListener('click', () => ['ADMIN', 'OPERADOR'].includes(usuarioActual?.role) && window.api.abrirModelos());
-  menuClientes.addEventListener('click', () => ['ADMIN', 'OPERADOR'].includes(usuarioActual?.role) && window.api.abrirClientes());
-  menuSucursales.addEventListener('click', () => usuarioActual?.role === 'ADMIN' && window.api.abrirSucursales());
+  menuTipos?.addEventListener('click', () => ['ADMIN', 'OPERADOR'].includes(usuarioActual?.role) && window.api.abrirTiposEquipo());
+  menuMarcas?.addEventListener('click', () => ['ADMIN', 'OPERADOR'].includes(usuarioActual?.role) && window.api.abrirMarcas());
+  menuModelos?.addEventListener('click', () => ['ADMIN', 'OPERADOR'].includes(usuarioActual?.role) && window.api.abrirModelos());
+  menuClientes?.addEventListener('click', () => ['ADMIN', 'OPERADOR'].includes(usuarioActual?.role) && window.api.abrirClientes());
+  menuSucursales?.addEventListener('click', () => usuarioActual?.role === 'ADMIN' && window.api.abrirSucursales());
+  menuFallasInternas?.addEventListener('click', () => mostrarAlerta('Proximamente', 'El ABM de fallas internas se conectara en el siguiente paso.'));
+  menuTrabajosInternos?.addEventListener('click', () => mostrarAlerta('Proximamente', 'El ABM de trabajos internos se conectara en el siguiente paso.'));
+  menuRepuestosInternos?.addEventListener('click', () => mostrarAlerta('Proximamente', 'El ABM de repuestos internos se conectara en el siguiente paso.'));
 
-  buscadorTickets.addEventListener('input', cargarTickets);
-  filtroEstado.addEventListener('change', cargarTickets);
+  buscadorTickets?.addEventListener('input', cargarTickets);
+  filtroEstado?.addEventListener('change', cargarTickets);
   btnVerAlertasTickets?.addEventListener('click', () => window.api.abrirAlertasTickets());
   btnConfiguracion?.addEventListener('click', () => {
     if (usuarioActual?.role === 'ADMIN') {
@@ -907,34 +1263,34 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!confirmed) return;
     await window.api.cerrarSesion();
   });
-  btnVerTodosTickets.addEventListener('click', () => window.api.abrirTickets());
-  btnPdfTicket.addEventListener('click', () => generarPDFIngresoSeleccionado(ticketSeleccionado));
-  btnPresupuestoTicket.addEventListener('click', () => {
+  btnVerTodosTickets?.addEventListener('click', () => window.api.abrirTickets());
+  btnPdfTicket?.addEventListener('click', () => generarPDFIngresoSeleccionado(ticketSeleccionado));
+  btnPresupuestoTicket?.addEventListener('click', () => {
     if (ticketSeleccionado) abrirModalPresupuesto(ticketSeleccionado);
   });
-  btnEnviarPresupuestoTicket.addEventListener('click', () => enviarPresupuestoGuardado(ticketSeleccionado));
-  btnAceptarPresupuestoTicket.addEventListener('click', () => cambiarEstadoPorCodigo(
+  btnEnviarPresupuestoTicket?.addEventListener('click', () => enviarPresupuestoGuardado(ticketSeleccionado));
+  btnAceptarPresupuestoTicket?.addEventListener('click', () => cambiarEstadoPorCodigo(
     ticketSeleccionado,
     'EN_REPARACION',
     'Aceptar presupuesto',
     `El ticket ${ticketSeleccionado ? ticketCodigo(ticketSeleccionado) : ''} pasara a En reparacion.`,
     'Aceptar'
   ));
-  btnRechazarPresupuestoTicket.addEventListener('click', () => cambiarEstadoPorCodigo(
+  btnRechazarPresupuestoTicket?.addEventListener('click', () => cambiarEstadoPorCodigo(
     ticketSeleccionado,
     'PRESUPUESTO_RECHAZADO',
     'Rechazar presupuesto',
     `El ticket ${ticketSeleccionado ? ticketCodigo(ticketSeleccionado) : ''} quedara como Presupuesto rechazado.`,
     'Rechazar'
   ));
-  btnRetiradoSinRepararTicket.addEventListener('click', () => cambiarEstadoPorCodigo(
+  btnRetiradoSinRepararTicket?.addEventListener('click', () => cambiarEstadoPorCodigo(
     ticketSeleccionado,
     'RETIRADO_SIN_REPARAR',
     'Retirado sin reparar',
     `El ticket ${ticketSeleccionado ? ticketCodigo(ticketSeleccionado) : ''} quedara como Retirado sin reparar.`,
     'Confirmar'
   ));
-  btnEntregarTicket.addEventListener('click', async () => {
+  btnEntregarTicket?.addEventListener('click', async () => {
     if (!ticketSeleccionado) return;
 
     if (!puedeEntregar(ticketSeleccionado)) {

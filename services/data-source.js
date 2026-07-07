@@ -196,6 +196,9 @@ module.exports = {
   listarEstadosTicket: () =>
     api.listarEstadosTicket(),
 
+  listarCodigosNomenclador: () =>
+    api.listarCodigosNomenclador(),
+
   actualizarEstadoTicket: (uuid, estado_id) =>
     api.actualizarEstado(uuid, { estado_id }),
 

@@ -364,7 +364,15 @@ ipcMain.handle('auth:bootstrap-admin', async (_, data = {}) => {
     throw new Error(gateway.message || 'No se pudo preparar el gateway local.');
   }
 
-  return ejecutarConTokenAdminServidor(() => db.authBootstrapAdmin(data));
+  try {
+    return await ejecutarConTokenAdminServidor(() => db.authBootstrapAdmin(data));
+  } catch (error) {
+    if (String(error.message || '').includes('No autorizado')) {
+      return { action: 'skipped', reason: 'admin-exists' };
+    }
+
+    throw error;
+  }
 });
 
 ipcMain.handle('auth:reset-admin', async (_, data = {}) => {
@@ -512,7 +520,10 @@ ipcMain.handle('crear-ticket', requireLicense(async (_, data) => {
 
   return db.crearTicket({
     ...data,
-    sucursal_id: sucursal.id
+    sucursal_id: sucursal.id,
+    usuario_creador_id: authSession?.user?.id || null,
+    usuario_creador_username: authSession?.user?.username || '',
+    usuario_creador_nombre: authSession?.user?.display_name || authSession?.user?.username || ''
   });
 }));
 
@@ -665,6 +676,10 @@ ipcMain.handle('marcas-reactivar', requireLicense((_, id) =>
 
 ipcMain.handle('listar-estados-ticket', () =>
   db.listarEstadosTicket()
+);
+
+ipcMain.handle('listar-codigos-nomenclador', () =>
+  db.listarCodigosNomenclador()
 );
 
 ipcMain.handle('actualizar-estado-ticket', requireLicense((_, data) =>

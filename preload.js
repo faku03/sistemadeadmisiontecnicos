@@ -138,6 +138,7 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.invoke('abrir-historial-ticket', uuid),
 
   listarEstadosTicket: () =>  ipcRenderer.invoke('listar-estados-ticket'),
+  listarCodigosNomenclador: () => ipcRenderer.invoke('listar-codigos-nomenclador'),
   actualizarEstadoTicket: data => ipcRenderer.invoke('actualizar-estado-ticket', data),
 
   obtenerHistorialTicket: uuid =>

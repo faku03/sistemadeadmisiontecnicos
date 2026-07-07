@@ -90,7 +90,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       setStatus('Usuario inicial disponible: admin.', true);
       passwordInput.focus();
     } catch (error) {
-      setStatus(error.message || 'No se pudo preparar el usuario administrador.', true);
+      if (String(error.message || '').includes('No autorizado')) {
+        setStatus('Usuario administrador disponible. Ingrese la clave para continuar.', true);
+      } else {
+        setStatus(error.message || 'No se pudo preparar el usuario administrador.', true);
+      }
     }
   }
 
