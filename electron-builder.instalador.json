@@ -1,6 +1,7 @@
 {
   "appId": "com.sistematecnicocaja.app",
-  "productName": "SistemaServidor",
+  "productName": "FaroDesk Servidor",
+  "executableName": "FaroDeskServidor",
   "directories": {
     "output": "dist-instalador"
   },
@@ -113,13 +114,13 @@
   "win": {
     "target": "nsis",
     "icon": "assets/icons/servidor.ico",
-    "artifactName": "SistemaServidor-Setup-${version}.${ext}"
+    "artifactName": "FaroDeskServidor-Setup-${version}.${ext}"
   },
   "nsis": {
     "oneClick": false,
     "perMachine": true,
     "allowToChangeInstallationDirectory": true,
     "include": "installer/server-installer.nsh",
-    "shortcutName": "Sistema Servidor"
+    "shortcutName": "FaroDesk Servidor"
   }
 }

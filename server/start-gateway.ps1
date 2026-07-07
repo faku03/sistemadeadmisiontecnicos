@@ -70,6 +70,7 @@ try {
 $stdout = Join-Path $logDir "gateway.out.log"
 $stderr = Join-Path $logDir "gateway.err.log"
 $gatewayExe = @(
+  (Join-Path $installDir "FaroDeskServidor.exe"),
   (Join-Path $installDir "SistemaServidor.exe"),
   (Join-Path $installDir "sistemadetickets.exe"),
   (Join-Path $installDir "Sistema Tecnico y Caja.exe"),

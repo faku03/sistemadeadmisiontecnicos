@@ -1,11 +1,14 @@
 param(
   [string]$InstallDir = "C:\mardeltech\sistemadetickets",
-  [string]$TaskName = "MardelTech Sistema Tickets Gateway"
+  [string]$TaskName = "FaroDesk ServerTickets"
 )
 
 $ErrorActionPreference = "Stop"
 
-$serverExe = Join-Path $InstallDir "SistemaServidor.exe"
+$serverExe = Join-Path $InstallDir "FaroDeskServidor.exe"
+if (-not (Test-Path $serverExe)) {
+  $serverExe = Join-Path $InstallDir "SistemaServidor.exe"
+}
 if (-not (Test-Path $serverExe)) {
   throw "No se encontro $serverExe"
 }

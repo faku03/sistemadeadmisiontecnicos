@@ -57,14 +57,62 @@ function normalizarGatewayUrl(url) {
 
 function scriptsServidorDir() {
   const exeDir = path.dirname(process.execPath);
-  const installedServerDir = path.join(exeDir, '..', 'SistemaServidor', 'resources', 'server');
+  const installedServerDirs = [
+    path.join(exeDir, '..', 'resources', 'server'),
+    path.join(exeDir, '..', 'FaroDeskServidor', 'resources', 'server'),
+    path.join(exeDir, '..', 'SistemaServidor', 'resources', 'server')
+  ];
   const localServerDir = path.join(__dirname, 'server');
 
-  if (fs.existsSync(installedServerDir)) {
-    return installedServerDir;
+  for (const installedServerDir of installedServerDirs) {
+    if (fs.existsSync(installedServerDir)) {
+      return installedServerDir;
+    }
   }
 
   return localServerDir;
+}
+
+function leerAdminTokenServidor() {
+  if (process.env.SISTEMA_TICKETS_ADMIN_TOKEN) {
+    return String(process.env.SISTEMA_TICKETS_ADMIN_TOKEN).trim();
+  }
+
+  const exeDir = path.dirname(process.execPath);
+  const candidates = [
+    path.join(exeDir, 'server.config.json'),
+    path.join(exeDir, '..', 'server.config.json'),
+    path.join(exeDir, '..', 'FaroDeskServidor', 'server.config.json'),
+    path.join(exeDir, '..', 'SistemaServidor', 'server.config.json'),
+    path.join(__dirname, 'server.config.json')
+  ];
+
+  for (const configPath of candidates) {
+    try {
+      if (!fs.existsSync(configPath)) continue;
+      const parsed = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      const token = String(parsed.SISTEMA_TICKETS_ADMIN_TOKEN || '').trim();
+      if (token) return token;
+    } catch (_) {
+      // Sigue con la siguiente ubicacion posible.
+    }
+  }
+
+  return '';
+}
+
+async function ejecutarConTokenAdminServidor(handler) {
+  const token = leerAdminTokenServidor();
+
+  if (token) {
+    db.setAuthToken(token);
+  }
+
+  try {
+    return await handler();
+  } finally {
+    db.setAuthToken(authSession?.token || '');
+  }
 }
 
 function contextoAdmin() {
@@ -201,7 +249,7 @@ function createMainWindow() {
     height: 720,
     center: true,
     autoHideMenuBar: true,
-    title: 'Sistema de Caja',
+    title: 'FaroDesk Caja',
     webPreferences: {
       preload: path.join(__dirname, 'preload-caja.js'),
       contextIsolation: true,
@@ -293,7 +341,7 @@ function datosNegocioReporte() {
   ].filter(Boolean).join(' - ');
 
   return {
-    nombre: config.pdfBusinessName || config.sucursalNombre || 'Sistema de Caja',
+    nombre: config.pdfBusinessName || config.sucursalNombre || 'FaroDesk Caja',
     direccion: direccion || config.pdfBusinessAddress || '',
     telefono: config.pdfBusinessPhone || '',
     email: config.pdfBusinessEmail || '',
@@ -368,7 +416,7 @@ ipcMain.handle('auth:bootstrap-admin', async (_, data = {}) => {
     throw new Error(gateway.message || 'No se pudo preparar el gateway local.');
   }
 
-  return db.authBootstrapAdmin(data);
+  return ejecutarConTokenAdminServidor(() => db.authBootstrapAdmin(data));
 });
 
 ipcMain.handle('auth:reset-admin', async (_, data = {}) => {
@@ -377,7 +425,7 @@ ipcMain.handle('auth:reset-admin', async (_, data = {}) => {
     throw new Error(gateway.message || 'No se pudo preparar el gateway local.');
   }
 
-  return db.authResetAdmin(data);
+  return ejecutarConTokenAdminServidor(() => db.authResetAdmin(data));
 });
 
 ipcMain.handle('auth:login', async (_, credentials = {}) => {

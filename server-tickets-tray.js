@@ -198,6 +198,7 @@ async function startGateway() {
     PGUSER: cfg.PGUSER || 'mardeltech_app',
     PGPASSWORD: cfg.PGPASSWORD || 'mardeltech_app',
     SISTEMA_TICKETS_API_PORT: String(cfg.SISTEMA_TICKETS_API_PORT || DEFAULT_PORT),
+    SISTEMA_TICKETS_ADMIN_TOKEN: cfg.SISTEMA_TICKETS_ADMIN_TOKEN || process.env.SISTEMA_TICKETS_ADMIN_TOKEN || '',
     SISTEMA_TICKETS_OUTPUT_PATH: path.join(process.env.ProgramData || 'C:\\ProgramData', 'MardelTech', 'SistemaTickets', 'pdfs')
   };
 

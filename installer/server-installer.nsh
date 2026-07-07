@@ -24,10 +24,10 @@ Function serverPageCreate
     Abort
   ${EndIf}
 
-  ${NSD_CreateLabel} 0 0 100% 26u "Este instalador prepara el servidor. Siempre instala PostgreSQL y el gateway del sistema."
+  ${NSD_CreateLabel} 0 0 100% 26u "Este instalador prepara el servidor de FaroDesk. Siempre instala PostgreSQL y el gateway del sistema."
   Pop $0
 
-  ${NSD_CreateCheckbox} 0 36u 100% 12u "Instalar tambien el sistema en este servidor usando el instalador de terminal"
+  ${NSD_CreateCheckbox} 0 36u 100% 12u "Instalar tambien FaroDesk en este servidor usando el instalador de terminal"
   Pop $SystemCheckbox
   ${NSD_Check} $SystemCheckbox
 
@@ -56,14 +56,14 @@ FunctionEnd
   ${If} $InstallSystem == ${BST_CHECKED}
     FindFirst $0 $1 "$SharedTerminalDir\*.exe"
     ${If} $1 != ""
-      MessageBox MB_ICONINFORMATION "La instalacion del servidor termino correctamente.$\r$\n$\r$\nAhora se abrira el instalador de terminal."
+      MessageBox MB_ICONINFORMATION "La instalacion del servidor FaroDesk termino correctamente.$\r$\n$\r$\nAhora se abrira el instalador de terminal."
       ExecShell "" "$SharedTerminalDir\$1"
     ${Else}
-      MessageBox MB_ICONEXCLAMATION "No se encontro el instalador de terminal en $SharedTerminalDir."
+      MessageBox MB_ICONEXCLAMATION "No se encontro el instalador de terminal FaroDesk en $SharedTerminalDir."
     ${EndIf}
     FindClose $0
   ${Else}
-    MessageBox MB_ICONINFORMATION "La instalacion del servidor termino correctamente."
+    MessageBox MB_ICONINFORMATION "La instalacion del servidor FaroDesk termino correctamente."
   ${EndIf}
 !macroend
 

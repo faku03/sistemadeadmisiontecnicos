@@ -17,7 +17,7 @@ Var TerminalExePath
 !macroend
 
 !macro customInit
-  StrCpy $INSTDIR "C:\mardeltech\sistemadetickets\SistemaTerminal"
+  StrCpy $INSTDIR "C:\mardeltech\sistemadetickets\FaroDeskTerminal"
   ReadEnvStr $ServerHost "COMPUTERNAME"
   StrCpy $GatewayHost $ServerHost
 !macroend
@@ -36,7 +36,7 @@ Function componentsPageCreate
     Abort
   ${EndIf}
 
-  ${NSD_CreateLabel} 0 0 100% 16u "Seleccione que modulos desea instalar en la terminal. Puede instalar uno o ambos."
+  ${NSD_CreateLabel} 0 0 100% 16u "Seleccione que modulos desea instalar de FaroDesk. Puede instalar uno o ambos."
   Pop $0
 
   ${NSD_CreateLabel} 0 20u 100% 12u "Nombre o IP del servidor (gateway y licencias)"
@@ -45,11 +45,11 @@ Function componentsPageCreate
   ${NSD_CreateText} 0 34u 100% 12u "$ServerHost"
   Pop $ServerHostInput
 
-  ${NSD_CreateCheckbox} 0 56u 100% 12u "Sistema de Tickets / Servicio Tecnico"
+  ${NSD_CreateCheckbox} 0 56u 100% 12u "FaroDesk Tickets / Servicio Tecnico"
   Pop $TicketsCheckbox
   ${NSD_Check} $TicketsCheckbox
 
-  ${NSD_CreateCheckbox} 0 76u 100% 12u "Sistema de Caja"
+  ${NSD_CreateCheckbox} 0 76u 100% 12u "FaroDesk Caja"
   Pop $CajaCheckbox
   ${NSD_Check} $CajaCheckbox
 
@@ -90,17 +90,17 @@ FunctionEnd
   Delete "$newStartMenuLink"
   Delete "$newDesktopLink"
 
-  CreateDirectory "$SMPROGRAMS\Sistema Tecnico y Caja"
+  CreateDirectory "$SMPROGRAMS\FaroDesk"
   StrCpy $TerminalExePath "$INSTDIR\${APP_EXECUTABLE_FILENAME}"
 
   ${If} $InstallTickets == ${BST_CHECKED}
-    CreateShortCut "$SMPROGRAMS\Sistema Tecnico y Caja\Sistema de Tickets.lnk" "$TerminalExePath" "--modulo=tickets" "$INSTDIR\resources\icons\tickets.ico" 0 "" "" "Sistema de Tickets / Servicio Tecnico"
-    CreateShortCut "$DESKTOP\Sistema de Tickets.lnk" "$TerminalExePath" "--modulo=tickets" "$INSTDIR\resources\icons\tickets.ico" 0 "" "" "Sistema de Tickets / Servicio Tecnico"
+    CreateShortCut "$SMPROGRAMS\FaroDesk\FaroDesk Tickets.lnk" "$TerminalExePath" "--modulo=tickets" "$INSTDIR\resources\icons\tickets.ico" 0 "" "" "FaroDesk Tickets / Servicio Tecnico"
+    CreateShortCut "$DESKTOP\FaroDesk Tickets.lnk" "$TerminalExePath" "--modulo=tickets" "$INSTDIR\resources\icons\tickets.ico" 0 "" "" "FaroDesk Tickets / Servicio Tecnico"
   ${EndIf}
 
   ${If} $InstallCaja == ${BST_CHECKED}
-    CreateShortCut "$SMPROGRAMS\Sistema Tecnico y Caja\Sistema de Caja.lnk" "$TerminalExePath" "--modulo=caja" "$INSTDIR\resources\icons\caja.ico" 0 "" "" "Sistema de Caja"
-    CreateShortCut "$DESKTOP\Sistema de Caja.lnk" "$TerminalExePath" "--modulo=caja" "$INSTDIR\resources\icons\caja.ico" 0 "" "" "Sistema de Caja"
+    CreateShortCut "$SMPROGRAMS\FaroDesk\FaroDesk Caja.lnk" "$TerminalExePath" "--modulo=caja" "$INSTDIR\resources\icons\caja.ico" 0 "" "" "FaroDesk Caja"
+    CreateShortCut "$DESKTOP\FaroDesk Caja.lnk" "$TerminalExePath" "--modulo=caja" "$INSTDIR\resources\icons\caja.ico" 0 "" "" "FaroDesk Caja"
   ${EndIf}
 
   FileOpen $0 "$INSTDIR\app.config.json" "w"
@@ -126,4 +126,9 @@ FunctionEnd
   Delete "$SMPROGRAMS\Sistema Tecnico y Caja\Sistema de Tickets.lnk"
   Delete "$SMPROGRAMS\Sistema Tecnico y Caja\Sistema de Caja.lnk"
   RMDir "$SMPROGRAMS\Sistema Tecnico y Caja"
+  Delete "$DESKTOP\FaroDesk Tickets.lnk"
+  Delete "$DESKTOP\FaroDesk Caja.lnk"
+  Delete "$SMPROGRAMS\FaroDesk\FaroDesk Tickets.lnk"
+  Delete "$SMPROGRAMS\FaroDesk\FaroDesk Caja.lnk"
+  RMDir "$SMPROGRAMS\FaroDesk"
 !macroend

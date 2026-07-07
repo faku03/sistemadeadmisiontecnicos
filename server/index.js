@@ -66,6 +66,11 @@ async function hasAdminSession(req) {
   return session?.user?.role === 'ADMIN';
 }
 
+async function hasAdminUser() {
+  const existing = await auth.findUserByUsername('admin');
+  return Boolean(existing);
+}
+
 async function tryServeAdminPanel(url, req, res) {
   if (url.pathname !== '/admin-panel' && !url.pathname.startsWith('/admin-panel/')) {
     return false;
@@ -1581,7 +1586,7 @@ async function handle(req, res) {
     }
 
     if (method === 'POST' && path === '/auth/bootstrap-admin') {
-      if (!hasAdminAccess(req)) {
+      if (!hasAdminAccess(req) && await hasAdminUser()) {
         sendJson(res, 401, { error: 'No autorizado' });
         return;
       }

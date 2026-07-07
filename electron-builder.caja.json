@@ -1,11 +1,54 @@
 {
   "appId": "com.sistemadecaja.app",
-  "productName": "SistemaDeCaja",
+  "productName": "FaroDesk Caja",
+  "executableName": "FaroDeskCaja",
   "directories": {
     "output": "dist-caja"
   },
   "files": [
-    "**/*"
+    "package.json",
+    "main-caja.js",
+    "preload-caja.js",
+    "renderer-caja.js",
+    "app-dialog.js",
+    "date-format.js",
+    "license-ui.js",
+    "login.js",
+    "devoluciones-caja.js",
+    "listado-caja.js",
+    "reporte-listado-caja.js",
+    "index-caja.html",
+    "devoluciones-caja.html",
+    "listado-caja.html",
+    "reporte-listado-caja.html",
+    "login.html",
+    "styles.css",
+    "assets/**/*",
+    "api/**/*",
+    "config/**/*",
+    "license/**/*",
+    "pdf/**/*",
+    "services/**/*",
+    "node_modules/**/*",
+    "!**/*.log",
+    "!**/*.zip",
+    "!app.config.json",
+    "!server.config.json",
+    "!.env",
+    "!.env.*",
+    "!admin-panel/**",
+    "!dist/**",
+    "!dist*/**",
+    "!dist-*/**",
+    "!docs/**",
+    "!installer/**",
+    "!pdfs/**",
+    "!pdf_presupuesto/**",
+    "!scripts/**",
+    "!server/**",
+    "!*.blockmap",
+    "!.gitignore",
+    "!electron-builder*.json"
   ],
   "extraMetadata": {
     "main": "main-caja.js"
@@ -13,7 +56,7 @@
   "win": {
     "target": "nsis",
     "icon": "assets/icons/caja.ico",
-    "artifactName": "${productName}-Setup-${version}.${ext}"
+    "artifactName": "FaroDeskCaja-Setup-${version}.${ext}"
   },
   "nsis": {
     "oneClick": false,

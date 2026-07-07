@@ -28,6 +28,7 @@ foreach ($startupDir in $startupDirs) {
 
 Get-Process | Where-Object {
   $_.Path -and (
+    $_.Path.EndsWith("FaroDeskServidor.exe") -or
     $_.Path.EndsWith("SistemaServidor.exe") -or
     $_.Path.EndsWith("sistemadetickets.exe") -or
     $_.Path.EndsWith("Sistema Tecnico y Caja.exe") -or

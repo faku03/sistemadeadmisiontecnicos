@@ -1,7 +1,7 @@
 ﻿{
   "appId": "com.sistematecnicocaja.terminal",
-  "productName": "SistemaTerminal",
-  "executableName": "SistemaDeTickets",
+  "productName": "FaroDesk Terminal",
+  "executableName": "FaroDesk",
   "directories": {
     "output": "dist-terminal-retryclose"
   },
@@ -56,6 +56,7 @@
     "!dist-caja/**",
     "!dist-instalador/**",
     "!dist-terminal/**",
+    "!dist-terminal*/**",
     "!dist-terminal-fresh/**",
     "!docs/**",
     "!installer/**",
@@ -79,6 +80,10 @@
     {
       "from": "assets/icons/caja.ico",
       "to": "icons/caja.ico"
+    },
+    {
+      "from": "assets/icons/terminal.ico",
+      "to": "icons/terminal.ico"
     }
   ],
   "extraMetadata": {
@@ -86,15 +91,15 @@
   },
   "win": {
     "target": "nsis",
-    "icon": "assets/icons/tickets.ico",
-    "artifactName": "SistemaTerminal-Setup-${version}.${ext}"
+    "icon": "assets/icons/terminal.ico",
+    "artifactName": "FaroDeskTerminal-Setup-${version}.${ext}"
   },
   "nsis": {
     "oneClick": false,
     "perMachine": true,
     "allowToChangeInstallationDirectory": true,
     "include": "installer/terminal-installer.nsh",
-    "shortcutName": "Sistema Terminal"
+    "shortcutName": "FaroDesk Terminal"
   }
 }
 

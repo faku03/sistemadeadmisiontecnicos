@@ -31,7 +31,7 @@
   },
   "build": {
     "appId": "com.sistemadetickets.app",
-    "productName": "SistemaDeTickets",
+    "productName": "FaroDesk",
     "directories": {
       "output": "dist"
     },
