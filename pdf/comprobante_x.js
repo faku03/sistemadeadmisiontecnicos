@@ -38,8 +38,11 @@ function generarComprobanteX(datos, outputDir) {
 
   sectionTitle(doc, 'Equipo');
   infoLine(doc, 'Equipo', equipo);
-  infoLine(doc, 'Falla', datos.descripcion_falla);
-  infoLine(doc, 'Trabajo realizado', datos.trabajo_realizado);
+  infoLine(doc, 'Fallas detectadas', datos.descripcion_falla);
+  infoLine(doc, 'Trabajos realizados', datos.trabajo_realizado);
+  if (datos.repuestos_detalle) {
+    infoLine(doc, 'Repuestos', datos.repuestos_detalle);
+  }
 
   sectionTitle(doc, 'Importe');
   infoLine(doc, 'Total presupuesto', money(datos.importe_total));

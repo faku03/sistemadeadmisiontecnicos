@@ -953,13 +953,49 @@ async function cajaPendiente() {
       c.celular,
       te.descripcion AS tipo,
       ma.nombre AS marca,
-      mo.nombre AS modelo
+      mo.nombre AS modelo,
+      COALESCE(fallas.fallas_detalle, t.descripcion_falla) AS descripcion_falla,
+      COALESCE(trabajos.trabajos_detalle, t.trabajo_realizado) AS trabajo_realizado,
+      repuestos.repuestos_detalle
     FROM movimientos_caja mc
     JOIN tickets t ON t.uuid = mc.ticket_uuid
     JOIN clientes c ON c.id = mc.cliente_id
     JOIN tipos_equipo te ON te.id = t.tipo_equipo_id
     JOIN modelos mo ON mo.id = t.modelo_id
     JOIN marcas ma ON ma.id = mo.marca_id
+    LEFT JOIN LATERAL (
+      SELECT string_agg(
+        CONCAT_WS(' - ', COALESCE(fo.codigo, 'INT'), COALESCE(fo.descripcion, fi.descripcion), NULLIF(NULLIF(tf.detalle, ''), COALESCE(fo.descripcion, fi.descripcion))),
+        E'\n'
+        ORDER BY tf.id
+      ) AS fallas_detalle
+      FROM ticket_fallas tf
+      LEFT JOIN fallas_oficiales fo ON fo.id = tf.falla_oficial_id
+      LEFT JOIN fallas_internas fi ON fi.id = tf.falla_interna_id
+      WHERE tf.ticket_uuid = t.uuid
+    ) fallas ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT string_agg(
+        CONCAT_WS(' - ', COALESCE(tro.codigo, 'INT'), COALESCE(tro.descripcion, ti.descripcion), NULLIF(NULLIF(tt.detalle, ''), COALESCE(tro.descripcion, ti.descripcion))),
+        E'\n'
+        ORDER BY tt.id
+      ) AS trabajos_detalle
+      FROM ticket_trabajos tt
+      LEFT JOIN trabajos_oficiales tro ON tro.id = tt.trabajo_oficial_id
+      LEFT JOIN trabajos_internos ti ON ti.id = tt.trabajo_interno_id
+      WHERE tt.ticket_uuid = t.uuid
+    ) trabajos ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT string_agg(
+        CONCAT_WS(' - ', COALESCE(ro.codigo, 'INT'), COALESCE(ro.descripcion, ri.descripcion), CONCAT('Cant. ', COALESCE(tr.cantidad, 1)), NULLIF(NULLIF(tr.detalle, ''), COALESCE(ro.descripcion, ri.descripcion))),
+        E'\n'
+        ORDER BY tr.id
+      ) AS repuestos_detalle
+      FROM ticket_repuestos tr
+      LEFT JOIN repuestos_oficiales ro ON ro.id = tr.repuesto_oficial_id
+      LEFT JOIN repuestos_internos ri ON ri.id = tr.repuesto_interno_id
+      WHERE tr.ticket_uuid = t.uuid
+    ) repuestos ON TRUE
     WHERE mc.estado = 'PENDIENTE_COBRO'
     ORDER BY mc.fecha_creacion DESC
   `);
@@ -1020,6 +1056,9 @@ async function cajaCobrada(limite = 100) {
       te.descripcion AS tipo,
       ma.nombre AS marca,
       mo.nombre AS modelo,
+      COALESCE(fallas.fallas_detalle, t.descripcion_falla) AS descripcion_falla,
+      COALESCE(trabajos.trabajos_detalle, t.trabajo_realizado) AS trabajo_realizado,
+      repuestos.repuestos_detalle,
       COALESCE(SUM(dc.importe), 0) AS devoluciones,
       cx.numero AS comprobante_numero,
       cx.pdf_path AS comprobante_pdf
@@ -1029,10 +1068,44 @@ async function cajaCobrada(limite = 100) {
     JOIN tipos_equipo te ON te.id = t.tipo_equipo_id
     JOIN modelos mo ON mo.id = t.modelo_id
     JOIN marcas ma ON ma.id = mo.marca_id
+    LEFT JOIN LATERAL (
+      SELECT string_agg(
+        CONCAT_WS(' - ', COALESCE(fo.codigo, 'INT'), COALESCE(fo.descripcion, fi.descripcion), NULLIF(NULLIF(tf.detalle, ''), COALESCE(fo.descripcion, fi.descripcion))),
+        E'\n'
+        ORDER BY tf.id
+      ) AS fallas_detalle
+      FROM ticket_fallas tf
+      LEFT JOIN fallas_oficiales fo ON fo.id = tf.falla_oficial_id
+      LEFT JOIN fallas_internas fi ON fi.id = tf.falla_interna_id
+      WHERE tf.ticket_uuid = t.uuid
+    ) fallas ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT string_agg(
+        CONCAT_WS(' - ', COALESCE(tro.codigo, 'INT'), COALESCE(tro.descripcion, ti.descripcion), NULLIF(NULLIF(tt.detalle, ''), COALESCE(tro.descripcion, ti.descripcion))),
+        E'\n'
+        ORDER BY tt.id
+      ) AS trabajos_detalle
+      FROM ticket_trabajos tt
+      LEFT JOIN trabajos_oficiales tro ON tro.id = tt.trabajo_oficial_id
+      LEFT JOIN trabajos_internos ti ON ti.id = tt.trabajo_interno_id
+      WHERE tt.ticket_uuid = t.uuid
+    ) trabajos ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT string_agg(
+        CONCAT_WS(' - ', COALESCE(ro.codigo, 'INT'), COALESCE(ro.descripcion, ri.descripcion), CONCAT('Cant. ', COALESCE(tr.cantidad, 1)), NULLIF(NULLIF(tr.detalle, ''), COALESCE(ro.descripcion, ri.descripcion))),
+        E'\n'
+        ORDER BY tr.id
+      ) AS repuestos_detalle
+      FROM ticket_repuestos tr
+      LEFT JOIN repuestos_oficiales ro ON ro.id = tr.repuesto_oficial_id
+      LEFT JOIN repuestos_internos ri ON ri.id = tr.repuesto_interno_id
+      WHERE tr.ticket_uuid = t.uuid
+    ) repuestos ON TRUE
     LEFT JOIN devoluciones_caja dc ON dc.movimiento_id = mc.id
     LEFT JOIN comprobantes_x cx ON cx.movimiento_id = mc.id
     WHERE mc.estado = 'COBRADO'
-    GROUP BY mc.id, t.codigo, c.id, te.id, ma.id, mo.id, cx.id
+    GROUP BY mc.id, t.codigo, t.descripcion_falla, t.trabajo_realizado, c.id, te.id, ma.id, mo.id, cx.id,
+      fallas.fallas_detalle, trabajos.trabajos_detalle, repuestos.repuestos_detalle
     ORDER BY mc.fecha_cobro DESC
     LIMIT $1
     `,
@@ -1299,8 +1372,9 @@ async function datosComprobanteX(uuid) {
       te.descripcion AS tipo,
       ma.nombre AS marca,
       mo.nombre AS modelo,
-      t.descripcion_falla,
-      t.trabajo_realizado
+      COALESCE(fallas.fallas_detalle, t.descripcion_falla) AS descripcion_falla,
+      COALESCE(trabajos.trabajos_detalle, t.trabajo_realizado) AS trabajo_realizado,
+      repuestos.repuestos_detalle
     FROM movimientos_caja mc
     JOIN tickets t ON t.uuid = mc.ticket_uuid
     JOIN clientes c ON c.id = mc.cliente_id
@@ -1308,6 +1382,39 @@ async function datosComprobanteX(uuid) {
     JOIN tipos_equipo te ON te.id = t.tipo_equipo_id
     JOIN modelos mo ON mo.id = t.modelo_id
     JOIN marcas ma ON ma.id = mo.marca_id
+    LEFT JOIN LATERAL (
+      SELECT string_agg(
+        CONCAT_WS(' - ', COALESCE(fo.codigo, 'INT'), COALESCE(fo.descripcion, fi.descripcion), NULLIF(NULLIF(tf.detalle, ''), COALESCE(fo.descripcion, fi.descripcion))),
+        E'\n'
+        ORDER BY tf.id
+      ) AS fallas_detalle
+      FROM ticket_fallas tf
+      LEFT JOIN fallas_oficiales fo ON fo.id = tf.falla_oficial_id
+      LEFT JOIN fallas_internas fi ON fi.id = tf.falla_interna_id
+      WHERE tf.ticket_uuid = t.uuid
+    ) fallas ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT string_agg(
+        CONCAT_WS(' - ', COALESCE(tro.codigo, 'INT'), COALESCE(tro.descripcion, ti.descripcion), NULLIF(NULLIF(tt.detalle, ''), COALESCE(tro.descripcion, ti.descripcion))),
+        E'\n'
+        ORDER BY tt.id
+      ) AS trabajos_detalle
+      FROM ticket_trabajos tt
+      LEFT JOIN trabajos_oficiales tro ON tro.id = tt.trabajo_oficial_id
+      LEFT JOIN trabajos_internos ti ON ti.id = tt.trabajo_interno_id
+      WHERE tt.ticket_uuid = t.uuid
+    ) trabajos ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT string_agg(
+        CONCAT_WS(' - ', COALESCE(ro.codigo, 'INT'), COALESCE(ro.descripcion, ri.descripcion), CONCAT('Cant. ', COALESCE(tr.cantidad, 1)), NULLIF(NULLIF(tr.detalle, ''), COALESCE(ro.descripcion, ri.descripcion))),
+        E'\n'
+        ORDER BY tr.id
+      ) AS repuestos_detalle
+      FROM ticket_repuestos tr
+      LEFT JOIN repuestos_oficiales ro ON ro.id = tr.repuesto_oficial_id
+      LEFT JOIN repuestos_internos ri ON ri.id = tr.repuesto_interno_id
+      WHERE tr.ticket_uuid = t.uuid
+    ) repuestos ON TRUE
     WHERE mc.ticket_uuid = $1
     `,
     [ticketUuid]
@@ -1344,7 +1451,20 @@ async function comprobanteX(uuid) {
     );
 
     if (existente.rowCount > 0) {
-      return existente.rows[0];
+      const actual = existente.rows[0];
+      const datos = await datosComprobanteX(ticketUuid);
+      const pdfPath = pdfComprobanteX({ ...datos, numero: actual.numero }, config.outputPath);
+      const actualizado = await client.query(
+        `
+        UPDATE comprobantes_x
+        SET pdf_path = $1
+        WHERE id = $2
+        RETURNING *
+        `,
+        [pdfPath, actual.id]
+      );
+
+      return actualizado.rows[0];
     }
 
     const ultimo = await client.query(`SELECT COALESCE(MAX(numero), 0) AS numero FROM comprobantes_x`);

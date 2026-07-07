@@ -177,11 +177,33 @@ button:active,
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 14px;
   height: var(--topbar-height);
   padding: 8px 16px;
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
   box-shadow: 0 4px 18px rgba(18, 58, 92, .08);
+}
+
+.topbar > div:first-child {
+  min-width: 0;
+}
+
+.caja-top-actions {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.caja-top-actions .license-top-area {
+  flex: 1 1 auto;
+}
+
+.caja-top-actions #btnRefrescar {
+  flex: 0 0 auto;
 }
 
 .layout-shell {
@@ -314,7 +336,7 @@ button:active,
 .status-row {
   min-height: 42px;
   display: grid;
-  grid-template-columns: 190px minmax(0, 1fr);
+  grid-template-columns: 190px minmax(240px, 1fr);
   align-items: center;
   gap: 12px;
   padding: 5px 10px 5px 56px;
@@ -331,6 +353,22 @@ button:active,
   color: var(--color-primary);
   font-size: 14px;
   font-weight: 800;
+}
+
+.license-top-area {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.license-top-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .ticket-create-app {
@@ -606,21 +644,37 @@ button:active,
 }
 
 .license-banner {
-  width: 100%;
+  flex: 1 1 auto;
+  width: auto;
+  max-width: 380px;
+  min-width: 0;
+  justify-self: end;
   min-height: 32px;
-  padding: 5px 10px;
-  border: 0;
+  padding: 4px 12px;
+  border: 1px solid #cfe0f4;
+  border-radius: var(--radius);
   color: var(--color-title);
   font-weight: 700;
-  text-align: center;
+  text-align: right;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 12px;
+  justify-content: flex-end;
+  gap: 8px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(15, 74, 123, .08);
+}
+
+.license-banner span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .license-banner.active {
-  background: transparent;
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+  color: #166534;
 }
 
 .license-banner.warning {
@@ -648,6 +702,13 @@ button:active,
   padding: 4px 10px;
   border-radius: 6px;
   background: #fff;
+  white-space: nowrap;
+}
+
+.license-inline-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .license-modal-content {
@@ -658,23 +719,114 @@ button:active,
   width: min(100%, 720px);
 }
 
-.license-preview-modal-content {
-  width: min(100%, 780px);
+.modal-content.license-preview-modal-content {
+  width: min(92vw, 900px);
+  max-height: min(88vh, 720px);
+  padding: 0;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto minmax(320px, 1fr) auto;
+  gap: 0;
+}
+
+.license-preview-header {
+  padding: 20px 22px 14px;
+  border-bottom: 1px solid #d8e6f4;
+  background: #fff;
+}
+
+.license-preview-header h3 {
+  margin: 0;
+}
+
+.license-preview-header .muted {
+  margin-top: 8px;
 }
 
 .license-request-preview {
-  min-height: 260px;
-  max-height: 420px;
+  min-height: 320px;
+  max-height: none;
   overflow: auto;
-  padding: 12px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  background: #ffffff;
+  margin: 0;
+  padding: 18px 22px;
+  border: 0;
+  border-bottom: 1px solid #d8e6f4;
+  border-radius: 0;
+  background: #f8fbff;
   color: var(--color-text);
   white-space: pre-wrap;
+  word-break: break-word;
   font-family: Consolas, "Courier New", monospace;
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.45;
+}
+
+.license-preview-actions {
+  padding: 14px 16px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.license-preview-primary-actions,
+.license-preview-secondary-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.license-preview-secondary-actions {
+  min-width: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.license-preview-actions button {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  min-height: 40px;
+  padding: 7px 12px;
+  justify-content: center;
+  white-space: nowrap;
+  line-height: 1.15;
+}
+
+.license-preview-actions .license-primary-action {
+  min-width: 136px;
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.license-preview-actions .license-primary-action:hover {
+  border-color: var(--color-primary-hover);
+  background: var(--color-primary-hover);
+}
+
+@media (max-width: 760px) {
+  .modal-content.license-preview-modal-content {
+    width: calc(100vw - 24px);
+    max-height: calc(100vh - 24px);
+    grid-template-rows: auto minmax(260px, 1fr) auto;
+  }
+
+  .license-preview-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .license-preview-primary-actions,
+  .license-preview-secondary-actions {
+    width: 100%;
+  }
+
+  .license-preview-primary-actions .license-primary-action,
+  .license-preview-secondary-actions button {
+    flex: 1 1 120px;
+  }
 }
 
 .license-request-grid {
@@ -1239,6 +1391,24 @@ tr:hover td,
 
 .tabla tr.selected-row td {
   background: #eaf2ff;
+}
+
+.caja-ticket-code {
+  display: block;
+  color: var(--color-title);
+  font-weight: 750;
+}
+
+.caja-ticket-detail {
+  display: block;
+  max-width: 360px;
+  margin-top: 2px;
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 td button {

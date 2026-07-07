@@ -196,8 +196,17 @@ module.exports = {
   listarEstadosTicket: () =>
     api.listarEstadosTicket(),
 
-  listarCodigosNomenclador: () =>
-    api.listarCodigosNomenclador(),
+  listarCodigosNomenclador: async () => {
+    try {
+      return await api.listarCodigosNomenclador();
+    } catch (error) {
+      if (String(error.message || '').includes('Ruta no encontrada')) {
+        return [];
+      }
+
+      throw error;
+    }
+  },
 
   actualizarEstadoTicket: (uuid, estado_id) =>
     api.actualizarEstado(uuid, { estado_id }),

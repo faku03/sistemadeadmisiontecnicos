@@ -56,8 +56,25 @@ document.addEventListener('DOMContentLoaded', () => {
     return item.ticket_codigo || item.ticket_uuid;
   }
 
+  function escapeHtml(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
   function descripcionEquipo(item) {
     return [item.tipo, item.marca, item.modelo].filter(Boolean).join(' - ');
+  }
+
+  function detalleTicket(item) {
+    return [
+      item.descripcion_falla ? `Falla: ${item.descripcion_falla}` : '',
+      item.trabajo_realizado ? `Trabajo: ${item.trabajo_realizado}` : '',
+      item.repuestos_detalle ? `Repuesto: ${item.repuestos_detalle}` : ''
+    ].filter(Boolean).join(' | ');
   }
 
   function textoMovimiento(item) {
@@ -67,11 +84,18 @@ document.addEventListener('DOMContentLoaded', () => {
       ${item.nombre} ${item.apellido}
       ${item.celular || ''}
       ${item.tipo} ${item.marca} ${item.modelo}
+      ${item.descripcion_falla || ''}
+      ${item.trabajo_realizado || ''}
+      ${item.repuestos_detalle || ''}
     `.toLowerCase();
   }
 
+  function licenciaBloqueada() {
+    return document.body.classList.contains('license-blocked');
+  }
+
   function actualizarAccionesPendiente() {
-    btnCobrarSeleccionado.disabled = !pendienteSeleccionado;
+    btnCobrarSeleccionado.disabled = !pendienteSeleccionado || licenciaBloqueada();
     pendienteSeleccionadoInfo.textContent = pendienteSeleccionado
       ? `${ticketCodigo(pendienteSeleccionado)} | ${pendienteSeleccionado.nombre} ${pendienteSeleccionado.apellido} | ${descripcionEquipo(pendienteSeleccionado)} | Saldo ${dinero(pendienteSeleccionado.saldo)}`
       : 'Seleccione un ticket pendiente para cobrar.';
@@ -99,6 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     visibles.forEach(item => {
       const tr = document.createElement('tr');
+      const detalle = detalleTicket(item);
       if (pendienteSeleccionado?.ticket_uuid === item.ticket_uuid) {
         tr.classList.add('selected-row');
       }
@@ -107,7 +132,10 @@ document.addEventListener('DOMContentLoaded', () => {
         <td>${item.nombre} ${item.apellido}</td>
         <td>${item.celular || ''}</td>
         <td>${descripcionEquipo(item)}</td>
-        <td>${ticketCodigo(item)}</td>
+        <td>
+          <span class="caja-ticket-code">${ticketCodigo(item)}</span>
+          ${detalle ? `<span class="caja-ticket-detail" title="${escapeHtml(detalle)}">${escapeHtml(detalle)}</span>` : ''}
+        </td>
         <td>${dinero(item.importe_total)}</td>
         <td>${dinero(item.sena)}</td>
         <td>${dinero(item.saldo)}</td>
@@ -136,6 +164,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     visibles.forEach(item => {
       const tr = document.createElement('tr');
+      const detalle = detalleTicket(item);
       if (cobradoSeleccionado?.ticket_uuid === item.ticket_uuid) {
         tr.classList.add('selected-row');
       }
@@ -144,7 +173,10 @@ document.addEventListener('DOMContentLoaded', () => {
         <td>${fechaVisible(item.fecha_cobro, true)}</td>
         <td>${item.nombre} ${item.apellido}</td>
         <td>${descripcionEquipo(item)}</td>
-        <td>${ticketCodigo(item)}</td>
+        <td>
+          <span class="caja-ticket-code">${ticketCodigo(item)}</span>
+          ${detalle ? `<span class="caja-ticket-detail" title="${escapeHtml(detalle)}">${escapeHtml(detalle)}</span>` : ''}
+        </td>
         <td>${dinero(item.saldo)}</td>
         <td>${dinero(item.devoluciones)}</td>
       `;

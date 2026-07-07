@@ -6,6 +6,7 @@
     '#btnGuardarPresupuesto',
     '#btnEnviarPresupuesto',
     '#btnDevolver',
+    '#btnCobrarSeleccionado',
     '.btn-cobrar',
     '.btn-entregar',
     '.btn-presupuesto',
@@ -13,6 +14,7 @@
   ];
 
   let currentConfig = null;
+  let currentStatus = null;
 
   function getApi() {
     return window.api || window.apiCaja;
@@ -25,6 +27,43 @@
 
     alert(message);
     return Promise.resolve();
+  }
+
+  async function resolveStatusForAction() {
+    if (currentStatus) {
+      return currentStatus;
+    }
+
+    const api = getApi();
+    if (!api?.obtenerEstadoLicencia) {
+      return {};
+    }
+
+    try {
+      currentStatus = await api.obtenerEstadoLicencia();
+      return currentStatus;
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function bindTopActions() {
+    const requestBtn = document.getElementById('licenseTopRequestBtn');
+    const openBtn = document.getElementById('licenseTopOpenBtn');
+
+    if (requestBtn && !requestBtn.dataset.boundLicenseUi) {
+      requestBtn.dataset.boundLicenseUi = 'true';
+      requestBtn.addEventListener('click', async () => {
+        requestLicense(await resolveStatusForAction());
+      });
+    }
+
+    if (openBtn && !openBtn.dataset.boundLicenseUi) {
+      openBtn.dataset.boundLicenseUi = 'true';
+      openBtn.addEventListener('click', async () => {
+        openActivationModal(await resolveStatusForAction());
+      });
+    }
   }
 
   function ensureBanner() {
@@ -152,19 +191,25 @@
     modal.className = 'modal hidden';
     modal.innerHTML = `
       <div class="modal-content license-preview-modal-content">
-        <h3>Solicitud de licencia</h3>
-        <p class="muted">
-          Revisa los datos y elegi como enviar la solicitud.
-        </p>
+        <div class="license-preview-header">
+          <h3>Solicitud de licencia</h3>
+          <p class="muted">
+            Revisa los datos y elegi como enviar la solicitud.
+          </p>
+        </div>
         <pre id="licenseRequestPreviewText" class="license-request-preview"></pre>
-        <div class="modal-actions">
-          <button id="licensePreviewBackBtn">Corregir datos</button>
-          <button id="licensePreviewOnlineBtn">Enviar online</button>
-          <button id="licensePreviewCopyBtn">Copiar texto</button>
-          <button id="licensePreviewWhatsappBtn">Solicitar por WhatsApp</button>
-          <button id="licensePreviewEmailBtn">Solicitar por email</button>
-          <button id="licensePreviewTxtBtn">Guardar TXT</button>
-          <button id="licensePreviewCloseBtn">Cerrar</button>
+        <div class="license-preview-actions">
+          <div class="license-preview-primary-actions">
+            <button id="licensePreviewOnlineBtn" class="license-primary-action">Enviar online</button>
+          </div>
+          <div class="license-preview-secondary-actions">
+            <button id="licensePreviewWhatsappBtn">WhatsApp</button>
+            <button id="licensePreviewEmailBtn">Email</button>
+            <button id="licensePreviewCopyBtn">Copiar</button>
+            <button id="licensePreviewTxtBtn">Guardar TXT</button>
+            <button id="licensePreviewBackBtn">Corregir</button>
+            <button id="licensePreviewCloseBtn">Cerrar</button>
+          </div>
         </div>
       </div>
     `;
@@ -501,6 +546,7 @@
   }
 
   function render(status) {
+    currentStatus = status || null;
     const banner = ensureBanner();
     banner.classList.remove('hidden', 'warning', 'blocked', 'active');
 
@@ -509,9 +555,7 @@
       banner.classList.add('active');
       banner.innerHTML = `
         <span>Licencia activa${describeUnit(status) ? ` - ${describeUnit(status)}` : ''}</span>
-        <button class="license-action license-view">Ver licencia</button>
       `;
-      banner.querySelector('.license-view').onclick = () => openActivationModal(status);
       return;
     }
 
@@ -520,35 +564,32 @@
       banner.classList.add('warning');
       banner.innerHTML = `
         <span>${status.reason}</span>
-        <div class="license-inline-actions">
-          <button class="license-action license-request">Solicitar licencia</button>
-          <button class="license-action license-update">Actualizar licencia</button>
-        </div>
       `;
-      banner.querySelector('.license-request').onclick = () => requestLicense(status);
-      banner.querySelector('.license-update').onclick = () => openActivationModal(status);
       return;
     }
 
     banner.classList.add('blocked');
     banner.innerHTML = `
       <span>${status.reason || 'Licencia bloqueada'}. Comunicate con soporte para reactivar el sistema.</span>
-      <div class="license-inline-actions">
-        <button class="license-action license-request">Solicitar licencia</button>
-        <button class="license-action license-activate">Activar licencia</button>
-      </div>
     `;
-    banner.querySelector('.license-request').onclick = () => requestLicense(status);
-    banner.querySelector('.license-activate').onclick = () => openActivationModal(status);
     disableWrites();
   }
 
   async function initLicenseUI() {
     const api = getApi();
 
+    bindTopActions();
+
     if (!api?.obtenerEstadoLicencia) {
       return;
     }
+
+    const banner = ensureBanner();
+    banner.classList.remove('hidden', 'warning', 'blocked', 'active');
+    banner.classList.add('warning');
+    banner.innerHTML = `
+      <span>Verificando licencia...</span>
+    `;
 
     if (api.obtenerConfiguracion) {
       try {
@@ -577,4 +618,10 @@
     init: initLicenseUI,
     disableWrites
   };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bindTopActions);
+  } else {
+    bindTopActions();
+  }
 })();
