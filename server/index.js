@@ -8,6 +8,10 @@ const { createAuth, hashPassword, verifyPassword } = require('../auth');
 const { buildAdminPassword } = require('../auth/admin-formula');
 const { handleLicenseAdminRoute } = require('./license-admin');
 const { handleLicenseRoute, hasAdminAccess } = require('./licenses');
+const {
+  handleLicenseRequestAdminRoute,
+  handleLicenseRequestRoute
+} = require('./license-requests');
 const pdfComprobanteX = require('../pdf/comprobante_x');
 
 const adminPanelDir = pathModule.resolve(__dirname, '..', 'admin-panel');
@@ -1886,6 +1890,24 @@ async function handle(req, res) {
       return;
     }
 
+    if (await handleLicenseRequestRoute({ method, path, req, res, sendJson, readJson })) {
+      return;
+    }
+
+    const isAdminRequest = hasAdminAccess(req) || await hasAdminSession(req);
+
+    if (await handleLicenseRequestAdminRoute({
+      method,
+      path,
+      req,
+      res,
+      sendJson,
+      readJson,
+      isAuthorized: isAdminRequest
+    })) {
+      return;
+    }
+
     if (await handleLicenseAdminRoute({
       method,
       path,
@@ -1894,7 +1916,7 @@ async function handle(req, res) {
       res,
       sendJson,
       readJson,
-      authorizeAdmin: async request => hasAdminAccess(request) || await hasAdminSession(request)
+      authorizeAdmin: async () => isAdminRequest
     })) {
       return;
     }

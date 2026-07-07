@@ -89,6 +89,33 @@ CREATE TABLE IF NOT EXISTS license_validations (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS license_requests (
+  id SERIAL PRIMARY KEY,
+  request_id TEXT NOT NULL UNIQUE,
+  request_secret_hash TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'PENDING',
+  name TEXT NOT NULL,
+  tax_id TEXT,
+  address TEXT,
+  email TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  payment_detail TEXT,
+  machine_id TEXT NOT NULL,
+  app_name TEXT,
+  app_version TEXT,
+  group_code TEXT,
+  unit_code TEXT,
+  unit_name TEXT,
+  unit_type TEXT,
+  license_id INTEGER REFERENCES licenses(id),
+  request_payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+  admin_notes TEXT,
+  rejection_reason TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ,
+  resolved_at TIMESTAMPTZ
+);
+
 CREATE INDEX IF NOT EXISTS idx_licenses_unit ON licenses(unit_id);
 CREATE INDEX IF NOT EXISTS idx_licenses_status ON licenses(status);
 CREATE INDEX IF NOT EXISTS idx_licenses_next_payment_due ON licenses(next_payment_due_at);
@@ -96,3 +123,6 @@ CREATE INDEX IF NOT EXISTS idx_license_validations_license ON license_validation
 CREATE INDEX IF NOT EXISTS idx_license_validations_created ON license_validations(created_at);
 CREATE INDEX IF NOT EXISTS idx_license_payments_license ON license_payments(license_id);
 CREATE INDEX IF NOT EXISTS idx_license_payments_paid_at ON license_payments(paid_at);
+CREATE INDEX IF NOT EXISTS idx_license_requests_status ON license_requests(status);
+CREATE INDEX IF NOT EXISTS idx_license_requests_machine ON license_requests(machine_id);
+CREATE INDEX IF NOT EXISTS idx_license_requests_created ON license_requests(created_at);

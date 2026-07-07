@@ -9,6 +9,7 @@ const pdfEntrega = require('./pdf/entrega');
 const pdfPresupuesto = require('./pdf/presupuesto');
 const pdfConfiguracionPreview = require('./pdf/configuracion-preview');
 const license = require('./license/license-service');
+const licenseRequest = require('./license/license-request-service');
 const configStore = require('./config/store');
 const { readLicenseCache } = require('./license/license-cache');
 
@@ -349,6 +350,10 @@ ipcMain.handle('licencia:guardar-solicitud-txt', async (_, texto) => {
   await shell.openPath(filePath);
   return filePath;
 });
+
+ipcMain.handle('licencia:enviar-solicitud', (_, data = {}) =>
+  licenseRequest.submitLicenseRequest(data, configStore.getConfig())
+);
 
 ipcMain.handle('gateway:asegurar', () =>
   asegurarGatewayLocal()

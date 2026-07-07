@@ -58,6 +58,9 @@ contextBridge.exposeInMainWorld('apiCaja', {
   guardarSolicitudLicencia: texto =>
     ipcRenderer.invoke('licencia:guardar-solicitud-txt', texto),
 
+  enviarSolicitudLicencia: data =>
+    ipcRenderer.invoke('licencia:enviar-solicitud', data),
+
   asegurarGateway: () =>
     ipcRenderer.invoke('gateway:asegurar'),
 

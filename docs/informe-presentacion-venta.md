@@ -308,7 +308,7 @@ Funciones:
 - Bloqueo de acciones de escritura si vence la licencia.
 - Solicitud de licencia desde la app.
 - Formulario de solicitud con datos comerciales.
-- Envio de solicitud por WhatsApp, email, copia o TXT.
+- Envio online de solicitud al servidor de licencias, con WhatsApp, email, copia o TXT como respaldo.
 - Identificacion de PC por Machine ID.
 - Liberacion de PC desde panel admin.
 

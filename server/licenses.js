@@ -211,6 +211,71 @@ async function validateLicense(data) {
   });
 }
 
+async function activateLicenseById(licenseId, machineId, data = {}) {
+  if (!machineId) {
+    throw new Error('No se pudo identificar el equipo');
+  }
+
+  return withTransaction(async client => {
+    const result = await client.query(
+      `
+      SELECT
+        l.*,
+        g.codigo AS group_code,
+        g.nombre AS group_name,
+        u.codigo AS unit_code,
+        u.nombre AS unit_name,
+        u.tipo AS unit_type
+      FROM licenses l
+      JOIN license_groups g ON g.id = l.group_id
+      JOIN license_units u ON u.id = l.unit_id
+      WHERE l.id = $1
+        AND g.is_active = TRUE
+        AND u.is_active = TRUE
+      `,
+      [licenseId]
+    );
+    const license = result.rows[0] || null;
+
+    try {
+      assertLicenseUsable(license, machineId);
+
+      const bind = await client.query(
+        `
+        UPDATE licenses
+        SET machine_id = COALESCE(machine_id, $1),
+            activated_at = COALESCE(activated_at, NOW()),
+            last_validated_at = NOW(),
+            updated_at = NOW()
+        WHERE id = $2
+        RETURNING *
+        `,
+        [machineId, license.id]
+      );
+
+      const row = {
+        ...license,
+        ...bind.rows[0]
+      };
+
+      await logValidation(client, license.id, {
+        ...data,
+        machine_id: machineId
+      }, 'ACTIVE');
+      return publicLicensePayload(row, row.license_key);
+    } catch (error) {
+      if (license) {
+        await logValidation(client, license.id, {
+          ...data,
+          machine_id: machineId
+        }, 'REJECTED', error.message);
+      }
+
+      throw error;
+    }
+  });
+}
+
 async function listLicenses() {
   const result = await query(`
     SELECT
@@ -279,6 +344,7 @@ module.exports = {
   hashLicenseKey,
   hasAdminAccess,
   maskLicenseKey,
+  activateLicenseById,
   validateLicenseKeyFormat,
   validateLicense
 };

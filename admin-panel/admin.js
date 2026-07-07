@@ -2,10 +2,12 @@ const state = {
   groups: [],
   units: [],
   licenses: [],
+  requests: [],
   validations: [],
   selectedGroupId: null,
   selectedLicenseId: null,
   licenseSearch: '',
+  requestSearch: '',
   groupSearch: '',
   unitSearch: '',
   expiringSearch: '',
@@ -409,6 +411,64 @@ function renderValidations() {
   `).join('');
 }
 
+function requestStatusInfo(request) {
+  const status = String(request.status || 'PENDING').toUpperCase();
+
+  if (status === 'PENDING') {
+    return { text: 'PENDIENTE', className: 'status-warning' };
+  }
+
+  if (status === 'APPROVED' || status === 'FULFILLED') {
+    return { text: status === 'FULFILLED' ? 'ENTREGADA' : 'APROBADA', className: 'status-active' };
+  }
+
+  return { text: status, className: 'status-blocked' };
+}
+
+function renderRequests() {
+  const body = $('#requestsBody');
+  if (!body) return;
+
+  const visible = state.requests.filter(request =>
+    includesText(
+      request,
+      ['name', 'email', 'phone', 'machineId', 'groupCode', 'unitCode', 'unitName', 'status'],
+      state.requestSearch
+    )
+  );
+
+  if (!visible.length) {
+    body.innerHTML = '<tr><td colspan="8">No hay solicitudes para mostrar.</td></tr>';
+    return;
+  }
+
+  body.innerHTML = visible.map(request => {
+    const status = requestStatusInfo(request);
+    const pending = String(request.status || '').toUpperCase() === 'PENDING';
+    const contact = [request.email, request.phone].filter(Boolean).join(' / ') || '-';
+    const unit = [request.groupCode, request.unitCode || request.unitName, request.unitType].filter(Boolean).join(' / ') || '-';
+
+    return `
+      <tr>
+        <td>${new Date(request.createdAt).toLocaleString()}</td>
+        <td><span class="status-pill ${status.className}">${status.text}</span></td>
+        <td>
+          <strong>${escapeHtml(request.name)}</strong>
+          <small>${escapeHtml(request.taxId || '')}</small>
+        </td>
+        <td>${escapeHtml(contact)}</td>
+        <td>${escapeHtml(unit)}</td>
+        <td class="machine" title="${escapeHtml(request.machineId)}">${escapeHtml(request.machineId)}</td>
+        <td class="machine" title="${escapeHtml(request.paymentDetail || '')}">${escapeHtml(request.paymentDetail || '-')}</td>
+        <td class="actions">
+          <button class="btn btn-primary" data-request-action="approve" data-id="${request.id}" ${pending ? '' : 'disabled'}>Aprobar</button>
+          <button class="btn btn-danger" data-request-action="reject" data-id="${request.id}" ${pending ? '' : 'disabled'}>Rechazar</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
 function unitsForGroup(groupId) {
   return state.units.filter(unit => String(unit.group_id) === String(groupId));
 }
@@ -521,22 +581,25 @@ function render() {
   renderSummary();
   renderLicenses();
   renderActionPanel();
+  renderRequests();
   renderExpiringLicenses();
   renderValidations();
   renderGroupsView();
 }
 
 async function loadAll() {
-  const [groups, units, licenses, validations] = await Promise.all([
+  const [groups, units, licenses, requests, validations] = await Promise.all([
     request('/admin/license-groups'),
     request('/admin/license-units'),
     request('/admin/licenses'),
+    request('/admin/license-requests'),
     request('/admin/license-validations')
   ]);
 
   state.groups = groups;
   state.units = units;
   state.licenses = licenses;
+  state.requests = requests;
   state.validations = validations;
   state.selectedLicenseId = state.licenses.some(license => String(license.id) === String(state.selectedLicenseId))
     ? state.selectedLicenseId
@@ -701,6 +764,53 @@ async function copyLicenseDelivery(id) {
   showMessage('Mensaje de licencia copiado para enviar al cliente.');
 }
 
+async function approveLicenseRequest(id) {
+  const validDays = Number(window.prompt('Dias de vigencia para la licencia:', '30') || 30);
+
+  if (!Number.isFinite(validDays) || validDays <= 0) {
+    throw new Error('Dias de vigencia invalidos');
+  }
+
+  const result = await request(`/admin/license-requests/${id}/approve`, {
+    method: 'POST',
+    body: JSON.stringify({
+      valid_days: validDays,
+      subscription_status: 'ACTIVE',
+      billing_period: validDays >= 365 ? 'ANNUAL' : 'MONTHLY',
+      plan: 'STANDARD',
+      grace_days: 7
+    })
+  });
+
+  await loadAll();
+  if (result.license?.license_key) {
+    await copyText(buildLicenseDeliveryText({
+      ...result.license,
+      group_name: result.name,
+      group_code: result.groupCode,
+      unit_name: result.unitName || result.name,
+      unit_code: result.unitCode,
+      expires_at: result.license.expires_at
+    }));
+  }
+  showMessage('Solicitud aprobada. La app del cliente recibira la licencia en la proxima validacion online.');
+}
+
+async function rejectLicenseRequest(id) {
+  const reason = window.prompt('Motivo del rechazo:', 'No se pudo validar el pago');
+
+  if (!reason) {
+    return;
+  }
+
+  await request(`/admin/license-requests/${id}/reject`, {
+    method: 'POST',
+    body: JSON.stringify({ reason })
+  });
+  await loadAll();
+  showMessage('Solicitud rechazada.');
+}
+
 async function copySelectedLicenseKey() {
   const license = requireSelectedLicense();
 
@@ -855,6 +965,28 @@ function wireEvents() {
 
   $('#refreshValidationsBtn').addEventListener('click', () => {
     loadAll().catch(error => showMessage(error.message, true));
+  });
+
+  $('#refreshRequestsBtn')?.addEventListener('click', () => {
+    loadAll().catch(error => showMessage(error.message, true));
+  });
+
+  $('#requestSearch')?.addEventListener('input', event => {
+    state.requestSearch = event.target.value;
+    renderRequests();
+  });
+
+  $('#requestsBody')?.addEventListener('click', event => {
+    const button = event.target.closest('button[data-request-action]');
+
+    if (!button) return;
+
+    const action = button.dataset.requestAction;
+    const work = action === 'approve'
+      ? approveLicenseRequest(button.dataset.id)
+      : rejectLicenseRequest(button.dataset.id);
+
+    work.catch(error => showMessage(error.message, true));
   });
 
   $('#licensesBody').addEventListener('click', event => {

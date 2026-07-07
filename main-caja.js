@@ -8,6 +8,7 @@ const db = require('./services/data-source');
 const configStore = require('./config/store');
 const pdfReporteCaja = require('./pdf/reporte_caja');
 const license = require('./license/license-service');
+const licenseRequest = require('./license/license-request-service');
 const { readLicenseCache } = require('./license/license-cache');
 
 const appDataBase = path.join(process.env.APPDATA || app.getPath('appData'), 'SistemaTicketsCaja');
@@ -401,6 +402,10 @@ ipcMain.handle('licencia:guardar-solicitud-txt', async (_, texto) => {
   await shell.openPath(filePath);
   return filePath;
 });
+
+ipcMain.handle('licencia:enviar-solicitud', (_, data = {}) =>
+  licenseRequest.submitLicenseRequest(data, configStore.getConfig())
+);
 
 ipcMain.handle('gateway:asegurar', () =>
   asegurarGatewayLocal()

@@ -15,6 +15,7 @@
       </div>
       <nav class="main-menu" aria-label="Menu administrativo">
         <button class="menu-item active" type="button" data-view="licensesView">Licencias</button>
+        <button class="menu-item" type="button" data-view="requestsView">Solicitudes</button>
         <button class="menu-item" type="button" data-view="groupsView">Grupos y sucursales</button>
         <button class="menu-item" type="button" data-view="expiringView">Vencimientos</button>
         <button class="menu-item" type="button" data-view="validationsView">Validaciones</button>
@@ -104,6 +105,36 @@
         </section>
       </section>
 
+    </section>
+
+    <section id="requestsView" class="view">
+      <section class="panel expiring-panel">
+        <div class="panel-header">
+          <div>
+            <h2>Solicitudes de licencia</h2>
+            <p>Pedidos enviados desde FaroDesk para aprobar, rechazar o convertir en licencia.</p>
+          </div>
+          <button id="refreshRequestsBtn" class="btn btn-secondary" type="button">Actualizar</button>
+        </div>
+        <input id="requestSearch" class="grid-search" placeholder="Buscar por cliente, email, equipo o estado">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Estado</th>
+                <th>Cliente</th>
+                <th>Email / celular</th>
+                <th>Unidad</th>
+                <th>Equipo</th>
+                <th>Pago</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="requestsBody"></tbody>
+          </table>
+        </div>
+      </section>
     </section>
 
     <section id="groupsView" class="view">

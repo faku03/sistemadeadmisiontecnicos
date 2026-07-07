@@ -51,6 +51,7 @@ La transferencia bancaria queda como flujo inicial controlado. Mercado Pago qued
    - email;
    - celular.
 7. Desde la vista previa, el usuario puede:
+   - enviar online para registrar la solicitud en el servidor de licencias;
    - solicitar por WhatsApp;
    - solicitar por email;
    - copiar el texto;
@@ -78,6 +79,9 @@ La transferencia bancaria queda como flujo inicial controlado. Mercado Pago qued
 - Si no hay licencia, la primera ejecucion crea un periodo inicial de 7 dias usando la hora del servidor, no la fecha de la PC.
 - En periodo inicial o bloqueo aparece una barra superior con `Solicitar licencia` y `Activar licencia`.
 - `Solicitar licencia` abre un formulario y luego una vista previa con el texto final.
+- La vista previa permite enviar la solicitud online al servidor de licencias.
+- El servidor guarda la solicitud con estado `PENDING`; el panel administrador la muestra en la bandeja de solicitudes.
+- Al aprobarla, el servidor crea la licencia y la app del cliente la toma automaticamente en la proxima validacion online.
 - La solicitud se puede enviar por WhatsApp o email, copiar al portapapeles, o guardar en TXT.
 - Si no hay cliente de email configurado, el TXT queda como respaldo para copiar y pegar.
 - `Activar licencia` guarda cache local cuando el servidor confirma que la licencia queda activa.

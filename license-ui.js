@@ -159,6 +159,7 @@
         <pre id="licenseRequestPreviewText" class="license-request-preview"></pre>
         <div class="modal-actions">
           <button id="licensePreviewBackBtn">Corregir datos</button>
+          <button id="licensePreviewOnlineBtn">Enviar online</button>
           <button id="licensePreviewCopyBtn">Copiar texto</button>
           <button id="licensePreviewWhatsappBtn">Solicitar por WhatsApp</button>
           <button id="licensePreviewEmailBtn">Solicitar por email</button>
@@ -265,6 +266,41 @@
     return lines.join('\n');
   }
 
+  function buildOnlinePayload(status, requestData, text) {
+    const cfg = currentConfig || {};
+
+    return {
+      request: {
+        name: requestData.name,
+        taxId: requestData.taxId,
+        address: requestData.address,
+        email: requestData.email,
+        phone: requestData.phone,
+        payment: requestData.payment
+      },
+      technical: {
+        machineId: status?.machineId || '',
+        licenseKey: status?.licenseKey || cfg.licenseKey || '',
+        groupCode: cfg.licenseGroupId || status?.groupCode || status?.groupId || '',
+        unitCode: cfg.licenseUnitId || status?.unitCode || status?.unitId || '',
+        unitName: cfg.sucursalNombre || status?.unitName || '',
+        unitType: cfg.licenseUnitType || status?.unitType || '',
+        appStatus: status?.status || '',
+        reason: status?.reason || ''
+      },
+      config: {
+        businessName: cfg.pdfBusinessName || cfg.sucursalNombre || '',
+        contactName: cfg.businessContactName || '',
+        locality: cfg.pdfBusinessLocality || '',
+        province: cfg.pdfBusinessProvince || '',
+        supportEmail: cfg.licenseSupportEmail || '',
+        supportWhatsApp: cfg.licenseSupportWhatsApp || ''
+      },
+      status,
+      text
+    };
+  }
+
   async function copyRequestText(text) {
     if (!navigator.clipboard?.writeText) {
       return false;
@@ -337,7 +373,33 @@
     );
   }
 
-  function openRequestPreview(status, text) {
+  async function sendRequestOnline(status, requestData, text) {
+    const api = getApi();
+
+    if (!api?.enviarSolicitudLicencia) {
+      await showAlert('Envio online no disponible', 'Esta version no tiene habilitado el envio online. Usa WhatsApp, email o TXT.');
+      return;
+    }
+
+    try {
+      const result = await api.enviarSolicitudLicencia(buildOnlinePayload(status, requestData, text));
+      await copyRequestText(text);
+      await showAlert(
+        'Solicitud enviada',
+        result?.requestId
+          ? `La solicitud fue registrada correctamente.\nNumero: ${result.requestId}`
+          : 'La solicitud fue registrada correctamente.'
+      );
+    } catch (error) {
+      await copyRequestText(text);
+      await showAlert(
+        'No se pudo enviar online',
+        `${error.message || 'No se pudo registrar la solicitud.'}\n\nLa solicitud quedo copiada para enviarla por WhatsApp o email.`
+      );
+    }
+  }
+
+  function openRequestPreview(status, requestData, text) {
     const formModal = ensureRequestModal();
     const previewModal = ensureRequestPreviewModal();
 
@@ -349,6 +411,8 @@
       previewModal.classList.add('hidden');
       formModal.classList.remove('hidden');
     };
+
+    previewModal.querySelector('#licensePreviewOnlineBtn').onclick = () => sendRequestOnline(status, requestData, text);
 
     previewModal.querySelector('#licensePreviewCopyBtn').onclick = async () => {
       await copyRequestText(text);
@@ -386,7 +450,7 @@
       }
 
       const text = buildRequestText(status, data);
-      openRequestPreview(status, text);
+      openRequestPreview(status, data, text);
     };
   }
 

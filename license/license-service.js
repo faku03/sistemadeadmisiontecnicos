@@ -5,6 +5,7 @@ const {
   readLicenseCache,
   writeLicenseCache
 } = require('./license-cache');
+const { checkPendingLicenseRequest } = require('./license-request-service');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_GRACE_DAYS = 7;
@@ -391,15 +392,30 @@ async function validateLicense({ forceOffline = false } = {}) {
 
   if (!forceOffline) {
     try {
+      const approvedRequestLicense = await checkPendingLicenseRequest();
+      if (approvedRequestLicense) {
+        return {
+          ...evaluateCache(approvedRequestLicense, { online: true, referenceDate: approvedRequestLicense.lastOnlineValidation }),
+          online: true,
+          machineId,
+          cachePath: getLicensePath()
+        };
+      }
+
       if (shouldUseLicenseServer() && !currentLicenseKey) {
         const serverNow = await fetchServerNow();
+        const latestCache = readLicenseCache();
         const currentTrial = previous?.status === 'PENDING_ACTIVATION'
           ? {
               ...previous,
               machineId,
-              lastOnlineValidation: serverNow.toISOString()
+              lastOnlineValidation: serverNow.toISOString(),
+              pendingLicenseRequest: latestCache?.pendingLicenseRequest || previous.pendingLicenseRequest
             }
-          : buildInitialGraceCache(machineId, serverNow);
+          : {
+              ...buildInitialGraceCache(machineId, serverNow),
+              pendingLicenseRequest: latestCache?.pendingLicenseRequest || previous?.pendingLicenseRequest
+            };
 
         writeLicenseCache(currentTrial);
         return {
