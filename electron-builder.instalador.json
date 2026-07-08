@@ -2,6 +2,12 @@
   "appId": "com.sistematecnicocaja.app",
   "productName": "FaroDesk Servidor",
   "executableName": "FaroDeskServidor",
+  "compression": "maximum",
+  "electronLanguages": [
+    "es",
+    "es-419",
+    "en-US"
+  ],
   "directories": {
     "output": "dist-instalador"
   },

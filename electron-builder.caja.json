@@ -2,6 +2,12 @@
   "appId": "com.sistemadecaja.app",
   "productName": "FaroDesk Caja",
   "executableName": "FaroDeskCaja",
+  "compression": "maximum",
+  "electronLanguages": [
+    "es",
+    "es-419",
+    "en-US"
+  ],
   "directories": {
     "output": "dist-caja"
   },

@@ -2,6 +2,12 @@
   "appId": "com.sistematecnicocaja.terminal",
   "productName": "FaroDesk Terminal",
   "executableName": "FaroDesk",
+  "compression": "maximum",
+  "electronLanguages": [
+    "es",
+    "es-419",
+    "en-US"
+  ],
   "directories": {
     "output": "dist-terminal-retryclose"
   },
